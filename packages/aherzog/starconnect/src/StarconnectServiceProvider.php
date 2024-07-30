@@ -2,8 +2,8 @@
 
 namespace AHerzog\Starconnect;
 
-use AHerzog\StarconnectSetup\Console\StarconnectGitCommand;
-use AHerzog\StarconnectSetup\Console\StarconnectSetupCommand;
+use AHerzog\Starconnect\Console\StarconnectGitCommand;
+use AHerzog\Starconnect\Console\StarconnectSetupCommand;
 use Illuminate\Support\ServiceProvider;
 
 class StarconnectServiceProvider extends ServiceProvider

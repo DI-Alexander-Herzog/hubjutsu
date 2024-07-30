@@ -19,9 +19,9 @@ this will fetch into the packages directory which is used most of the time for l
 
 Add the repository to your composer.json
 ```bash
-composer config repositories.aherzog/starconnect  -j '{"type":"path","url":"./packages/aherzog/starconnect-setup","options":{"symlink":true}}'
+composer config repositories.aherzog/starconnect  -j '{"type":"path","url":"./packages/aherzog/starconnect","options":{"symlink":true}}'
 
-composer require "aherzog/starconnect-setup @dev"
+composer require "aherzog/starconnect @dev"
 ```
 
 ## Push/Pull subtree
