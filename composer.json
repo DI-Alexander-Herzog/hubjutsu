@@ -25,12 +25,12 @@
     },
     "autoload": {
         "psr-4": {
-            "AHerzog\\StarconnectSetup\\": "src"
+            "AHerzog\\Starconnect\\": "src"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "AHerzog\\StarconnectSetup\\Tests\\": "tests"
+            "AHerzog\\Starconnect\\Tests\\": "tests"
         }
     },
     "scripts": {
