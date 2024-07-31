@@ -2,7 +2,7 @@
 
 namespace AHerzog\Starconnect\Http\Controllers;
 
-abstract class Controller
+abstract class Controller  
 {
     //
 }

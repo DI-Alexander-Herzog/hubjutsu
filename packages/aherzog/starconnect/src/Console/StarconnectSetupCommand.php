@@ -162,6 +162,8 @@ class StarconnectSetupCommand extends Command
         // Views...
         copy(__DIR__.'/../../stubs/resources/views/app.blade.php', resource_path('views/app.blade.php'));
 
+        @unlink(resource_path('views/welcome.blade.php'));
+
         // Components + Pages...
         (new Filesystem)->ensureDirectoryExists(resource_path('js/Components'));
         (new Filesystem)->ensureDirectoryExists(resource_path('js/Layouts'));
@@ -180,10 +182,10 @@ class StarconnectSetupCommand extends Command
         // Tailwind / Vite...
         copy(__DIR__.'/../../stubs/resources/css/app.scss', resource_path('css/app.scss'));
         copy(__DIR__.'/../../stubs/postcss.config.js', base_path('postcss.config.js'));
-        copy(__DIR__.'/../../stubs/tailwind.config.js', base_path('tailwind.config.js'));
-        copy(__DIR__.'/../../stubs/vite.config.js', base_path('vite.config.js'));
+        copy(__DIR__.'/../../stubs/tailwind.config.dist.js', base_path('tailwind.config.js'));
+        copy(__DIR__.'/../../stubs/vite.config.dist.js', base_path('vite.config.js'));
 
-        copy(__DIR__.'/../../stubs/tsconfig.json', base_path('tsconfig.json'));
+        copy(__DIR__.'/../../stubs/tsconfig.dist.json', base_path('tsconfig.json'));
         copy(__DIR__.'/../../stubs/resources/js/app.tsx', resource_path('js/app.tsx'));
 
         copy(__DIR__.'/../../stubs/resources/js/bootstrap.ts', resource_path('js/bootstrap.ts'));
@@ -191,6 +193,12 @@ class StarconnectSetupCommand extends Command
         if (file_exists(resource_path('js/bootstrap.js'))) {
             unlink(resource_path('js/bootstrap.js'));
         }
+
+        // Routes...
+        copy(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'));
+        copy(__DIR__.'/../../stubs/routes/auth.php', base_path('routes/auth.php'));
+
+        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/tests/Feature', base_path('tests/Feature'));
 
         $this->replaceInFile('"vite build', '"tsc && VITE_CJS_TRACE=true vite build', base_path('package.json'));
         $this->replaceInFile('.jsx', '.tsx', base_path('vite.config.js'));

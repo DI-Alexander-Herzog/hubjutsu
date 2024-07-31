@@ -11,15 +11,9 @@
         "forceConsistentCasingInFileNames": true,
         "noEmit": true,
         "paths": {
-            "@/*": ["./resources/js/*"],
-            "ziggy-js": ["./vendor/tightenco/ziggy"],
-            "@starconnect-ui/*": ["./vendor/aherzog/starconnect/resources/js/*"],
+            "@/*": ["../../../../resources/js/*"],
+            "ziggy-js": ["../../../../vendor/tightenco/ziggy"],
+            "@starconnect/*": ["../../../../vendor/aherzog/starconnect/resources/js/*"],
         }
-    },
-    "include": [
-        "resources/js/**/*.ts", 
-        "resources/js/**/*.tsx", 
-        "resources/js/**/*.d.ts",
-        "./vendor/aherzog/starconnect/resources/js/**/*.tsx"
-    ]
+    }
 }

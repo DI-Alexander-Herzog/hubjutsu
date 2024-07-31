@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
         ],
         resolve: {
             alias: {
-                '@starconnect': resolve(__dirname, 'vendor/aherzog/starconnect/resources/js/Components'),
+                '@starconnect': resolve(__dirname, 'vendor/aherzog/starconnect/resources/js'),
             },
         },
     };
