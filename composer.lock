@@ -7,11 +7,11 @@
     "content-hash": "c9cc54f24f9f9b19f7de2bd52fdce769",
     "packages": [
         {
-            "name": "aherzog/starconnect",
+            "name": "aherzog/hubjutsu",
             "version": "dev-master",
             "dist": {
                 "type": "path",
-                "url": "./packages/aherzog/starconnect",
+                "url": "./packages/aherzog/hubjutsu",
                 "reference": "63c6df9b78e85e70283128d822bd69297dc7724b"
             },
             "require": {
@@ -26,21 +26,21 @@
             "extra": {
                 "laravel": {
                     "providers": [
-                        "AHerzog\\Starconnect\\StarconnectServiceProvider"
+                        "AHerzog\\Hubjutsu\\HubjutsuServiceProvider"
                     ],
                     "aliases": {
-                        "Starconnect": "AHerzog\\Starconnect\\StarconnectFacade"
+                        "Hubjutsu": "AHerzog\\Hubjutsu\\HubjutsuFacade"
                     }
                 }
             },
             "autoload": {
                 "psr-4": {
-                    "AHerzog\\Starconnect\\": "src"
+                    "AHerzog\\Hubjutsu\\": "src"
                 }
             },
             "autoload-dev": {
                 "psr-4": {
-                    "AHerzog\\Starconnect\\Tests\\": "tests"
+                    "AHerzog\\Hubjutsu\\Tests\\": "tests"
                 }
             },
             "scripts": {
@@ -61,11 +61,11 @@
                     "role": "Developer"
                 }
             ],
-            "description": "Starconnect ",
-            "homepage": "https://github.com/aherzog/starconnect",
+            "description": "Hubjutsu ",
+            "homepage": "https://github.com/aherzog/hubjutsu",
             "keywords": [
                 "aherzog",
-                "starconnect"
+                "hubjutsu"
             ],
             "transport-options": {
                 "symlink": true,
@@ -8742,7 +8742,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "aherzog/starconnect": 20
+        "aherzog/hubjutsu": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,

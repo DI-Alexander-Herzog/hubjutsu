@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "jsx": "react-jsx",
+        "strict": true,
+        "isolatedModules": true,
+        "target": "ESNext",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "noEmit": true,
+        "paths": {
+            "@/*": ["../../../../resources/js/*"],
+            "ziggy-js": ["../../../../vendor/tightenco/ziggy"],
+            "@hubjutsu/*": ["../../../../vendor/aherzog/hubjutsu/resources/js/*"],
+        }
+    }
+}
