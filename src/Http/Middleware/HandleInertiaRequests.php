@@ -3,11 +3,6 @@
 namespace AHerzog\Hubjutsu\Http\Middleware;
 
 
-<<<<<<< HEAD:packages/aherzog/hubjutsu/src/Http/Middleware/HandleInertiaRequests.php
-class HandleInertiaRequests extends \AHerzog\Hubjutsu\Http\Middleware\HandleInertiaRequests
-{
-    
-=======
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -42,5 +37,4 @@ class HandleInertiaRequests extends Middleware
             ],
         ];
     }
->>>>>>> 073e141 (Squashed 'packages/aherzog/hubjutsu/' changes from 20470ff..4896fc0):src/Http/Middleware/HandleInertiaRequests.php
 }
