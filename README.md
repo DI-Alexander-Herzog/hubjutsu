@@ -1,27 +1,69 @@
-## Bestforming-Admin
-Dieses Repo dient als Admin-Panel für die Bestforming/EOKapp
+# Very short description of the package
 
-Die App selbst ist in einem anderen Repo zu finden.
+This is the main Setup-Guide for Laravel Projects at alexander-herzog.at
+
 
 ## Installation
-1. Clone das Repo
-2. Installiere die Dependencies mit `composer install`
-3. Kopiere die `.env.example` Datei und benenne sie in `.env` um und fülle die Datenbank Informationen aus
-4. Generiere einen neuen Key mit `php artisan key:generate`
-5. Installiere die NPM Dependencies mit `npm install`
-6. Führe die Migrationen aus mit `php artisan migrate`
 
-## Starten
-Je nach Setup einen Webserver starten.
+Most of the time, you will want to use git subtree to install this package as you might want to change stuff directly in the project and we don't want to provide our package to customers via github public repo and we defenately don't want to handel multipe git repo accesses...
 
-Details dazu findest du unter: https://laravel.com/docs/11.x/installation
+Make sure you did at least an empty commit in the current project
+```bash
+git commit --allow-empty -n -m "Initial commit."
+```
 
+```bash
+git subtree add --prefix packages/aherzog/starconnect git@git.rent-a-ninja.org:aherzog/starconnect.git main --squash
+```
+this will fetch into the packages directory which is used most of the time for local Laravel Package Development.
 
-## Änderungen
-Wenn du Änderungen an den JS oder CSS Dateien vornimmst, musst du diese kompilieren.
+Add the repository to your composer.json
+```bash
+composer config repositories.aherzog/starconnect  -j '{"type":"path","url":"./packages/aherzog/starconnect","options":{"symlink":true}}'
 
-`npm run build`
+composer require "aherzog/starconnect @dev"
+```
+
+## Push/Pull subtree
+```bash
+git subtree push --prefix packages/aherzog/starconnect git@git.rent-a-ninja.org:aherzog/starconnect.git main
+```
+```bash
+git subtree pull --prefix packages/aherzog/starconnect git@git.rent-a-ninja.org:aherzog/starconnect.git main --squash
+```
+
+## Usage
+
+```php
+// Usage description here
+```
+
+### Testing
+
+```bash
+composer test
+```
+
+### Changelog
+
+Please see [CHANGELOG](CHANGELOG.md) for more information what has changed recently.
+
+## Contributing
+
+Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
+
+### Security
+
+If you discover any security related issues, please email alexander@alexander-herzog.at instead of using the issue tracker.
+
+## Credits
+
+-   [Alexander Herzog](https://github.com/aherzog)
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+
+## Laravel Package Boilerplate
+
+This package was generated using the [Laravel Package Boilerplate](https://laravelpackageboilerplate.com).
