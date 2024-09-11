@@ -1,5 +1,5 @@
 <?php
-namespace AHerzog\Starconnect\Console;
+namespace AHerzog\Hubjutsu\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
@@ -12,7 +12,7 @@ use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 
-class StarconnectGitCommand extends Command
+class HubjutsuGitCommand extends Command
 {
 
     /**
@@ -20,7 +20,7 @@ class StarconnectGitCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'starconnect:git';
+    protected $signature = 'hubjutsu:git';
 
     /**
      * The console command description.
@@ -40,7 +40,7 @@ class StarconnectGitCommand extends Command
     {
         $this->info('Pushing and pulling all changes to the installed repos...');
 
-        foreach(glob(base_path('packages/aherzog/starconnect*')) as $dir) {
+        foreach(glob(base_path('packages/aherzog/hubjutsu*')) as $dir) {
             $projectname = basename($dir);
             $prefix = str_replace(base_path('/'), '', $dir);
 

@@ -11,9 +11,15 @@
         "forceConsistentCasingInFileNames": true,
         "noEmit": true,
         "paths": {
-            "@/*": ["../../../../resources/js/*"],
-            "ziggy-js": ["../../../../vendor/tightenco/ziggy"],
-            "@hubjutsu/*": ["../../../../vendor/aherzog/hubjutsu/resources/js/*"],
+            "@/*": ["./resources/js/*"],
+            "ziggy-js": ["./vendor/tightenco/ziggy"],
+            "@hubjutsu/*": ["./vendor/aherzog/hubjutsu/resources/js/*"],
         }
-    }
+    },
+    "include": [
+        "resources/js/**/*.ts", 
+        "resources/js/**/*.tsx", 
+        "resources/js/**/*.d.ts",
+        "./vendor/aherzog/hubjutsu/resources/js/**/*.tsx"
+    ]
 }

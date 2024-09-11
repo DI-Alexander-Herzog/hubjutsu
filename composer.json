@@ -1,11 +1,11 @@
 {
-    "name": "aherzog/starconnect",
-    "description": "Starconnect ",
+    "name": "aherzog/hubjutsu",
+    "description": "Hubjutsu ",
     "keywords": [
         "aherzog",
-        "starconnect"
+        "hubjutsu"
     ],
-    "homepage": "https://github.com/aherzog/starconnect",
+    "homepage": "https://github.com/aherzog/hubjutsu",
     "license": "MIT",
     "type": "library",
     "authors": [
@@ -25,12 +25,12 @@
     },
     "autoload": {
         "psr-4": {
-            "AHerzog\\Starconnect\\": "src"
+            "AHerzog\\Hubjutsu\\": "src"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "AHerzog\\Starconnect\\Tests\\": "tests"
+            "AHerzog\\Hubjutsu\\Tests\\": "tests"
         }
     },
     "scripts": {
@@ -44,10 +44,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "AHerzog\\Starconnect\\StarconnectServiceProvider"
+                "AHerzog\\Hubjutsu\\HubjutsuServiceProvider"
             ],
             "aliases": {
-                "Starconnect": "AHerzog\\Starconnect\\StarconnectFacade"
+                "Hubjutsu": "AHerzog\\Hubjutsu\\HubjutsuFacade"
             }
         }
     }

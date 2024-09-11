@@ -1,5 +1,5 @@
 <?php
-namespace AHerzog\Starconnect\Console;
+namespace AHerzog\Hubjutsu\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
@@ -12,7 +12,7 @@ use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 
-class StarconnectSetupCommand extends Command
+class HubjutsuSetupCommand extends Command
 {
 
     /**
@@ -20,14 +20,14 @@ class StarconnectSetupCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'starconnect:setup';
+    protected $signature = 'hubjutsu:setup';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Setup all packages for Starconnect';
+    protected $description = 'Setup all packages for Hubjutsu';
 
 
 
@@ -140,18 +140,29 @@ class StarconnectSetupCommand extends Command
         $this->runCommands(['php artisan lang:publish']);
 
         // Controllers...
-        (new Filesystem)->ensureDirectoryExists(app_path('Http/Controllers/Middleware'));
+        (new Filesystem)->ensureDirectoryExists(app_path('Http/Controllers'));
+        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/app/Http/Controllers', app_path('Http/Controllers'));
 
+        // Requests...
+        (new Filesystem)->ensureDirectoryExists(app_path('Http/Requests'));
+        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/app/Http/Requests', app_path('Http/Requests'));
+        
+        
         // Middleware...
         $this->installMiddleware([
             '\App\Http\Middleware\HandleInertiaRequests::class',
             '\Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class',
         ]);
         
+
+        (new Filesystem)->ensureDirectoryExists(app_path('Http/Middleware'));
         copy(__DIR__.'/../../stubs/app/Http/Middleware/HandleInertiaRequests.php', app_path('Http/Middleware/HandleInertiaRequests.php'));
+        
 
         // Views...
         copy(__DIR__.'/../../stubs/resources/views/app.blade.php', resource_path('views/app.blade.php'));
+
+        @unlink(resource_path('views/welcome.blade.php'));
 
         // Components + Pages...
         (new Filesystem)->ensureDirectoryExists(resource_path('js/Components'));
@@ -171,10 +182,10 @@ class StarconnectSetupCommand extends Command
         // Tailwind / Vite...
         copy(__DIR__.'/../../stubs/resources/css/app.scss', resource_path('css/app.scss'));
         copy(__DIR__.'/../../stubs/postcss.config.js', base_path('postcss.config.js'));
-        copy(__DIR__.'/../../stubs/tailwind.config.js', base_path('tailwind.config.js'));
-        copy(__DIR__.'/../../stubs/vite.config.js', base_path('vite.config.js'));
+        copy(__DIR__.'/../../stubs/tailwind.config.dist.js', base_path('tailwind.config.js'));
+        copy(__DIR__.'/../../stubs/vite.config.dist.js', base_path('vite.config.js'));
 
-        copy(__DIR__.'/../../stubs/tsconfig.json', base_path('tsconfig.json'));
+        copy(__DIR__.'/../../stubs/tsconfig.dist.json', base_path('tsconfig.json'));
         copy(__DIR__.'/../../stubs/resources/js/app.tsx', resource_path('js/app.tsx'));
 
         copy(__DIR__.'/../../stubs/resources/js/bootstrap.ts', resource_path('js/bootstrap.ts'));
@@ -182,6 +193,12 @@ class StarconnectSetupCommand extends Command
         if (file_exists(resource_path('js/bootstrap.js'))) {
             unlink(resource_path('js/bootstrap.js'));
         }
+
+        // Routes...
+        copy(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'));
+        copy(__DIR__.'/../../stubs/routes/auth.php', base_path('routes/auth.php'));
+
+        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/tests/Feature', base_path('tests/Feature'));
 
         $this->replaceInFile('"vite build', '"tsc && VITE_CJS_TRACE=true vite build', base_path('package.json'));
         $this->replaceInFile('.jsx', '.tsx', base_path('vite.config.js'));
@@ -223,7 +240,7 @@ class StarconnectSetupCommand extends Command
 
         
         $this->line('');
-        $this->components->info('Starconnect scaffolding installed successfully.');
+        $this->components->info('Hubjutsu scaffolding installed successfully.');
     }
 
 

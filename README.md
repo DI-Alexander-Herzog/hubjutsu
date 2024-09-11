@@ -13,23 +13,23 @@ git commit --allow-empty -n -m "Initial commit."
 ```
 
 ```bash
-git subtree add --prefix packages/aherzog/starconnect git@git.rent-a-ninja.org:aherzog/starconnect.git main --squash
+git subtree add --prefix packages/aherzog/hubjutsu git@git.rent-a-ninja.org:aherzog/hubjutsu.git main --squash
 ```
 this will fetch into the packages directory which is used most of the time for local Laravel Package Development.
 
 Add the repository to your composer.json
 ```bash
-composer config repositories.aherzog/starconnect  -j '{"type":"path","url":"./packages/aherzog/starconnect","options":{"symlink":true}}'
+composer config repositories.aherzog/hubjutsu  -j '{"type":"path","url":"./packages/aherzog/hubjutsu","options":{"symlink":true}}'
 
-composer require "aherzog/starconnect @dev"
+composer require "aherzog/hubjutsu @dev"
 ```
 
 ## Push/Pull subtree
 ```bash
-git subtree push --prefix packages/aherzog/starconnect git@git.rent-a-ninja.org:aherzog/starconnect.git main
+git subtree push --prefix packages/aherzog/hubjutsu git@git.rent-a-ninja.org:aherzog/hubjutsu.git main
 ```
 ```bash
-git subtree pull --prefix packages/aherzog/starconnect git@git.rent-a-ninja.org:aherzog/starconnect.git main --squash
+git subtree pull --prefix packages/aherzog/hubjutsu git@git.rent-a-ninja.org:aherzog/hubjutsu.git main --squash
 ```
 
 ## Usage
