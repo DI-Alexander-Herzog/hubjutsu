@@ -50,7 +50,8 @@ class HubjutsuGitCommand extends Command
             
             $this->runCommands([
                 "git add packages/aherzog",
-                "git commit -m 'sysnc' .",
+                "git commit -m 'sysnc'",
+                "git push",
                 "git subtree pull --prefix $prefix $repo main --squash",               
                 "git subtree push --prefix $prefix $repo main",
                 "git subtree pull --prefix $prefix $repo main --squash"
