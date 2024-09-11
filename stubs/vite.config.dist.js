@@ -23,11 +23,7 @@ export default defineConfig(({ mode }) => {
         server: server,
         plugins: [
             laravel({
-<<<<<<< HEAD:packages/aherzog/hubjutsu/stubs/vite.config.dist.js
-                input: 'resources/js/app.jsx',
-=======
                 input: 'resources/js/app.tsx',
->>>>>>> 1f5f7c3 (Squashed 'packages/aherzog/hubjutsu/' changes from 20470ff..ec48f0c):stubs/vite.config.dist.js
                 refresh: true,
             }),
             react(),

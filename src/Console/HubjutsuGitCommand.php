@@ -51,9 +51,9 @@ class HubjutsuGitCommand extends Command
             $this->runCommands([
                 "git add packages/aherzog",
                 "git commit -m 'sysnc' packages/aherzog",
-                "git subtree pull --prefix $prefix $repo main",
+                "git subtree pull --prefix $prefix $repo main --squash",               
                 "git subtree push --prefix $prefix $repo main",
-                "git subtree pull --prefix $prefix $repo main"
+                "git subtree pull --prefix $prefix $repo main --squash"
             ]);
         }
 
