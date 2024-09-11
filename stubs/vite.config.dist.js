@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
         server: server,
         plugins: [
             laravel({
-                input: 'resources/js/app.jsx',
+                input: 'resources/js/app.tsx',
                 refresh: true,
             }),
             react(),
