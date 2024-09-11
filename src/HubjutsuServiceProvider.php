@@ -22,7 +22,6 @@ class HubjutsuServiceProvider extends ServiceProvider
         // $this->loadRoutesFrom(__DIR__.'/routes.php');
 
         if ($this->app->runningInConsole()) {
-            
             $this->commands([
                 HubjutsuSetupCommand::class,
                 HubjutsuGitCommand::class,
