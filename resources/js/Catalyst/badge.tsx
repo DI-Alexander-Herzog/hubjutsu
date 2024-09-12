@@ -58,7 +58,7 @@ export const BadgeButton = forwardRef(function BadgeButton(
   }: BadgeProps & { className?: string; children: React.ReactNode } & (
       | Omit<Headless.ButtonProps, 'as' | 'className'>
       | Omit<React.ComponentPropsWithoutRef<typeof Link>, 'className'>
-    ),
+    ) & any,
   ref: React.ForwardedRef<HTMLElement>
 ) {
   let classes = clsx(

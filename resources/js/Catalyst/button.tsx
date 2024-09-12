@@ -165,12 +165,12 @@ type ButtonProps = (
 ) & { className?: string; children: React.ReactNode } & (
     | Omit<Headless.ButtonProps, 'as' | 'className'>
     | Omit<React.ComponentPropsWithoutRef<typeof Link>, 'className'>
-  )
+  );
 
-export const Button = forwardRef(function Button(
-  { color, outline, plain, className, children, ...props }: ButtonProps,
-  ref: React.ForwardedRef<HTMLElement>
-) {
+  export const Button = forwardRef(function Button(
+    { color, outline, plain, className, children, ...props }: ButtonProps,
+    ref: React.ForwardedRef<HTMLElement>
+  ) {
   let classes = clsx(
     className,
     styles.base,
