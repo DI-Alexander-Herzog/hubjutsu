@@ -49,10 +49,11 @@ class HubjutsuGitCommand extends Command
             $this->info('Pushing and pulling changes for '.$projectname.'... in '.$prefix);
             
             $this->runCommands([
-                "git add packages/aherzog",
+                "git add .",
                 "git commit -m 'sysnc'",
                 "git push",
                 "git subtree pull --prefix $prefix $repo main --squash",               
+                "git subtree split --prefix $prefix $repo --rejoin",
                 "git subtree push --prefix $prefix $repo main",
                 "git subtree pull --prefix $prefix $repo main --squash"
             ]);

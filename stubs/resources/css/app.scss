@@ -1,36 +1,9 @@
 @layer tailwind-base, primereact, tailwind-utilities;
 
+@import 'vendor/aherzog/hubjutsu/resources/css/hubjutsu';
+
 @layer tailwind-base {
   @tailwind base;
-
-  @layer base {
-    :root {
-      --color-primary-50: 255 115 179;
-      --color-primary-100: 255 115 179;
-      --color-primary-200: 255 115 179;
-      --color-primary-300: 255 115 179;
-      --color-primary-400: 255 115 179;
-      --color-primary-500: 255 115 179;
-      --color-primary-600: 255 115 179;
-      --color-primary-700: 255 115 179;
-      --color-primary-800: 255 115 179;
-      --color-primary-900: 255 115 179;
-      --color-primary: 255 115 179;
-  
-
-      --color-secondary-50: 111 114 185;
-      --color-secondary-100: 111 114 185;
-      --color-secondary-200: 111 114 185;
-      --color-secondary-300: 111 114 185;
-      --color-secondary-400: 111 114 185;
-      --color-secondary-500: 111 114 185;
-      --color-secondary-600: 111 114 185;
-      --color-secondary-700: 111 114 185;
-      --color-secondary-800: 111 114 185;
-      --color-secondary-900: 111 114 185;
-      --color-secondary: 111 114 185;
-    }
-  }
 }
 
 @layer tailwind-utilities {

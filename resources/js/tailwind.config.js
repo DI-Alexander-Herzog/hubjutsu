@@ -7,7 +7,7 @@ module.exports = {
         './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
         './resources/js/**/*.tsx',
-        './vendor/aherzog/hubjutsu/resources/js',
+        './vendor/aherzog/hubjutsu/resources/js/**/*.tsx',
         './node_modules/primereact/**/*.{js,ts,jsx,tsx}',
     ],
 
