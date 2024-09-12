@@ -1,5 +1,5 @@
-$primary-color: #FF9800;
-$secondary-color: #0067FF;
+$primary-color: #FF9800 !default;
+$secondary-color: #0067FF !default;
 
 @function adjust-color($color, $amount) {
     @if $amount > 0% {
