@@ -42,6 +42,7 @@ import {
 } from '@heroicons/react/20/solid'
 
 import { User } from '@/types';
+import ThemeModeButton from '@hubjutsu/Components/ThemeMode';
 
 function AccountDropdownMenu({ anchor }: { anchor: 'top start' | 'bottom end' }) {
   return (
@@ -153,6 +154,7 @@ export default function AuthenticatedLayout({ user, header, children }: PropsWit
                 <QuestionMarkCircleIcon />
                 <SidebarLabel>Support</SidebarLabel>
               </SidebarItem>
+              <ThemeModeButton />
               <SidebarItem href="#">
                 <SparklesIcon />
                 <SidebarLabel>Changelog</SidebarLabel>
