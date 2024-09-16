@@ -30,6 +30,7 @@ module.exports = {
                     700: 'rgb(var(--color-primary-700))',
                     800: 'rgb(var(--color-primary-800))',
                     900: 'rgb(var(--color-primary-900))',
+                    950: 'rgb(var(--color-primary-950))',
                     DEFAULT: 'rgb(var(--color-primary))'
                 },
                 secondary: {
@@ -43,6 +44,7 @@ module.exports = {
                     700: 'rgb(var(--color-secondary-700))',
                     800: 'rgb(var(--color-secondary-800))',
                     900: 'rgb(var(--color-secondary-900))',
+                    950: 'rgb(var(--color-secondary-950))',
                     DEFAULT: 'rgb(var(--color-secondary))'
                 }
             }

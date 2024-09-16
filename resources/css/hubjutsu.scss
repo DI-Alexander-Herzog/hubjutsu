@@ -37,3 +37,7 @@ $secondary-color: #0067FF !default;
     --color-secondary-900: #{red(adjust-color($secondary-color, -40%))} #{green(adjust-color($secondary-color, -40%))} #{blue(adjust-color($secondary-color, -40%))};
     --color-secondary-950: #{red(adjust-color($secondary-color, -50%))} #{green(adjust-color($secondary-color, -50%))} #{blue(adjust-color($secondary-color, -50%))};
   }
+
+#app {
+    @apply h-full;
+}
