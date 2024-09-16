@@ -31,7 +31,7 @@ export default function Login({ status, canResetPassword }: { status?: string, c
 
             <form onSubmit={submit}>
                 <div>
-                    
+                    <Input />
                     <InputLabel htmlFor="email" value="Email" />
 
                     <TextInput

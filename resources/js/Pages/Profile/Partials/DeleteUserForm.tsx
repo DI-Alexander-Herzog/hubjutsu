@@ -4,7 +4,7 @@ import InputError from '@hubjutsu/Components/InputError';
 import InputLabel from '@hubjutsu/Components/InputLabel';
 import Modal from '@hubjutsu/Components/Modal';
 import SecondaryButton from '@hubjutsu/Components/SecondaryButton';
-import TextInput from '@hubjutsu/Components/TextInput';
+import TextInput from '@hubjutsu/Components/InputText';
 import { useForm } from '@inertiajs/react';
 
 export default function DeleteUserForm({ className = '' }: { className?: string }) {

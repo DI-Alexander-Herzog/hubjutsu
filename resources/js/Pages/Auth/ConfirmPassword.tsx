@@ -3,7 +3,7 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@hubjutsu/Components/InputError';
 import InputLabel from '@hubjutsu/Components/InputLabel';
 import PrimaryButton from '@hubjutsu/Components/PrimaryButton';
-import TextInput from '@hubjutsu/Components/TextInput';
+import TextInput from '@hubjutsu/Components/InputText';
 import { Head, useForm } from '@inertiajs/react';
 
 export default function ConfirmPassword() {
@@ -38,7 +38,7 @@ export default function ConfirmPassword() {
                         value={data.password}
                         className="mt-1 block w-full"
                         isFocused={true}
-                        onChange={(e) => setData('password', e.target.value)}
+                        onChange={(e:any) => setData('password', e.target.value)}
                     />
 
                     <InputError message={errors.password} className="mt-2" />

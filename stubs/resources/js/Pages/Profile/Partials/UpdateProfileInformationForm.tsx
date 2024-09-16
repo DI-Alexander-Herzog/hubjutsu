@@ -1,0 +1,2 @@
+import UpdateProfileInformationForm from '@hubjutsu/Pages/Profile/Partials/UpdateProfileInformationForm';
+export default UpdateProfileInformationForm;

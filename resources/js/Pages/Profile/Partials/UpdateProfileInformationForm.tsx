@@ -1,7 +1,7 @@
 import InputError from '@hubjutsu/Components/InputError';
 import InputLabel from '@hubjutsu/Components/InputLabel';
 import PrimaryButton from '@hubjutsu/Components/PrimaryButton';
-import TextInput from '@hubjutsu/Components/TextInput';
+import TextInput from '@hubjutsu/Components/InputText';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { Transition } from '@headlessui/react';
 import { FormEventHandler } from 'react';

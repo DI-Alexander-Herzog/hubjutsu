@@ -3,7 +3,7 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@hubjutsu/Components/InputError';
 import InputLabel from '@hubjutsu/Components/InputLabel';
 import PrimaryButton from '@hubjutsu/Components/PrimaryButton';
-import TextInput from '@hubjutsu/Components/TextInput';
+import TextInput from '@hubjutsu/Components/InputText';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 export default function Register() {

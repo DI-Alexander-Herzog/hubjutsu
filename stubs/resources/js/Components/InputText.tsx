@@ -1,2 +1,2 @@
-import Input from '@hubjutsu/Components/Input';
-export default Input;
+import InputText from '@hubjutsu/Components/InputText';
+export default InputText;

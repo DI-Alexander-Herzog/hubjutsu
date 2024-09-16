@@ -2,7 +2,7 @@ import { Link, Head } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import ThemeModeButton from '@hubjutsu/Components/ThemeMode';
-import Input from '../Components/Input';
+import Input from '@/Components/Input';
 
 export default function Welcome({ auth, laravelVersion, phpVersion }: PageProps<{ laravelVersion: string, phpVersion: string }>) {
    
@@ -30,7 +30,7 @@ export default function Welcome({ auth, laravelVersion, phpVersion }: PageProps<
                     <div>
                         <form action="#" method="POST" className="space-y-6">
                         <div>
-                            <Input inputName="email" form={{}} />
+                            <Input inputName='email' label="Email address" />
                             <label htmlFor="email" className="block text-sm font-medium leading-6">
                             Email address
                             </label>

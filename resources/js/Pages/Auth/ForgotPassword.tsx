@@ -1,7 +1,7 @@
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@hubjutsu/Components/InputError';
 import PrimaryButton from '@hubjutsu/Components/PrimaryButton';
-import TextInput from '@hubjutsu/Components/TextInput';
+import TextInput from '@hubjutsu/Components/InputText';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
