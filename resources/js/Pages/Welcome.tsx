@@ -1,11 +1,24 @@
-import { Link, Head } from '@inertiajs/react';
+import { Link, Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import ThemeModeButton from '@hubjutsu/Components/ThemeMode';
 import Input from '@/Components/Input';
+import { FormEventHandler } from 'react';
 
-export default function Welcome({ auth, laravelVersion, phpVersion }: PageProps<{ laravelVersion: string, phpVersion: string }>) {
-   
+export default function Welcome({ auth, laravelVersion, phpVersion, canLogin, canRegister }: PageProps<{ laravelVersion: string, phpVersion: string, canLogin:boolean, canRegister:boolean }>) {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        email: '',
+        password: '',
+        remember: false,
+    });
+
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
+
+        post(route('login'), {
+            onFinish: () => reset('password'),
+        });
+    };
 
     return (
         <>
@@ -15,25 +28,26 @@ export default function Welcome({ auth, laravelVersion, phpVersion }: PageProps<
                 <div className="mx-auto w-full max-w-sm lg:w-96">
                     <div>
                     <ApplicationLogo className='w-[100px] m-auto'/>
+
                     <h2 className="mt-8 text-2xl font-bold leading-9 tracking-tight">
                         Sign in to your account
                     </h2>
-                    <p className="mt-2 text-sm leading-6 ">
-                        Not a member?{' '}
-                        <a href="#" className="font-semibold text-primary-500 hover:text-primary-400">
-                        Start a 14 day free trial
-                        </a>
-                    </p>
+                    {canRegister && (
+                        <p className="mt-2 text-sm leading-6 ">
+                            Not a member?{' '}
+                            <a href="#" className="font-semibold text-primary-500 hover:text-primary-400">
+                            Start a 14 day free trial
+                            </a>
+                        </p>
+                    )}
                     </div>
 
                     <div className="mt-10">
                     <div>
-                        <form action="#" method="POST" className="space-y-6">
+                        <form action="#" method="POST" className="space-y-6" onSubmit={submit}>
                         <div>
                             <Input inputName='email' label="Email address" />
-                            <label htmlFor="email" className="block text-sm font-medium leading-6">
-                            Email address
-                            </label>
+                            
                             <div className="mt-2">
                             <input
                                 id="email"
