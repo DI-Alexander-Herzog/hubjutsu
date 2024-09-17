@@ -139,6 +139,10 @@ class HubjutsuSetupCommand extends Command
         $this->runCommands(['npm install -D sass']);
 
         $this->runCommands(['php artisan lang:publish']);
+        $this->runCommands(['php artisan vendor:publish --tag="log-viewer-config"']);
+        $this->runCommands(['php artisan vendor:publish --tag=log-viewer-assets --force']);
+
+        
 
         // Controllers...
         (new Filesystem)->ensureDirectoryExists(app_path('Http/Controllers'));
