@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Hubjutsu\Models;
+namespace AHerzog\Hubjutsu\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
