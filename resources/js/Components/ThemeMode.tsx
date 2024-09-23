@@ -3,6 +3,7 @@ import {
     MoonIcon,
     SunIcon
 } from "@heroicons/react/24/outline";
+import classNames from 'classnames';
   
 
 export default function ThemeModeButton({ className = '', disabled, children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
@@ -24,14 +25,16 @@ export default function ThemeModeButton({ className = '', disabled, children, ..
     };
 
     
-    const light =  <SunIcon />;
-    const dark =  <MoonIcon />;
+    const light =  <SunIcon className={ className ? 'h-6 w-6' : ''}/>;
+    const dark =  <MoonIcon  className={ className ? 'h-6 w-6' : ''}/>;
 
     return (
         <button
+            {...props}
+            className={classNames( className )}
             onClick={toggle}  
             disabled={disabled}
-            style={{ width: '24px' }}
+            style={ className  ? {} : { width: '24px' }}
         > 
             { icon === 'dark' ? dark : light}
         </button>

@@ -133,7 +133,7 @@ class HubjutsuSetupCommand extends Command
             'npm install '.
             '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss react react-dom '.
             '@types/node @types/react @types/react-dom @types/ziggy-js typescript laravel-react-i18n primereact tailwind-merge ' . 
-            '@heroicons/react '
+            '@heroicons/react classnames'
         ]);
 
         $this->runCommands(['npm install -D sass']);
