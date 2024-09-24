@@ -2,7 +2,7 @@
 
 namespace AHerzog\Hubjutsu\Http\Middleware;
 
-
+use AHerzog\Hubjutsu\App\Menu\MenuManager;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,6 +35,18 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'menus' => function() {
+                $menuMenager = app('menuManager');
+                $this->generateMenus($menuMenager);
+                return $menuMenager->getMenus();
+            }
         ];
+    }
+
+    public function generateMenus(MenuManager $menuManager)
+    {
+        $menu = $menuManager->addMenu('Main Menu');
+        $dashboard = $menu->addItem('Dashboard');
+        $dashboard->setRoute('dashboard');
     }
 }

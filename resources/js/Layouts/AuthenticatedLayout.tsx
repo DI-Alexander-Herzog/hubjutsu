@@ -33,27 +33,13 @@ import ThemeMode from '../../../stubs/resources/js/Components/ThemeMode';
 
 export default function Authenticated({ header, children }: PropsWithChildren<{ header?: ReactNode }>) {
 
-    const user = usePage<PageProps>().props.auth.user;
+  const page = usePage<PageProps>();
+
+
+    const user = page.props.auth.user;
 
     const [sidebarOpen, setSidebarOpen] = useState(false)
 
-    const navigation = [
-        { name: 'Dashboard', href: '#', icon: HomeIcon, current: true },
-        { name: 'Team', href: '#', icon: UsersIcon, current: false },
-        { name: 'Projects', href: '#', icon: FolderIcon, current: false },
-        { name: 'Calendar', href: '#', icon: CalendarIcon, current: false },
-        { name: 'Documents', href: '#', icon: DocumentDuplicateIcon, current: false },
-        { name: 'Reports', href: '#', icon: ChartPieIcon, current: false },
-      ]
-      const teams = [
-        { id: 1, name: 'Heroicons', href: '#', initial: 'H', current: false },
-        { id: 2, name: 'Tailwind Labs', href: '#', initial: 'T', current: false },
-        { id: 3, name: 'Workcation', href: '#', initial: 'W', current: false },
-      ]
-      const userNavigation = [
-        { name: 'Your profile', href: '#' },
-        { name: 'Sign out', href: '#' },
-      ]
 
     return (
         <>
@@ -84,61 +70,30 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                 </div>
                 <nav className="flex flex-1 flex-col">
                   <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                    {Object.keys(page.props.menus).map((menuSlug, index) => {
+                      return page.props.menus[menuSlug].name;
+                    })}
                     <li>
                       <ul role="list" className="-mx-2 space-y-1">
-                        {navigation.map((item) => (
-                          <li key={item.name}>
-                            
-                            <a
-                              href={item.href}
-                              className={classNames(
-                                item.current
-                                  ? 'bg-gray-50 text-primary-600'
-                                  : 'text-gray-700  hover:bg-gray-50 hover:text-primary-600',
-                                'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
-                              )}
-                            >
-                              <item.icon
+                      {[].map((item) => (
+                      <li key={item.name}>
+                        <NavLink href={item.href} active={item.current} 
+                            icon={<item.icon 
                                 aria-hidden="true"
                                 className={classNames(
-                                  item.current ? 'text-primary-600' : 'text-gray-400 group-hover:text-primary-600',
-                                  'h-6 w-6 shrink-0',
+                                'h-6 w-6 shrink-0',
                                 )}
-                              />
-                              {item.name}
-                            </a>
-                          </li>
-                        ))}
+                        />}>
+                            {item.name}
+                        </NavLink>
+                      </li>
+                    ))}
                       </ul>
                     </li>
                     <li>
                       <div className="text-xs font-semibold leading-6 text-gray-400">Your teams</div>
                       <ul role="list" className="-mx-2 mt-2 space-y-1">
-                        {teams.map((team) => (
-                          <li key={team.name}>
-                            <a
-                              href={team.href}
-                              className={classNames(
-                                team.current
-                                  ? 'bg-gray-50 text-primary-600'
-                                  : 'text-gray-700 dark:text-gray-100 hover:bg-gray-50 hover:text-primary-600',
-                                'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
-                              )}
-                            >
-                              <span
-                                className={classNames(
-                                  team.current
-                                    ? 'border-primary-600 text-primary-600'
-                                    : 'border-gray-200 text-gray-400 dark:text-gray-100 group-hover:border-primary-600 group-hover:text-primary-600',
-                                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border bg-white text-[0.625rem] font-medium',
-                                )}
-                              >
-                                {team.initial}
-                              </span>
-                              <span className="truncate">{team.name}</span>
-                            </a>
-                          </li>
-                        ))}
+                        
                       </ul>
                     </li>
                     <li className="mt-auto">
@@ -169,49 +124,27 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
             </div>
             <nav className="flex flex-1 flex-col">
               <ul role="list" className="flex flex-1 flex-col gap-y-7">
-                <li>
-                  <ul role="list" className="-mx-2 space-y-1">
-                    {navigation.map((item) => (
-                      <li key={item.name}>
-                        <NavLink href={item.href} active={item.current} 
-                            icon={<item.icon 
-                                aria-hidden="true"
-                                className={classNames(
-                                'h-6 w-6 shrink-0',
-                                )}
-                        />}>
-                            {item.name}
-                        </NavLink>
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-                <li>
-                  <div className="text-xs font-semibold leading-6 text-gray-400">Your teams</div>
-                  <ul role="list" className="-mx-2 mt-2 space-y-1">
-                    {teams.map((team) => (
-                      <li key={team.name}>
-                        
-                        <NavLink 
-                          active={team.current}
-                          href={team.href}
-                          icon= {
-                            <span
-                            className={classNames(
-                              'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border bg-white text-[0.625rem] font-medium',
-                            )}
-                          >
-                            {team.initial}
-                          </span>
-                          }
-                        >
-                          
-                          <span className="truncate">{team.name}</span>
-                        </NavLink>
-                      </li>
-                    ))}
-                  </ul>
-                </li>
+                
+                {Object.keys(page.props.menus).map((menuSlug, index) => {
+                  const menu = page.props.menus[menuSlug];
+
+                  return <li>
+                    { index > 0 && <div className="text-xs font-semibold leading-6 text-gray-400">{menu.name}</div>}
+                    <ul role="list" className={classNames("-mx-2 space-y-1", { "mt-2": index > 0 })} >
+                        {menu.items?.map((item) => (
+                          <li key={item.title}>
+                            <NavLink href={Array.isArray(item.route) ? route(item.route[0] as string, item.route[1] as unknown[]) : '' + item.route} active={item.active} icon={item.icon}>
+                              {item.title}
+                            </NavLink>
+                          </li>
+                        ))}
+                     
+                    </ul>
+                  </li>;
+                  page.props.menus[menuSlug].name;
+                })}
+                
+                
                 <li className="mt-auto">
                   <a
                     href="#"
@@ -235,7 +168,7 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
               <span className="sr-only">Open sidebar</span>
               <Bars3Icon aria-hidden="true" className="h-6 w-6" />
             </button>
-
+            
             {/* Separator */}
             <div aria-hidden="true" className="h-6 w-px bg-gray-200 lg:hidden" />
 
@@ -256,6 +189,7 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                   className="block h-full w-full border-0 py-0 pl-8 pr-0 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm"
                 />
               </form>
+
               <div className="flex items-center gap-x-4 lg:gap-x-6">
                 <button type="button" className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500">
                   <span className="sr-only">View notifications</span>
