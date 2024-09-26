@@ -55,6 +55,18 @@ class HubjutsuSetupCommand extends Command
         return (new PhpExecutableFinder())->find(false) ?: 'php';
     }
 
+    protected function installStatefulApi() {
+        $bootstrapApp = file_get_contents(base_path('bootstrap/app.php'));
+        if (!Str::contains($bootstrapApp, '->statefulApi()')) {
+            $bootstrapApp = str_replace(
+                '->withMiddleware(function (Middleware $middleware) {',
+                '->withMiddleware(function (Middleware $middleware) {'
+                        .PHP_EOL."        \$middleware->statefulApi();",
+                $bootstrapApp,
+            );
+            file_put_contents(base_path('bootstrap/app.php'), $bootstrapApp);
+        }
+    }
 
 
     /**
@@ -139,6 +151,7 @@ class HubjutsuSetupCommand extends Command
         $this->runCommands(['npm install -D sass']);
 
         $this->runCommands(['php artisan lang:publish']);
+        $this->runCommands(['php artisan api:install --without-migration-prompt']);
         $this->runCommands(['php artisan vendor:publish --tag="log-viewer-config"']);
         $this->runCommands(['php artisan vendor:publish --tag=log-viewer-assets --force']);
 
@@ -158,6 +171,7 @@ class HubjutsuSetupCommand extends Command
             '\App\Http\Middleware\HandleInertiaRequests::class',
             '\Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class',
         ]);
+        $this->installStatefulApi();
         
 
         (new Filesystem)->ensureDirectoryExists(app_path('Http/Middleware'));
@@ -227,14 +241,14 @@ class HubjutsuSetupCommand extends Command
             if (strpos($contents, 'VITE_SERVER_HTTPS_CERT') === false) {
                 $contents = trim($contents).
                     PHP_EOL.'#VITE_SERVER_HTTPS_CERT="/opt/homebrew/etc/ssl/local.crt"'. 
-                    PHP_EOL.'VITE_SERVER_HTTPS_CERT="/etc/ssl/ah/test.cert"'.
+                    PHP_EOL.'#VITE_SERVER_HTTPS_CERT="/etc/ssl/ah/test.cert"'.
                     PHP_EOL;
             }
 
             if (strpos($contents, 'VITE_SERVER_HTTPS_KEY') === false) {
                 $contents = trim($contents).
                     PHP_EOL.'#VITE_SERVER_HTTPS_KEY="/opt/homebrew/etc/ssl/local.key"'. 
-                    PHP_EOL.'VITE_SERVER_HTTPS_KEY="/etc/ssl/ah/test.key"'.
+                    PHP_EOL.'#VITE_SERVER_HTTPS_KEY="/etc/ssl/ah/test.key"'.
                     PHP_EOL;
             }
             $contents = file_put_contents(base_path($file), $contents);

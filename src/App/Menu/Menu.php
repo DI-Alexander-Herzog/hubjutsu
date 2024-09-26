@@ -17,16 +17,23 @@ class Menu {
     }
 
 
-    public function addItem(MenuItem|string $title): MenuItem
+    /**
+     * 
+     * @param MenuItem|string $title 
+     * @param object|array|string|null $route 
+     * @return MenuItem 
+     */
+    public function addItem(MenuItem|string $title, $route=null): MenuItem
     {
         if ($title instanceof MenuItem) {
             $this->items[] = $title;
             return $title;
         }
         $this->items[] = $newItem = new MenuItem(
-            $title
+            $title,
+            $route
         );
-
+        
         return $newItem;
     }
 

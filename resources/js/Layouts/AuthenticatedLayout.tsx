@@ -75,7 +75,7 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                     })}
                     <li>
                       <ul role="list" className="-mx-2 space-y-1">
-                      {[].map((item) => (
+                      {[].map((item:any) => (
                       <li key={item.name}>
                         <NavLink href={item.href} active={item.current} 
                             icon={<item.icon 
@@ -128,16 +128,17 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                 {Object.keys(page.props.menus).map((menuSlug, index) => {
                   const menu = page.props.menus[menuSlug];
 
-                  return <li>
+                  return <li key={menuSlug}>
                     { index > 0 && <div className="text-xs font-semibold leading-6 text-gray-400">{menu.name}</div>}
                     <ul role="list" className={classNames("-mx-2 space-y-1", { "mt-2": index > 0 })} >
-                        {menu.items?.map((item) => (
-                          <li key={item.title}>
-                            <NavLink href={Array.isArray(item.route) ? route(item.route[0] as string, item.route[1] as unknown[]) : '' + item.route} active={item.active} icon={item.icon}>
+                        {menu.items?.map((item, index) => {
+                          
+                          return <li key={item.title + ' ' + index}>
+                            <NavLink target={item.target} href={Array.isArray(item.route) ? route(item.route[0] as string, item.route[1] as any[]) : '' + item.route} active={item.active} icon={item.icon}>
                               {item.title}
                             </NavLink>
-                          </li>
-                        ))}
+                          </li>;
+                        })}
                      
                     </ul>
                   </li>;

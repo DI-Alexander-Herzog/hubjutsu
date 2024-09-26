@@ -3,6 +3,12 @@ import classNames from 'classnames';
 import {ReactNode } from 'react';
 
 export default function NavLink({ active = false, className = '', children, icon=null, ...props }: InertiaLinkProps & { icon:ReactNode, active: boolean }) {
+    if (props.target == '_blank') {
+       props.onClick = (event) => {
+           event.preventDefault();
+           window.open(props.href, '_blank');
+       };
+    }
     return (
         <Link
             {...props}
