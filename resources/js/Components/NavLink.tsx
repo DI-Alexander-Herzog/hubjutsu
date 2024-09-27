@@ -17,7 +17,7 @@ export default function NavLink({ active = false, className = '', children, icon
                               ? 'bg-gray-50 text-primary-600 '
                               : 'text-gray-700 dark:text-gray-100 hover:bg-gray-50 hover:text-primary-600 ' 
                 ) + 
-                ' group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 ' + 
+                ' group flex gap-x-3 rounded-md p-2 font-semibold leading-6 ' + 
                 className
             }
         >

@@ -3,14 +3,24 @@
 namespace AHerzog\Hubjutsu\Http\Controllers\Api;
 
 use AHerzog\Hubjutsu\Models\Base;
-use Auth;
+use Exception;
 use Gate;
-use Request;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Http\Request;
+use Log;
 use Str;
 
 class HubjutsuApiController
 {
-
+    /**
+     * 
+     * @param string $model 
+     * @param mixed $id 
+     * @param string $gate 
+     * @return Base
+     * @throws Exception 
+     * @throws BindingResolutionException 
+     */
     protected function getModelIfAllowed(string $model, $id, string $gate)
     {
         $class = 'App\\Models\\' . Str::studly($model);
@@ -26,9 +36,7 @@ class HubjutsuApiController
             $obj = $obj->findOrFail($id);
         }
         if (!Gate::denies($gate, ($id ? $obj : $obj::class)) ) {
-            return response()->json([
-                'message' => 'Not allowed',
-            ], 403);
+            throw new \Exception('Not allowed');
         }
         return $obj;
     }
@@ -37,7 +45,14 @@ class HubjutsuApiController
     {
         $modelObj = $this->getModelIfAllowed($model, null, 'viewAny');
         
-        return response()->json($modelObj->whereRaw('1=1')->paginate());
+        $paginatePerPage = intval($request->get('rows'));
+        $offset = intval($request->get('first'));
+        $page =  floor($offset / $paginatePerPage) + 1;
+
+        $queryBuilder = $modelObj->newModelQuery();
+        
+
+        return response()->json($queryBuilder->paginate($paginatePerPage, ['*'], 'page', $page));
     }
 
     public function get(Request $request, string $model, $id)
