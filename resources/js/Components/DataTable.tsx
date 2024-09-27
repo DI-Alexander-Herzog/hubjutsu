@@ -5,7 +5,7 @@ import { DataTable as PrimeTable } from "primereact/datatable";
 import { useEffect, useState } from "react";
 
 
-export default function DataTable({children, routes="", filters={}, height='400px'}: {height:string, children: any, routes: string|Record<string, string>, filters: Record<string, any>}) {
+export default function DataTable({children, routes="", filters={}, height='400px'}: {height?:string, children: any, routes: string|Record<string, string>, filters?: Record<string, any>}) {
     const { t } = useLaravelReactI18n();
 
     if (typeof routes == "string") {
@@ -30,7 +30,6 @@ export default function DataTable({children, routes="", filters={}, height='400p
         sortOrder: null,
         filters: filters
     });
-
 
     useEffect(() => {
         loadLazyData();
@@ -128,6 +127,4 @@ export default function DataTable({children, routes="", filters={}, height='400p
                 {children}
             </PrimeTable>
     );
-
-
 }

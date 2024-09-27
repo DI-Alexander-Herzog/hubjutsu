@@ -8,6 +8,7 @@ module.exports = {
         './resources/views/**/*.blade.php',
         './resources/js/**/*.tsx',
         './vendor/aherzog/hubjutsu/resources/js/**/*.tsx',
+        './vendor/aherzog/hubjutsu/resources/js/hubjutsu-style.js',
         './node_modules/primereact/**/*.{js,ts,jsx,tsx}',
     ],
 
@@ -17,6 +18,9 @@ module.exports = {
         extend: {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+            },
+            boxShadow: {
+                'outline-primary': '0 0 0 0.2rem rgba(var(--color-primary) / 0.5)'
             },
             colors: {
                 primary: {

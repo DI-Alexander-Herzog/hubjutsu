@@ -156,7 +156,9 @@ var HubjutsuStyle = {
     transition: TRANSITIONS.toggleable
   },
   accordion: {
-    root: 'mb-1',
+    root: {
+      className: 'mb-1'
+    },
     accordiontab: {
       root: 'mb-1',
       header: function header(_ref2) {
@@ -3037,7 +3039,7 @@ var HubjutsuStyle = {
       return {
         className: classNames('relative inline-flex items-center justify-center user-none overflow-hidden leading-none', 'border-0 text-gray-500 min-w-[3rem] h-12 m-[0.143rem] rounded-md', 'transition duration-200', 'dark:border-primary-300 dark:text-white',
         // Dark Mode
-        'focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(191,219,254,1)]',
+        'focus:outline-none focus:outline-offset-0 focus:shadow-outline-primary',
         // Focus
         {
           'bg-primary-50 border-primary-50 text-primary-700 dark:bg-primary-300': context.active
