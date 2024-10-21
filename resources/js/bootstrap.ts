@@ -29,7 +29,7 @@ localStorage.removeItem('theme')
 */
 
 
-export function hubjutsuDesignSystem():PrimeReactPTOptions {
+export function hubjutsuDesignSystem():any {
     return HubjutsuStyle;
 }
 
