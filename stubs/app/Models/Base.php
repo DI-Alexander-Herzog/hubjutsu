@@ -2,6 +2,6 @@
 
 namespace App\Models;
 
-class Base extends \Hubjutsu\Models\Base {
+class Base extends \AHerzog\Hubjutsu\Models\Base {
     
 }

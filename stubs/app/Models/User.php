@@ -2,6 +2,6 @@
 
 namespace App\Models;
 
-class User extends \Hubjutsu\Models\User {
+class User extends \AHerzog\Hubjutsu\Models\User {
     
 }

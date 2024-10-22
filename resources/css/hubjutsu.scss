@@ -1,42 +1,47 @@
+@use "sass:color";
+
+$text-color: #242424 !default;
+
 $primary-color: #FF9800 !default;
+$onprimary-color: #ffffff !default;
+
 $secondary-color: #0067FF !default;
+$onsecondary-color: #ffffff !default;
+
 
 @function adjust-color($color, $amount) {
     @if $amount > 0% {
-        @return mix(white, $color, $amount);
+        @return color.mix(white, $color, $amount);
     } @else {
-        @return mix(black, $color, -$amount);
+        @return color.mix(black, $color, -$amount);
     }
 }
+@mixin createShadeVariables( $name, $color ) {
+
+    --color-#{$name}: #{color.channel(adjust-color($color, 0%), "red", $space: rgb)}   #{color.channel(adjust-color($color, 0%), "green", $space: rgb)}   #{color.channel(adjust-color($color, 0%), "blue", $space: rgb)};
+    --color-#{$name}-50: #{color.channel(adjust-color($color, 90%), "red", $space: rgb)}   #{color.channel(adjust-color($color, 90%), "green", $space: rgb)}  #{color.channel(adjust-color($color, 90%), "blue", $space: rgb)};
+    --color-#{$name}-100: #{color.channel(adjust-color($color, 80%), "red", $space: rgb)}  #{color.channel(adjust-color($color, 80%), "green", $space: rgb)}  #{color.channel(adjust-color($color, 80%), "blue", $space: rgb)};
+    --color-#{$name}-200: #{color.channel(adjust-color($color, 60%), "red", $space: rgb)}  #{color.channel(adjust-color($color, 60%), "green", $space: rgb)}  #{color.channel(adjust-color($color, 60%), "blue", $space: rgb)};
+    --color-#{$name}-300: #{color.channel(adjust-color($color, 40%), "red", $space: rgb)}  #{color.channel(adjust-color($color, 40%), "green", $space: rgb)}  #{color.channel(adjust-color($color, 40%), "blue", $space: rgb)};
+    --color-#{$name}-400: #{color.channel(adjust-color($color, 20%), "red", $space: rgb)}  #{color.channel(adjust-color($color, 20%), "green", $space: rgb)}  #{color.channel(adjust-color($color, 20%), "blue", $space: rgb)};
+    --color-#{$name}-500: #{color.channel(adjust-color($color, 0%), "red", $space: rgb)}   #{color.channel(adjust-color($color, 0%), "green", $space: rgb)}   #{color.channel(adjust-color($color, 0%), "blue", $space: rgb)};
+    --color-#{$name}-600: #{color.channel(adjust-color($color, -10%), "red", $space: rgb)} #{color.channel(adjust-color($color, -10%), "green", $space: rgb)} #{color.channel(adjust-color($color, -10%), "blue", $space: rgb)};
+    --color-#{$name}-700: #{color.channel(adjust-color($color, -20%), "red", $space: rgb)} #{color.channel(adjust-color($color, -20%), "green", $space: rgb)} #{color.channel(adjust-color($color, -20%), "blue", $space: rgb)};
+    --color-#{$name}-800: #{color.channel(adjust-color($color, -30%), "red", $space: rgb)} #{color.channel(adjust-color($color, -30%), "green", $space: rgb)} #{color.channel(adjust-color($color, -30%), "blue", $space: rgb)};
+    --color-#{$name}-900: #{color.channel(adjust-color($color, -40%), "red", $space: rgb)} #{color.channel(adjust-color($color, -40%), "green", $space: rgb)} #{color.channel(adjust-color($color, -40%), "blue", $space: rgb)};
+    --color-#{$name}-950: #{color.channel(adjust-color($color, -50%), "red", $space: rgb)} #{color.channel(adjust-color($color, -50%), "green", $space: rgb)} #{color.channel(adjust-color($color, -50%), "blue", $space: rgb)};
+       
+ }
+
 
 
 :root {
-    --color-primary: #{red(adjust-color($primary-color, 0%))} #{green(adjust-color($primary-color, 0%))} #{blue(adjust-color($primary-color, 0%))};
-    --color-primary-50: #{red(adjust-color($primary-color, 90%))} #{green(adjust-color($primary-color, 90%))} #{blue(adjust-color($primary-color, 90%))};
-    --color-primary-100: #{red(adjust-color($primary-color, 80%))} #{green(adjust-color($primary-color, 80%))} #{blue(adjust-color($primary-color, 80%))};
-    --color-primary-200: #{red(adjust-color($primary-color, 60%))} #{green(adjust-color($primary-color, 60%))} #{blue(adjust-color($primary-color, 60%))};
-    --color-primary-300: #{red(adjust-color($primary-color, 40%))} #{green(adjust-color($primary-color, 40%))} #{blue(adjust-color($primary-color, 40%))};
-    --color-primary-400: #{red(adjust-color($primary-color, 20%))} #{green(adjust-color($primary-color, 20%))} #{blue(adjust-color($primary-color, 20%))};
-    --color-primary-500: #{red(adjust-color($primary-color, 0%))} #{green(adjust-color($primary-color, 0%))} #{blue(adjust-color($primary-color, 0%))};
-    --color-primary-600: #{red(adjust-color($primary-color, -10%))} #{green(adjust-color($primary-color, -10%))} #{blue(adjust-color($primary-color, -10%))};
-    --color-primary-700: #{red(adjust-color($primary-color, -20%))} #{green(adjust-color($primary-color, -20%))} #{blue(adjust-color($primary-color, -20%))};
-    --color-primary-800: #{red(adjust-color($primary-color, -30%))} #{green(adjust-color($primary-color, -30%))} #{blue(adjust-color($primary-color, -30%))};
-    --color-primary-900: #{red(adjust-color($primary-color, -40%))} #{green(adjust-color($primary-color, -40%))} #{blue(adjust-color($primary-color, -40%))};
-    --color-primary-950: #{red(adjust-color($primary-color, -50%))} #{green(adjust-color($primary-color, -50%))} #{blue(adjust-color($primary-color, -50%))};
-
-    --color-secondary: #{red(adjust-color($secondary-color, 0%))} #{green(adjust-color($secondary-color, 0%))} #{blue(adjust-color($secondary-color, 0%))};
-    --color-secondary-50: #{red(adjust-color($secondary-color, 90%))} #{green(adjust-color($secondary-color, 90%))} #{blue(adjust-color($secondary-color, 90%))};
-    --color-secondary-100: #{red(adjust-color($secondary-color, 80%))} #{green(adjust-color($secondary-color, 80%))} #{blue(adjust-color($secondary-color, 80%))};
-    --color-secondary-200: #{red(adjust-color($secondary-color, 60%))} #{green(adjust-color($secondary-color, 60%))} #{blue(adjust-color($secondary-color, 60%))};
-    --color-secondary-300: #{red(adjust-color($secondary-color, 40%))} #{green(adjust-color($secondary-color, 40%))} #{blue(adjust-color($secondary-color, 40%))};
-    --color-secondary-400: #{red(adjust-color($secondary-color, 20%))} #{green(adjust-color($secondary-color, 20%))} #{blue(adjust-color($secondary-color, 20%))};
-    --color-secondary-500: #{red(adjust-color($secondary-color, 0%))} #{green(adjust-color($secondary-color, 0%))} #{blue(adjust-color($secondary-color, 0%))};
-    --color-secondary-600: #{red(adjust-color($secondary-color, -10%))} #{green(adjust-color($secondary-color, -10%))} #{blue(adjust-color($secondary-color, -10%))};
-    --color-secondary-700: #{red(adjust-color($secondary-color, -20%))} #{green(adjust-color($secondary-color, -20%))} #{blue(adjust-color($secondary-color, -20%))};
-    --color-secondary-800: #{red(adjust-color($secondary-color, -30%))} #{green(adjust-color($secondary-color, -30%))} #{blue(adjust-color($secondary-color, -30%))};
-    --color-secondary-900: #{red(adjust-color($secondary-color, -40%))} #{green(adjust-color($secondary-color, -40%))} #{blue(adjust-color($secondary-color, -40%))};
-    --color-secondary-950: #{red(adjust-color($secondary-color, -50%))} #{green(adjust-color($secondary-color, -50%))} #{blue(adjust-color($secondary-color, -50%))};
-  }
+    @include createShadeVariables('text', $text-color);
+    @include createShadeVariables('primary', $primary-color);
+    @include createShadeVariables('onprimary', $onprimary-color);
+    @include createShadeVariables('secondary', $secondary-color);
+    @include createShadeVariables('onsecondary', $onsecondary-color);    
+}
 
 #app {
     @apply h-full;

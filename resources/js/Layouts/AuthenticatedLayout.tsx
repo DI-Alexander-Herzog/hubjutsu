@@ -70,43 +70,35 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                 </div>
                 <nav className="flex flex-1 flex-col">
                   <ul role="list" className="flex flex-1 flex-col gap-y-7">
-                    {Object.keys(page.props.menus).map((menuSlug, index) => {
-                      return page.props.menus[menuSlug].name;
+                  {Object.keys(page.props.menus).map((menuSlug, index) => {
+                      const menu = page.props.menus[menuSlug];
+
+                      return <li key={menuSlug}>
+                        { index > 0 && <div className="text-xs font-semibold leading-6 text-gray-400">{menu.name}</div>}
+                        <ul role="list" className={classNames("-mx-2 space-y-1", { "mt-2": index > 0 })} >
+                            {menu.items?.map((item, index) => {
+                              
+                              return <li key={item.title + ' ' + index}>
+                                <NavLink target={item.target} href={Array.isArray(item.route) ? route(item.route[0] as string, item.route[1] as any[]) : '' + item.route} active={item.active} icon={item.icon}>
+                                  {item.title}
+                                </NavLink>
+                              </li>;
+                            })}
+                        
+                        </ul>
+                      </li>;
                     })}
-                    <li>
-                      <ul role="list" className="-mx-2 space-y-1">
-                      {[].map((item:any) => (
-                      <li key={item.name}>
-                        <NavLink href={item.href} active={item.current} 
-                            icon={<item.icon 
+                    <li className="mt-auto">
+                        <NavLink href="#"  active={false}
+                            icon={<Cog6ToothIcon
                                 aria-hidden="true"
                                 className={classNames(
                                 'h-6 w-6 shrink-0',
                                 )}
-                        />}>
-                            {item.name}
+                            />}>
+                            Settings
                         </NavLink>
-                      </li>
-                    ))}
-                      </ul>
-                    </li>
-                    <li>
-                      <div className="text-xs font-semibold leading-6 text-gray-400">Your teams</div>
-                      <ul role="list" className="-mx-2 mt-2 space-y-1">
-                        
-                      </ul>
-                    </li>
-                    <li className="mt-auto">
-                      <a
-                        href="#"
-                        className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-primary-600"
-                      >
-                        <Cog6ToothIcon
-                          aria-hidden="true"
-                          className="h-6 w-6 shrink-0 text-gray-400 group-hover:text-primary-600"
-                        />
-                        Settings
-                      </a>
+                      
                     </li>
                   </ul>
                 </nav>
@@ -142,21 +134,19 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                      
                     </ul>
                   </li>;
-                  page.props.menus[menuSlug].name;
                 })}
                 
                 
                 <li className="mt-auto">
-                  <a
-                    href="#"
-                    className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-primary-600"
-                  >
-                    <Cog6ToothIcon
-                      aria-hidden="true"
-                      className="h-6 w-6 shrink-0 text-gray-400 group-hover:text-primary-600"
-                    />
-                    Settings
-                  </a>
+                  <NavLink href="#"  active={false}
+                      icon={<Cog6ToothIcon
+                          aria-hidden="true"
+                          className={classNames(
+                          'h-6 w-6 shrink-0',
+                          )}
+                      />}>
+                      Settings
+                  </NavLink>
                 </li>
               </ul>
             </nav>

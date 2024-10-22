@@ -51,7 +51,6 @@ class HubjutsuApiController
 
         $queryBuilder = $modelObj->newModelQuery();
         
-
         return response()->json($queryBuilder->paginate($paginatePerPage, ['*'], 'page', $page));
     }
 

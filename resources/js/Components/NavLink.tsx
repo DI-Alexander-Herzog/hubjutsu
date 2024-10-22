@@ -14,8 +14,8 @@ export default function NavLink({ active = false, className = '', children, icon
             {...props}
             className={
                 (active
-                              ? 'bg-gray-50 text-primary-600 '
-                              : 'text-gray-700 dark:text-gray-100 hover:bg-gray-50 hover:text-primary-600 ' 
+                              ? 'bg-primary hover:text-onprimary '
+                              : 'text-gray-700 dark:text-gray-100 hover:bg-primary-300 hover:text-onprimary' 
                 ) + 
                 ' group flex gap-x-3 rounded-md p-2 font-semibold leading-6 ' + 
                 className
