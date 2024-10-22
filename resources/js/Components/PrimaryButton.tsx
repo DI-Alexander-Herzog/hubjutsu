@@ -1,3 +1,4 @@
+import classNames from 'classnames';
 import { ButtonHTMLAttributes } from 'react';
 
 export default function PrimaryButton({ className = '', disabled, children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
@@ -5,9 +6,26 @@ export default function PrimaryButton({ className = '', disabled, children, ...p
         <button
             {...props}
             className={
-                `inline-flex items-center px-4 py-2 bg-primary dark:bg-onprimary border border-transparent rounded-md font-semibold text-xs text-onprimary dark:text-primary uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150 ${
-                    disabled && 'opacity-25'
-                } ` + className
+                classNames(
+                    'inline-flex items-center px-4 py-2 ',
+                    'transition ease-in-out duration-150',
+                    'border border-transparent rounded-md font-semibold text-xs uppercase tracking-widest ',
+
+                    'bg-primary text-onprimary dark:bg-onprimary dark:text-primary',
+                    'hover:bg-primary-300 hover:text-onprimary-300 dark:hover:bg-onprimary-300 dark:hover:text-primary-300',
+                                        
+                    'active:bg-primary-900 dark:active:bg-onprimary-300',
+                    'active:text-onprimary-900 dark:active:text-primary-300',
+
+                    'focus:outline-none focus:ring-2 focus:ring-offset-2',
+                    'focus:bg-gray-700 dark:focus:bg-primary-300',
+                    'dark:focus:text-onprimary',
+                    'focus:ring-primary dark:focus:ring-offset-onprimary',
+                    {
+                        'opacity-25': disabled
+                    },
+                    className
+                )
             }
             disabled={disabled}
         >
