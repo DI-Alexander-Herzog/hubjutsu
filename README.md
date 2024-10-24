@@ -13,7 +13,7 @@ git commit --allow-empty -n -m "Initial commit."
 ```
 
 ```bash
-git subtree add --prefix packages/aherzog/hubjutsu git@git.rent-a-ninja.org:aherzog/hubjutsu.git main --squash
+git submodule add git@git.rent-a-ninja.org:aherzog/hubjutsu.git packages/aherzog/hubjutsu
 ```
 this will fetch into the packages directory which is used most of the time for local Laravel Package Development.
 
@@ -24,12 +24,12 @@ composer config repositories.aherzog/hubjutsu  -j '{"type":"path","url":"./packa
 composer require "aherzog/hubjutsu @dev"
 ```
 
-## Push/Pull subtree
+## Push/Pull submodule
+in den Ordner wechseln und git command direkt absetzten.
 ```bash
-git subtree push --prefix packages/aherzog/hubjutsu git@git.rent-a-ninja.org:aherzog/hubjutsu.git main
-```
-```bash
-git subtree pull --prefix packages/aherzog/hubjutsu git@git.rent-a-ninja.org:aherzog/hubjutsu.git main --squash
+git config push.recurseSubmodules on-demand
+
+git submodule foreach "git add . && git commit -m 'update' && git push"
 ```
 
 ## Usage
