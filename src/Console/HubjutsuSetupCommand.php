@@ -151,7 +151,7 @@ class HubjutsuSetupCommand extends Command
         $this->runCommands(['npm install -D sass']);
 
         $this->runCommands(['php artisan lang:publish']);
-        $this->runCommands(['php artisan api:install --without-migration-prompt']);
+        $this->runCommands(['php artisan install:api --without-migration-prompt']);
         $this->runCommands(['php artisan vendor:publish --tag="log-viewer-config"']);
         $this->runCommands(['php artisan vendor:publish --tag=log-viewer-assets --force']);
 
