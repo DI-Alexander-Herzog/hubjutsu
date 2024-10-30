@@ -45,9 +45,9 @@ export default function Welcome({ auth, laravelVersion, phpVersion, canLogin, ca
                             {canRegister && (
                                 <p className="mt-2 text-sm leading-6 ">
                                     {t('Not a member?')}{' '}
-                                    <a href="#" className="font-semibold text-primary-500 hover:text-primary-400">
+                                    <Link href={ route('register') } className="font-semibold text-primary-500 hover:text-primary-400">
                                         {t('Register now')}!
-                                    </a>
+                                    </Link>
                                 </p>
                             )}
                         </div>
@@ -65,9 +65,10 @@ export default function Welcome({ auth, laravelVersion, phpVersion, canLogin, ca
                                     
 
                                     <div className="text-sm leading-6">
-                                        <a href="#" className="font-semibold text-primary-500 hover:text-primary-400">
-                                            Forgot password?
-                                        </a>
+                                    
+                                        <Link href={route('password.request')} className="font-semibold text-primary-500 hover:text-primary-400">
+                                            {t('Forgot password?')}!
+                                        </Link>
                                     </div>
                                 </div>
 

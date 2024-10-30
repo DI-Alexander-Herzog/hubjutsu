@@ -22,7 +22,7 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                         }
                     })}
                 />
-                <label htmlFor={id} className="ml-3 block text-sm leading-6 text-gray-700">
+                <label htmlFor={id} className="ml-3 block text-sm leading-6 ">
                     {label || inputName.charAt(0).toUpperCase() + inputName.slice(1) }
                 </label>
             </div>
