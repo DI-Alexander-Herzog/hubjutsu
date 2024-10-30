@@ -202,7 +202,10 @@ class HubjutsuSetupCommand extends Command
         $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/Pages', resource_path('js/Pages'));
         $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/types', resource_path('js/types'));
     
+        $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Models/', app_path('Models'));
         
+        $this->setNpmPackageName();
+
         // Routes...
         copy(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'));
      
@@ -293,6 +296,12 @@ class HubjutsuSetupCommand extends Command
             ->run(function ($type, $output) {
                 $this->output->write($output);
             }) === 0;
+    }
+
+    protected function setNpmPackageName() {
+        $content = json_decode(file_get_contents(base_path('package.json')));
+        $content->name = Str::slug(strtolower(config('app.name')));
+        file_put_contents(base_path('package.json'), json_encode($content, JSON_PRETTY_PRINT));
     }
 
      /**
