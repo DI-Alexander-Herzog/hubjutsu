@@ -1,6 +1,7 @@
 <?php
 namespace AHerzog\Hubjutsu\Console;
 
+use Faker\Core\File;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Arr;
@@ -155,15 +156,23 @@ class HubjutsuSetupCommand extends Command
         $this->runCommands(['php artisan vendor:publish --tag="log-viewer-config"']);
         $this->runCommands(['php artisan vendor:publish --tag=log-viewer-assets --force']);
 
-        
+
+        $filesystem = new Filesystem();
+        foreach($filesystem->glob(__DIR__ . '/../../database/migrations/*.php') as $file) {
+            if ($filesystem->glob(database_path('migrations/*_'.basename($file)))) {
+                $this->output->info('Migration already exists: '.basename($file));
+            } else {
+                $filesystem->copy($file, database_path('migrations/'. date('Y_m_d_his_') .basename($file)));
+            }
+        }
 
         // Controllers...
-        (new Filesystem)->ensureDirectoryExists(app_path('Http/Controllers'));
-        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/app/Http/Controllers', app_path('Http/Controllers'));
+        $filesystem->ensureDirectoryExists(app_path('Http/Controllers'));
+        $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Http/Controllers', app_path('Http/Controllers'));
 
         // Requests...
-        (new Filesystem)->ensureDirectoryExists(app_path('Http/Requests'));
-        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/app/Http/Requests', app_path('Http/Requests'));
+        $filesystem->ensureDirectoryExists(app_path('Http/Requests'));
+        $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Http/Requests', app_path('Http/Requests'));
         
         
         // Middleware...
@@ -174,7 +183,7 @@ class HubjutsuSetupCommand extends Command
         $this->installStatefulApi();
         
 
-        (new Filesystem)->ensureDirectoryExists(app_path('Http/Middleware'));
+        $filesystem->ensureDirectoryExists(app_path('Http/Middleware'));
         copy(__DIR__.'/../../stubs/app/Http/Middleware/HandleInertiaRequests.php', app_path('Http/Middleware/HandleInertiaRequests.php'));
         
 
@@ -184,16 +193,16 @@ class HubjutsuSetupCommand extends Command
         @unlink(resource_path('views/welcome.blade.php'));
 
         // Components + Pages...
-        (new Filesystem)->ensureDirectoryExists(resource_path('js/Components'));
-        (new Filesystem)->ensureDirectoryExists(resource_path('js/Layouts'));
-        (new Filesystem)->ensureDirectoryExists(resource_path('js/Pages'));
+        $filesystem->ensureDirectoryExists(resource_path('js/Components'));
+        $filesystem->ensureDirectoryExists(resource_path('js/Layouts'));
+        $filesystem->ensureDirectoryExists(resource_path('js/Pages'));
 
-        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/resources/js/Components', resource_path('js/Components'));
-        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/resources/js/Layouts', resource_path('js/Layouts'));
-        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/resources/js/Pages', resource_path('js/Pages'));
-        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/resources/js/types', resource_path('js/types'));
+        $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/Components', resource_path('js/Components'));
+        $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/Layouts', resource_path('js/Layouts'));
+        $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/Pages', resource_path('js/Pages'));
+        $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/types', resource_path('js/types'));
     
-
+        
         // Routes...
         copy(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'));
      
@@ -217,7 +226,7 @@ class HubjutsuSetupCommand extends Command
         copy(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'));
         copy(__DIR__.'/../../stubs/routes/auth.php', base_path('routes/auth.php'));
 
-        (new Filesystem)->copyDirectory(__DIR__.'/../../stubs/tests/Feature', base_path('tests/Feature'));
+        $filesystem->copyDirectory(__DIR__.'/../../stubs/tests/Feature', base_path('tests/Feature'));
 
         $this->replaceInFile('"vite build', '"tsc && VITE_CJS_TRACE=true vite build', base_path('package.json'));
         $this->replaceInFile('.jsx', '.tsx', base_path('vite.config.js'));
@@ -256,7 +265,7 @@ class HubjutsuSetupCommand extends Command
 
         $this->components->info('Building node dependencies.');
         $this->runCommands(['npm run build']);
-
+        
         
         $this->line('');
         $this->components->info('Hubjutsu scaffolding installed successfully.');

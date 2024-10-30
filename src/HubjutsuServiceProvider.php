@@ -20,13 +20,12 @@ class HubjutsuServiceProvider extends ServiceProvider
          */
         // $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'hubjutsu-setup');
         // $this->loadViewsFrom(__DIR__.'/../resources/views', 'hubjutsu-setup');
-        // $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        //$this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         // $this->loadRoutesFrom(__DIR__.'/routes.php');
 
         if ($this->app->runningInConsole()) {
             $this->commands([
-                HubjutsuSetupCommand::class,
-                HubjutsuGitCommand::class,
+                HubjutsuSetupCommand::class
             ]);
         }
     }
@@ -47,8 +46,7 @@ class HubjutsuServiceProvider extends ServiceProvider
     {
         return [
             MenuManager::class,
-            HubjutsuSetupCommand::class,
-            HubjutsuGitCommand::class,
+            HubjutsuSetupCommand::class
         ];
     }
 }
