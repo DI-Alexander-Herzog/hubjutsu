@@ -166,6 +166,8 @@ class HubjutsuSetupCommand extends Command
             }
         }
 
+        $filesystem->copy(__DIR__ . '/../../stubs/database/seeder/HubjutsuSeeder.php', database_path('seeders/HubjutsuSeeder.php'));
+
         // Controllers...
         $filesystem->ensureDirectoryExists(app_path('Http/Controllers'));
         $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Http/Controllers', app_path('Http/Controllers'));
@@ -205,10 +207,6 @@ class HubjutsuSetupCommand extends Command
         $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Models/', app_path('Models'));
         
         $this->setNpmPackageName();
-
-        // Routes...
-        copy(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'));
-     
         
         // Tailwind / Vite...
         copy(__DIR__.'/../../stubs/resources/css/app.scss', resource_path('css/app.scss'));
@@ -263,12 +261,22 @@ class HubjutsuSetupCommand extends Command
                     PHP_EOL.'#VITE_SERVER_HTTPS_KEY="/etc/ssl/ah/test.key"'.
                     PHP_EOL;
             }
+
+            if (strpos($contents, 'ADMIN_PASSWORD') === false) {
+                $contents = trim($contents).
+                    PHP_EOL.'#ADMIN_PASSWORD=admin'.
+                    PHP_EOL;
+            }
+
+            
             $contents = file_put_contents(base_path($file), $contents);
         }
 
         $this->components->info('Building node dependencies.');
         $this->runCommands(['npm run build']);
         
+        $this->runCommands(['php artisan migrate --force']);
+        $this->runCommands(['php artisan db:seed HubjutsuSeeder --force']);
         
         $this->line('');
         $this->components->info('Hubjutsu scaffolding installed successfully.');

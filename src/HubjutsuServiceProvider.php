@@ -6,6 +6,7 @@ use AHerzog\Hubjutsu\App\Menu\MenuManager;
 use AHerzog\Hubjutsu\Console\HubjutsuGitCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuSetupCommand;
 use AHerzog\Hubjutsu\Events\BuildMenuEvent;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\ServiceProvider;
 
 class HubjutsuServiceProvider extends ServiceProvider
@@ -28,6 +29,14 @@ class HubjutsuServiceProvider extends ServiceProvider
                 HubjutsuSetupCommand::class
             ]);
         }
+
+        Blueprint::macro('user', function () {
+            /** @var Blueprint $this */
+            $this->unsignedBigInteger('created_by')->nullable();
+            $this->unsignedBigInteger('updated_by')->nullable();
+            $this->foreign('created_by')->references('id')->on('users')->nullOnDelete()->cascadeOnUpdate();
+            $this->foreign('updated_by')->references('id')->on('users')->nullOnDelete()->cascadeOnUpdate();
+        });
     }
     
     public function register()
@@ -40,6 +49,8 @@ class HubjutsuServiceProvider extends ServiceProvider
         $this->app->singleton('menuManager', function () {
             return new MenuManager();
         });
+
+
     }
 
     public function provides()

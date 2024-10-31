@@ -2,10 +2,8 @@
 
 namespace Database\Seeders;
 
-use AHerzog\Hubjutsu\Database\HubjutsuSeeder;
 
-
-class DatabaseSeeder extends HubjutsuSeeder
+class HubjutsuSeeder extends \AHerzog\Hubjutsu\Database\HubjutsuSeeder
 {
     /**
      * Seed the application's database.
