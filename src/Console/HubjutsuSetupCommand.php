@@ -224,9 +224,14 @@ class HubjutsuSetupCommand extends Command
         }
 
         // Routes...
-        copy(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'));
-        copy(__DIR__.'/../../stubs/routes/auth.php', base_path('routes/auth.php'));
-
+        copy(__DIR__.'/../../stubs/routes/hubjutsu.php', base_path('routes/hubjutsu.php'));
+        if (($webroutes = file_get_contents(base_path('routes/web.php'))) ) {
+            if (Str::contains($webroutes, "return view('welcome');")) {
+                copy(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'));
+            } elseif (!Str::contains($webroutes, "require __DIR__.'/hubjutsu.php';")) {
+                file_put_contents(base_path('routes/web.php'), $webroutes . PHP_EOL . PHP_EOL . "require __DIR__.'/hubjutsu.php';");
+            }
+        }
         $filesystem->copyDirectory(__DIR__.'/../../stubs/tests/Feature', base_path('tests/Feature'));
 
         $this->replaceInFile('"vite build', '"tsc && VITE_CJS_TRACE=true vite build', base_path('package.json'));
