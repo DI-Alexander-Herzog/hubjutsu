@@ -22,6 +22,9 @@ Add the repository to your composer.json
 composer config repositories.aherzog/hubjutsu  -j '{"type":"path","url":"./packages/aherzog/hubjutsu","options":{"symlink":true}}'
 
 composer require "aherzog/hubjutsu @dev"
+
+php artisan hubjutsu:setup
+
 ```
 
 ## Push/Pull submodule
