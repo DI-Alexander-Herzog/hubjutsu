@@ -13,9 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 class HomeController extends Controller
 {
-    /**
-     * Display the user's profile form.
-     */
+
     public function welcome(Request $request): Response|RedirectResponse
     {
         if (Auth::check()) {

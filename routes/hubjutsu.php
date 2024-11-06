@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::get('/', [HomeController::class, 'welcome'])->name('welcome');
-Route::get('/dashboard', ['\AHerzog\Hubjutsu\Http\Controllers\HomeController', 'welcome'])->name('dashboard');
+Route::get('/dashboard', ['\AHerzog\Hubjutsu\Http\Controllers\HomeController', 'dashboard'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

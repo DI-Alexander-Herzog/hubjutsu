@@ -155,6 +155,7 @@ class HubjutsuSetupCommand extends Command
         $this->runCommands(['php artisan install:api --without-migration-prompt']);
         $this->runCommands(['php artisan vendor:publish --tag="log-viewer-config"']);
         $this->runCommands(['php artisan vendor:publish --tag=log-viewer-assets --force']);
+        $this->runCommands(['php artisan storage:link']);
 
 
         $filesystem = new Filesystem();
@@ -164,6 +165,11 @@ class HubjutsuSetupCommand extends Command
             } else {
                 $filesystem->copy($file, database_path('migrations/'. date('Y_m_d_his_') .basename($file)));
             }
+        }
+
+        if (!$filesystem->exists(storage_path('app/public/img/brandimage.jpeg'))) {
+            $filesystem->ensureDirectoryExists(storage_path('app/public/img'));
+            $filesystem->copy(__DIR__ . '/../../resources/images/brandimage.jpeg', storage_path('app/public/img/brandimage.jpeg'));
         }
 
         $filesystem->copy(__DIR__ . '/../../stubs/database/seeder/HubjutsuSeeder.php', database_path('seeders/HubjutsuSeeder.php'));
