@@ -192,7 +192,10 @@ class HubjutsuSetupCommand extends Command
         
 
         $filesystem->ensureDirectoryExists(app_path('Http/Middleware'));
-        copy(__DIR__.'/../../stubs/app/Http/Middleware/HandleInertiaRequests.php', app_path('Http/Middleware/HandleInertiaRequests.php'));
+        $handleTarget = app_path('Http/Middleware/HandleInertiaRequests.php');
+        if (!$filesystem->exists($handleTarget) ) {
+            copy(__DIR__.'/../../stubs/app/Http/Middleware/HandleInertiaRequests.php', $handleTarget);
+        } 
         
 
         // Views...
