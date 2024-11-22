@@ -149,7 +149,7 @@ class HubjutsuSetupCommand extends Command
             '@heroicons/react classnames'
         ]);
 
-        $this->runCommands(['npm install -D sass']);
+        $this->runCommands(['npm install -D sass @types/qs']);
 
         $this->runCommands(['php artisan lang:publish']);
         $this->runCommands(['php artisan install:api --without-migration-prompt']);
