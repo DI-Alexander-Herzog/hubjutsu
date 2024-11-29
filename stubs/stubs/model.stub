@@ -1,0 +1,15 @@
+<?php
+
+namespace {{ namespace }};
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use AHerzog\Hubjutsu\Models\Base;
+
+class {{ class }} extends Base
+{
+    use HasFactory; //HasTimestamp
+
+    protected $fillable = [];
+
+    protected $casts = [];
+}

@@ -214,6 +214,7 @@ class HubjutsuSetupCommand extends Command
         $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/types', resource_path('js/types'));
     
         $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Models/', app_path('Models'));
+        $filesystem->copyDirectory(__DIR__.'/../../stubs/stubs/', base_path('stubs'));
         
         $this->setNpmPackageName();
         
