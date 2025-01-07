@@ -21,7 +21,6 @@ return new class extends Migration
             $table->json('tags')->nullable();
             $table->string('storage', 128)->nullable();
             $table->string('filename', 512)->nullable();
-            
             $table->boolean('private')->default(false);
         });
     }
