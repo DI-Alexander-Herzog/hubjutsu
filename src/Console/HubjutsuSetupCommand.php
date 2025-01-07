@@ -2,6 +2,7 @@
 namespace AHerzog\Hubjutsu\Console;
 
 use Faker\Core\File;
+use FilesystemIterator;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Arr;
@@ -32,6 +33,13 @@ class HubjutsuSetupCommand extends Command
 
 
 
+    protected $filesystem = null;
+    protected function getFilesystem() {
+        if ($this->filesystem === null) {
+            $this->filesystem = new Filesystem();
+        }
+        return $this->filesystem;
+    }
 
     /**
      * Replace a given string within a given file.
@@ -54,6 +62,38 @@ class HubjutsuSetupCommand extends Command
     protected function phpBinary()
     {
         return (new PhpExecutableFinder())->find(false) ?: 'php';
+    }
+
+    protected function copyDirectoryIfNotExists($directory, $destination, $options = null) {        
+        $filesystem = $this->getFilesystem();
+
+        if (! $filesystem->isDirectory($directory)) {
+            return false;
+        }
+
+        $options = $options ?: FilesystemIterator::SKIP_DOTS;
+        $filesystem->ensureDirectoryExists($destination, 0777);
+        $items = new FilesystemIterator($directory, $options);
+
+        foreach ($items as $item) {
+            $target = $destination.'/'.$item->getBasename();
+
+            if ($item->isDir()) {
+                $path = $item->getPathname();
+
+                if (! $this->copyDirectoryIfNotExists($path, $target, $options)) {
+                    return false;
+                }
+
+            } elseif ($filesystem->exists($target)) {
+                continue;
+
+            } elseif (!$filesystem->copy($item->getPathname(), $target)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     protected function installStatefulApi() {
@@ -204,22 +244,22 @@ class HubjutsuSetupCommand extends Command
         @unlink(resource_path('views/welcome.blade.php'));
 
         // Components + Pages...
-        $filesystem->ensureDirectoryExists(resource_path('js/Components'));
-        $filesystem->ensureDirectoryExists(resource_path('js/Layouts'));
-        $filesystem->ensureDirectoryExists(resource_path('js/Pages'));
-
-        $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/Components', resource_path('js/Components'));
-        $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/Layouts', resource_path('js/Layouts'));
-        $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/Pages', resource_path('js/Pages'));
-        $filesystem->copyDirectory(__DIR__.'/../../stubs/resources/js/types', resource_path('js/types'));
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/resources/js/Components', resource_path('js/Components'));
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/resources/js/Layouts', resource_path('js/Layouts'));
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/resources/js/Pages', resource_path('js/Pages'));
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/resources/js/types', resource_path('js/types'));
     
-        $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Models/', app_path('Models'));
-        $filesystem->copyDirectory(__DIR__.'/../../stubs/stubs/', base_path('stubs'));
+
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Models/', app_path('Models'));
+        $this->copyIfNotContains(__DIR__.'/../../stubs/app/Models/User.php', app_path('Models'). '/User.php', 'AHerzog\Hubjutsu\Models\User');
+        
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/stubs/', base_path('stubs'));
         
         $this->setNpmPackageName();
         
         // Tailwind / Vite...
-        copy(__DIR__.'/../../stubs/resources/css/app.scss', resource_path('css/app.scss'));
+
+        $this->copyIfNotContains(__DIR__.'/../../stubs/resources/css/app.scss', resource_path('css/app.scss'), "@import 'vendor/aherzog/hubjutsu/resources/css/hubjutsu';");
         copy(__DIR__.'/../../stubs/postcss.config.js', base_path('postcss.config.js'));
         copy(__DIR__.'/../../stubs/tailwind.config.dist.js', base_path('tailwind.config.js'));
         copy(__DIR__.'/../../stubs/vite.config.dist.js', base_path('vite.config.js'));
@@ -234,13 +274,7 @@ class HubjutsuSetupCommand extends Command
         }
 
         // Routes...
-        if (($webroutes = file_get_contents(base_path('routes/web.php'))) ) {
-            if (Str::contains($webroutes, "return view('welcome');")) {
-                copy(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'));
-            } elseif (!Str::contains($webroutes, "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsu.php';")) {
-                file_put_contents(base_path('routes/web.php'), $webroutes . PHP_EOL . PHP_EOL . "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsu.php';");
-            }
-        }
+        $this->copyIfNotContains(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'), "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsu.php';", true);
         $filesystem->copyDirectory(__DIR__.'/../../stubs/tests/Feature', base_path('tests/Feature'));
 
         $this->replaceInFile('"vite build', '"tsc && VITE_CJS_TRACE=true vite build', base_path('package.json'));
@@ -296,6 +330,19 @@ class HubjutsuSetupCommand extends Command
         $this->components->info('Hubjutsu scaffolding installed successfully.');
     }
 
+    protected function copyIfNotContains($from, $to, $string, $append = false)  {
+        if (!file_exists($to)) {
+            copy($from, $to);
+        }
+
+        if (!Str::contains(($content = file_get_contents($to)), $string)) {
+            if ($append) {
+                file_put_contents($to, $content . PHP_EOL . PHP_EOL . $string);
+            } else {
+                copy($from, $to);
+            }
+        }
+    }
 
     /**
      * Installs the given Composer Packages into the application.
