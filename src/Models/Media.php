@@ -53,6 +53,30 @@ class Media extends Base {
         'mimetype'
     ];
 
+    protected $casts = [
+        'tags' => 'json',
+        'private' => 'boolean'
+    ];
+
+    public function setTagsAttribute($val) {
+        if (!$val) {
+            $this->attributes['tags'] = [];
+        } elseif (is_array($val))  {
+            $this->attributes['tags'] = $val;
+        } elseif (is_object($val)) {
+            $this->attributes['tags'] = (array) $val;
+        } else {
+            $dec = @json_decode($val);
+            if (!$dec) {
+                $this->attributes['tags'] = [ $val ];
+            } else {
+                $this->attributes['tags'] = (array) $dec;
+            }
+        }
+        $this->attributes['tags'] = json_encode($this->attributes['tags']);
+        
+    }
+
     public function getUrl() {
         return Storage::disk($this->storage)->url($this->filename);
     }

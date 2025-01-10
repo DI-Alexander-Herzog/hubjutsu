@@ -232,10 +232,7 @@ class HubjutsuSetupCommand extends Command
         
 
         $filesystem->ensureDirectoryExists(app_path('Http/Middleware'));
-        $handleTarget = app_path('Http/Middleware/HandleInertiaRequests.php');
-        if (!$filesystem->exists($handleTarget) ) {
-            copy(__DIR__.'/../../stubs/app/Http/Middleware/HandleInertiaRequests.php', $handleTarget);
-        } 
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Http/Middleware/', app_path('Http/Middleware'));
         
 
         // Views...
@@ -275,6 +272,7 @@ class HubjutsuSetupCommand extends Command
 
         // Routes...
         $this->copyIfNotContains(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'), "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsu.php';", true);
+        $this->copyIfNotContains(__DIR__.'/../../stubs/routes/api.php', base_path('routes/api.php'), "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsuapi.php';", true);
         $filesystem->copyDirectory(__DIR__.'/../../stubs/tests/Feature', base_path('tests/Feature'));
 
         $this->replaceInFile('"vite build', '"tsc && VITE_CJS_TRACE=true vite build', base_path('package.json'));
