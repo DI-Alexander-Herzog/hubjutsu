@@ -4,10 +4,11 @@ use App\Http\Controllers\Api\HubjutsuApiController;
 use App\Http\Controllers\Api\HubjutsuApiTokenController;
 
 Route::name('api.token.')->group(function() {
-    Route::withoutMiddleware(['auth:sanctum'])->post('/token/create', [HubjutsuApiTokenController::class, 'create'])->name('create'); // Similar to login
+    Route::post('/token/create', [HubjutsuApiTokenController::class, 'create'])->name('create'); // Similar to login
     Route::middleware(['auth:sanctum'])->group(function() {
-        Route::delete('/token/delete', [HubjutsuApiController::class, 'delete'])->name('delete'); // Similar to logout
-        Route::get('/token/list', [HubjutsuApiController::class, 'list'])->name('list');
+        Route::addRoute(['POST', 'DELETE'], '/token/delete', [HubjutsuApiTokenController::class, 'delete'])->name('delete'); // Similar to logout
+        Route::addRoute(['POST', 'DELETE'], '/token/deleteAll', [HubjutsuApiTokenController::class, 'deleteAll'])->name('delete.all'); // Similar to logout
+        Route::get('/token/list', [HubjutsuApiTokenController::class, 'list'])->name('list');
     });
 });
 

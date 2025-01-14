@@ -32,6 +32,7 @@ class HandleHubjutsuApi
             if(!$ret instanceof JsonResponse) {
                 return response()->json([
                     'message' => 'Invalid response type',
+                    'type' => get_class($ret),
                     'content' => $ret->getContent()
                 ], 500);
             }
