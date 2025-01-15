@@ -90,7 +90,7 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                       </li>;
                     })}
                     <li className="mt-auto">
-                        <NavLink href="#"  active={false}
+                        <NavLink href={route('settings.index')}  active={false}
                             icon={<Cog6ToothIcon
                                 aria-hidden="true"
                                 className={classNames(
@@ -139,7 +139,7 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                 
                 
                 <li className="mt-auto">
-                  <NavLink href="#"  active={false}
+                  <NavLink href={route('settings.index')}   active={false}
                       icon={<Cog6ToothIcon
                           aria-hidden="true"
                           className={classNames(
@@ -210,18 +210,18 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                   </MenuButton>
                   <MenuItems
                     transition
-                    className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 transition focus:outline-none data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+                    className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md text-gray-900 bg-white dark:text-gray-100 dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 transition focus:outline-none data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
                   >
                         <MenuItem>
                             <Link href={route('profile.edit')}
-                            className="block px-3 py-1 text-sm leading-6 text-gray-900 data-[focus]:bg-gray-50"
+                            className="block px-3 py-1 text-sm leading-6  data-[focus]:bg-gray-50 dark:data-[focus]:text-gray-900"
                             >
                                 Profile
                             </Link>
-                      </MenuItem>
+                        </MenuItem>
                         <MenuItem>
                             <Link href={route('logout')} method="post"
-                            className="block px-3 py-1 text-sm leading-6 text-gray-900 data-[focus]:bg-gray-50"
+                            className="block px-3 py-1 text-sm leading-6  data-[focus]:bg-gray-50 dark:data-[focus]:text-gray-900"
                             >
                                 Sign out
                             </Link>
