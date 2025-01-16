@@ -155,7 +155,7 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
         </div>
 
         <div className="lg:pl-72">
-          <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+          <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
             <button type="button" onClick={() => setSidebarOpen(true)} className="-m-2.5 p-2.5 lg:hidden">
               <span className="sr-only">Open sidebar</span>
               <Bars3Icon aria-hidden="true" className="h-6 w-6 stroke-text dark:stroke-white" />
