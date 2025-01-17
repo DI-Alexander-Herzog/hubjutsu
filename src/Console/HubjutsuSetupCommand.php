@@ -22,7 +22,7 @@ class HubjutsuSetupCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'hubjutsu:setup';
+    protected $signature = 'hubjutsu:setup {--update : Just update new files}';
 
     /**
      * The console command description.
@@ -173,72 +173,80 @@ class HubjutsuSetupCommand extends Command
      */
     public function handle()
     {
-        // Install Inertia...
-        if (! $this->requireComposerPackages(['inertiajs/inertia-laravel', 'laravel/sanctum', 'tightenco/ziggy', 'opcodesio/log-viewer'])) {
-            return 1;
+
+        $setup = !$this->option('update');
+        
+
+        if ($setup) {   
+            // Install Inertia...
+            if (! $this->requireComposerPackages(['inertiajs/inertia-laravel', 'laravel/sanctum', 'tightenco/ziggy', 'opcodesio/log-viewer'])) {
+                return 1;
+            }
+
+            if (!$this->requireComposerPackages(['barryvdh/laravel-ide-helper'], true)) {
+                return 1;
+            }
+
+            $this->runCommands([
+                'npm install '.
+                '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss react react-dom '.
+                '@types/node @types/react @types/react-dom @types/ziggy-js typescript laravel-react-i18n primereact tailwind-merge ' . 
+                '@heroicons/react classnames'
+            ]);
+
+            $this->runCommands(['npm install -D sass @types/qs']);
+
+            $this->runCommands(['php artisan lang:publish']);
+            $this->runCommands(['php artisan install:api --without-migration-prompt']);
+            $this->runCommands(['php artisan vendor:publish --tag="log-viewer-config"']);
+            $this->runCommands(['php artisan vendor:publish --tag=log-viewer-assets --force']);
+            $this->runCommands(['php artisan storage:link']);
+
         }
-
-        if (!$this->requireComposerPackages(['barryvdh/laravel-ide-helper'], true)) {
-            return 1;
-        }
-
-        $this->runCommands([
-            'npm install '.
-            '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss react react-dom '.
-            '@types/node @types/react @types/react-dom @types/ziggy-js typescript laravel-react-i18n primereact tailwind-merge ' . 
-            '@heroicons/react classnames'
-        ]);
-
-        $this->runCommands(['npm install -D sass @types/qs']);
-
-        $this->runCommands(['php artisan lang:publish']);
-        $this->runCommands(['php artisan install:api --without-migration-prompt']);
-        $this->runCommands(['php artisan vendor:publish --tag="log-viewer-config"']);
-        $this->runCommands(['php artisan vendor:publish --tag=log-viewer-assets --force']);
-        $this->runCommands(['php artisan storage:link']);
-
 
         $filesystem = new Filesystem();
         foreach($filesystem->glob(__DIR__ . '/../../database/migrations/*.php') as $file) {
             if ($filesystem->glob(database_path('migrations/*_'.basename($file)))) {
                 $this->output->info('Migration already exists: '.basename($file));
             } else {
-                $filesystem->copy($file, database_path('migrations/'. date('Y_m_d_his_') .basename($file)));
+                $filesystem->copy($file, database_path('migrations/'. date('Y_m_d_His_') .basename($file)));
             }
         }
 
-        if (!$filesystem->exists(storage_path('app/public/img/brandimage.jpeg'))) {
-            $filesystem->ensureDirectoryExists(storage_path('app/public/img'));
-            $filesystem->copy(__DIR__ . '/../../resources/images/brandimage.jpeg', storage_path('app/public/img/brandimage.jpeg'));
+        if ($setup) {   
+            if (!$filesystem->exists(storage_path('app/public/img/brandimage.jpeg'))) {
+                $filesystem->ensureDirectoryExists(storage_path('app/public/img'));
+                $filesystem->copy(__DIR__ . '/../../resources/images/brandimage.jpeg', storage_path('app/public/img/brandimage.jpeg'));
+            }
+
+            $filesystem->copy(__DIR__ . '/../../stubs/database/seeder/HubjutsuSeeder.php', database_path('seeders/HubjutsuSeeder.php'));
+
+            // Controllers...
+            $filesystem->ensureDirectoryExists(app_path('Http/Controllers'));
+            $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Http/Controllers', app_path('Http/Controllers'));
+
+            // Requests...
+            $filesystem->ensureDirectoryExists(app_path('Http/Requests'));
+            $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Http/Requests', app_path('Http/Requests'));
+            
+            
+            // Middleware...
+            $this->installMiddleware([
+                '\App\Http\Middleware\HandleInertiaRequests::class',
+                '\Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class',
+            ]);
+            $this->installStatefulApi();
+            
+
+            $filesystem->ensureDirectoryExists(app_path('Http/Middleware'));
+            $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Http/Middleware/', app_path('Http/Middleware'));
+            
+
+            // Views...
+            copy(__DIR__.'/../../stubs/resources/views/app.blade.php', resource_path('views/app.blade.php'));
+
+            @unlink(resource_path('views/welcome.blade.php'));
         }
-
-        $filesystem->copy(__DIR__ . '/../../stubs/database/seeder/HubjutsuSeeder.php', database_path('seeders/HubjutsuSeeder.php'));
-
-        // Controllers...
-        $filesystem->ensureDirectoryExists(app_path('Http/Controllers'));
-        $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Http/Controllers', app_path('Http/Controllers'));
-
-        // Requests...
-        $filesystem->ensureDirectoryExists(app_path('Http/Requests'));
-        $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Http/Requests', app_path('Http/Requests'));
-        
-        
-        // Middleware...
-        $this->installMiddleware([
-            '\App\Http\Middleware\HandleInertiaRequests::class',
-            '\Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class',
-        ]);
-        $this->installStatefulApi();
-        
-
-        $filesystem->ensureDirectoryExists(app_path('Http/Middleware'));
-        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Http/Middleware/', app_path('Http/Middleware'));
-        
-
-        // Views...
-        copy(__DIR__.'/../../stubs/resources/views/app.blade.php', resource_path('views/app.blade.php'));
-
-        @unlink(resource_path('views/welcome.blade.php'));
 
         // Components + Pages...
         $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/resources/js/Components', resource_path('js/Components'));
@@ -248,81 +256,92 @@ class HubjutsuSetupCommand extends Command
     
 
         $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Models/', app_path('Models'));
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Policies/', app_path('Policies'));
+
         $this->copyIfNotContains(__DIR__.'/../../stubs/app/Models/User.php', app_path('Models'). '/User.php', 'AHerzog\Hubjutsu\Models\User');
         
         $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/stubs/', base_path('stubs'));
         
-        $this->setNpmPackageName();
-        
-        // Tailwind / Vite...
-
-        $this->copyIfNotContains(__DIR__.'/../../stubs/resources/css/app.scss', resource_path('css/app.scss'), "@import 'vendor/aherzog/hubjutsu/resources/css/hubjutsu';");
-        copy(__DIR__.'/../../stubs/postcss.config.js', base_path('postcss.config.js'));
-        copy(__DIR__.'/../../stubs/tailwind.config.dist.js', base_path('tailwind.config.js'));
-        copy(__DIR__.'/../../stubs/vite.config.dist.js', base_path('vite.config.js'));
-
-        copy(__DIR__.'/../../stubs/tsconfig.dist.json', base_path('tsconfig.json'));
-        copy(__DIR__.'/../../stubs/resources/js/app.tsx', resource_path('js/app.tsx'));
-
-        copy(__DIR__.'/../../stubs/resources/js/bootstrap.ts', resource_path('js/bootstrap.ts'));
-        
-        if (file_exists(resource_path('js/bootstrap.js'))) {
-            unlink(resource_path('js/bootstrap.js'));
-        }
-
-        // Routes...
-        $this->copyIfNotContains(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'), "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsu.php';", true);
-        $this->copyIfNotContains(__DIR__.'/../../stubs/routes/api.php', base_path('routes/api.php'), "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsuapi.php';", true);
-        $filesystem->copyDirectory(__DIR__.'/../../stubs/tests/Feature', base_path('tests/Feature'));
-
-        $this->replaceInFile('"vite build', '"tsc && VITE_CJS_TRACE=true vite build', base_path('package.json'));
-        $this->replaceInFile('.jsx', '.tsx', base_path('vite.config.js'));
-        $this->replaceInFile('.jsx', '.tsx', resource_path('views/app.blade.php'));
-        $this->replaceInFile('.vue', '.tsx', base_path('tailwind.config.js'));
-
-        if (file_exists(resource_path('js/app.js'))) {
-            unlink(resource_path('js/app.js'));
-        }
-
-        foreach(['.env', '.env.example'] as $file) {
-            $contents = file_get_contents(base_path($file));
-            if (strpos($contents, 'VITE_SERVER_HOST') === false) {
-                $url = config('app.url');
-
-                $contents = trim($contents).
-                    PHP_EOL.'VITE_SERVER_HOST="'.parse_url($url, PHP_URL_HOST).'"'.
-                    PHP_EOL;
-            }
+        if ($setup) {   
+            $this->setNpmPackageName();
             
-            if (strpos($contents, 'VITE_SERVER_HTTPS_CERT') === false) {
-                $contents = trim($contents).
-                    PHP_EOL.'#VITE_SERVER_HTTPS_CERT="/opt/homebrew/etc/ssl/local.crt"'. 
-                    PHP_EOL.'#VITE_SERVER_HTTPS_CERT="/etc/ssl/ah/test.cert"'.
-                    PHP_EOL;
-            }
+            // Tailwind / Vite...
 
-            if (strpos($contents, 'VITE_SERVER_HTTPS_KEY') === false) {
-                $contents = trim($contents).
-                    PHP_EOL.'#VITE_SERVER_HTTPS_KEY="/opt/homebrew/etc/ssl/local.key"'. 
-                    PHP_EOL.'#VITE_SERVER_HTTPS_KEY="/etc/ssl/ah/test.key"'.
-                    PHP_EOL;
-            }
+            $this->copyIfNotContains(__DIR__.'/../../stubs/resources/css/app.scss', resource_path('css/app.scss'), "@import 'vendor/aherzog/hubjutsu/resources/css/hubjutsu';");
+            copy(__DIR__.'/../../stubs/postcss.config.js', base_path('postcss.config.js'));
+            copy(__DIR__.'/../../stubs/tailwind.config.dist.js', base_path('tailwind.config.js'));
+            copy(__DIR__.'/../../stubs/vite.config.dist.js', base_path('vite.config.js'));
 
-            if (strpos($contents, 'ADMIN_PASSWORD') === false) {
-                $contents = trim($contents).
-                    PHP_EOL.'#ADMIN_PASSWORD=admin'.
-                    PHP_EOL;
-            }
+            copy(__DIR__.'/../../stubs/tsconfig.dist.json', base_path('tsconfig.json'));
+            copy(__DIR__.'/../../stubs/resources/js/app.tsx', resource_path('js/app.tsx'));
 
+            copy(__DIR__.'/../../stubs/resources/js/bootstrap.ts', resource_path('js/bootstrap.ts'));
             
-            $contents = file_put_contents(base_path($file), $contents);
+            if (file_exists(resource_path('js/bootstrap.js'))) {
+                unlink(resource_path('js/bootstrap.js'));
+            }
+
+            // Routes...
+            $this->copyIfNotContains(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'), "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsu.php';", true);
+            $this->copyIfNotContains(__DIR__.'/../../stubs/routes/api.php', base_path('routes/api.php'), "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsuapi.php';", true);
+            $filesystem->copyDirectory(__DIR__.'/../../stubs/tests/Feature', base_path('tests/Feature'));
+
+            $this->replaceInFile('"vite build', '"tsc && VITE_CJS_TRACE=true vite build', base_path('package.json'));
+            $this->replaceInFile('.jsx', '.tsx', base_path('vite.config.js'));
+            $this->replaceInFile('.jsx', '.tsx', resource_path('views/app.blade.php'));
+            $this->replaceInFile('.vue', '.tsx', base_path('tailwind.config.js'));
+
+            if (file_exists(resource_path('js/app.js'))) {
+                unlink(resource_path('js/app.js'));
+            }
+
+            foreach(['.env', '.env.example'] as $file) {
+                $contents = file_get_contents(base_path($file));
+                if (strpos($contents, 'VITE_SERVER_HOST') === false) {
+                    $url = config('app.url');
+
+                    $contents = trim($contents).
+                        PHP_EOL.'VITE_SERVER_HOST="'.parse_url($url, PHP_URL_HOST).'"'.
+                        PHP_EOL;
+                }
+                
+                if (strpos($contents, 'VITE_SERVER_HTTPS_CERT') === false) {
+                    $contents = trim($contents).
+                        PHP_EOL.'#VITE_SERVER_HTTPS_CERT="/opt/homebrew/etc/ssl/local.crt"'. 
+                        PHP_EOL.'#VITE_SERVER_HTTPS_CERT="/etc/ssl/ah/test.cert"'.
+                        PHP_EOL;
+                }
+
+                if (strpos($contents, 'VITE_SERVER_HTTPS_KEY') === false) {
+                    $contents = trim($contents).
+                        PHP_EOL.'#VITE_SERVER_HTTPS_KEY="/opt/homebrew/etc/ssl/local.key"'. 
+                        PHP_EOL.'#VITE_SERVER_HTTPS_KEY="/etc/ssl/ah/test.key"'.
+                        PHP_EOL;
+                }
+
+                if (strpos($contents, 'ADMIN_PASSWORD') === false) {
+                    $contents = trim($contents).
+                        PHP_EOL.'#ADMIN_PASSWORD=admin'.
+                        PHP_EOL;
+                }
+
+                
+                $contents = file_put_contents(base_path($file), $contents);
+            }
+
+            $this->components->info('Building node dependencies.');
+            $this->runCommands(['npm run build']);
+            
+            $this->runCommands(['php artisan migrate --force']);
+            $this->runCommands(['php artisan db:seed HubjutsuSeeder --force']);
+        } else {
+            $this->runCommands([
+                'php artisan migrate --force',
+                'php artisan ide-helper:model -RW'
+            ]);
         }
 
-        $this->components->info('Building node dependencies.');
-        $this->runCommands(['npm run build']);
-        
-        $this->runCommands(['php artisan migrate --force']);
-        $this->runCommands(['php artisan db:seed HubjutsuSeeder --force']);
+
         
         $this->line('');
         $this->components->info('Hubjutsu scaffolding installed successfully.');
