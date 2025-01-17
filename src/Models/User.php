@@ -9,6 +9,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -37,6 +38,10 @@ class User extends Authenticatable implements MustVerifyEmail
         'remember_token',
     ];
 
+    protected $with = [
+        'avatar'
+    ];
+    
     /**
      * Get the attributes that should be cast.
      *
@@ -49,4 +54,17 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
         ];
     }
+
+
+        /** 
+     * @return Media
+     */
+    public function avatar(): MorphOne
+    {
+        return $this->media('avatar');
+    }
+    public function setAvatar(Media $media) {
+        $this->setMedia($media, 'avatar', 1);
+    }
+    
 }

@@ -8,12 +8,11 @@ export interface User {
     name: string;
     email: string;
     email_verified_at: string;
+    avatar: Media;
 }
 
-export interface Community {
-    id: number;
-    name: string;
-    code: string;
+export interface Media {
+  [key: string]: any;
 }
 
 export interface UseForm {
@@ -21,6 +20,8 @@ export interface UseForm {
   data?: { [key: string]: any };
   setData: (data: { [key: string]: any } | any) => void;
 }
+
+
 
 
 export interface HubjutsuMenus {

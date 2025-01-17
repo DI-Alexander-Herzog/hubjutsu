@@ -64,6 +64,11 @@ class Media extends Base {
         'thumbnail'
     ];
 
+    
+    public function mediable() {
+        return $this->morphTo();
+    }
+
     public function setTagsAttribute($val) {
         if (!$val) {
             $this->attributes['tags'] = [];

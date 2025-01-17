@@ -4,6 +4,7 @@ namespace AHerzog\Hubjutsu\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Media;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,6 +39,19 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
+        return Redirect::route('profile.edit');
+    }
+
+    public function updateAvatar(Request $request) {
+        $request->validate([
+            'avatar' => ['required'],
+        ]);
+
+        $media = Media::find($request->avatar['id'] ?? null);
+        if ($request->user()->can('attach', $media)) {
+            $request->user()->setAvatar($media);
+        }
+        
         return Redirect::route('profile.edit');
     }
 

@@ -12,7 +12,7 @@ export default forwardRef(function MediaUpload(
 ) {
     const { t } = useLaravelReactI18n();
 
-    const [previewSrc, setPreviewSrc] = useState("");
+    const [previewSrc, setPreviewSrc] = useState(useForm?.data &&  useForm.data[name] && useForm.data[name].thumbnail ? useForm?.data[name].thumbnail : "");
     const [err, setErr] = useState("");
 
 
@@ -20,7 +20,7 @@ export default forwardRef(function MediaUpload(
     
 
     const onUpload = ({ xhr, files } : {xhr: XMLHttpRequest, files: any}) => {
-        var ret = {
+        const ret = {
             target: {
                 files: files,
             },
@@ -35,6 +35,12 @@ export default forwardRef(function MediaUpload(
             setButtonLabel(t('Select file'));
         }
         
+        useForm?.setData((data: { [key: string]: any }) => {
+            return {
+                ...data,
+                [name]: ret[name]
+            };
+        });
     };
 
     const onError = (event: ExtendedFileUploadErrorEvent) => {

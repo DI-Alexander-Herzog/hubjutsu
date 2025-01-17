@@ -31,6 +31,7 @@ import {
   import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/20/solid'
 import ThemeMode from '../../../stubs/resources/js/Components/ThemeMode';
 import InputText from '@hubjutsu/Components/InputText';
+import Avatar from '@hubjutsu/Components/Avatar';
 
 export default function Authenticated({ header, children }: PropsWithChildren<{ header?: ReactNode }>) {
 
@@ -196,11 +197,8 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                 <Menu as="div" className="relative">
                   <MenuButton className="-m-1.5 flex items-center p-1.5 dark:text-gray-100">
                     <span className="sr-only">Open user menu</span>
-                    <img
-                      alt=""
-                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                      className="h-8 w-8 rounded-full bg-gray-50"
-                    />
+                    <Avatar user={user} className="h-8 w-8" />
+                    
                     <span className="hidden lg:flex lg:items-center">
                       <span aria-hidden="true" className="ml-4 text-sm font-semibold leading-6">
                         { user.name }
