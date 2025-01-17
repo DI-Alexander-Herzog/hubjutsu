@@ -1,8 +1,10 @@
 import InputLabel from "@/Components/InputLabel";
 import InputText from "@/Components/InputText";
 import InputError from "@/Components/InputError";
+import { UseForm } from "@/types";
 
-export default function Input({ className = '', label='', inputId = '', inputName = '', useForm = {} as { [key: string]: any }, type = "text", ...props }) {
+
+export default function Input({ className = '', label='', inputId = '', inputName = '', useForm = {} as UseForm, type = "text", ...props }) {
 
     const id = inputId || inputName;
     

@@ -1,3 +1,8 @@
+export interface Arr {
+  [key:string]: any;
+}
+
+
 export interface User {
     id: number;
     name: string;
@@ -9,6 +14,12 @@ export interface Community {
     id: number;
     name: string;
     code: string;
+}
+
+export interface UseForm {
+  errors?: { [key: string]: string };
+  data?: { [key: string]: any };
+  setData: (data: { [key: string]: any } | any) => void;
 }
 
 

@@ -7,8 +7,10 @@ use AHerzog\Hubjutsu\Models\Traits\UserTrait;
 use App\Models\Base;
 use finfo;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
+use Illuminate\Http\UploadedFile;
 use Storage;
 use Str;
+use Symfony\Component\Mime\MimeTypes;
 
 /**
  * 
@@ -58,6 +60,10 @@ class Media extends Base {
         'private' => 'boolean'
     ];
 
+    protected $appends = [
+        'thumbnail'
+    ];
+
     public function setTagsAttribute($val) {
         if (!$val) {
             $this->attributes['tags'] = [];
@@ -75,6 +81,13 @@ class Media extends Base {
         }
         $this->attributes['tags'] = json_encode($this->attributes['tags']);
         
+    }
+
+    public function getThumbnailAttribute() {
+        if (in_array($this->mimetype, ['image/jpeg', 'image/png', 'image/gif'])) {
+            return $this->getUrl();
+        }
+        return null;
     }
 
     public function getUrl() {
