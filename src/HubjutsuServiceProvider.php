@@ -4,6 +4,7 @@ namespace AHerzog\Hubjutsu;
 
 use AHerzog\Hubjutsu\App\Menu\MenuManager;
 use AHerzog\Hubjutsu\Console\HubjutsuGitCommand;
+use AHerzog\Hubjutsu\Console\HubjutsuMakeCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuSetupCommand;
 use AHerzog\Hubjutsu\Events\BuildMenuEvent;
 use Auth;
@@ -28,7 +29,8 @@ class HubjutsuServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
-                HubjutsuSetupCommand::class
+                HubjutsuSetupCommand::class,
+                HubjutsuMakeCommand::class
             ]);
         }
 

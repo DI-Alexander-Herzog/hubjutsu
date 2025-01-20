@@ -1,11 +1,11 @@
 <?php
 
-namespace {{ namespace }};
+namespace AHerzog\Hubjutsu\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use AHerzog\Hubjutsu\Models\Base;
 
-class {{ class }} extends Base
+class Brand extends Base
 {
     use HasFactory; //HasTimestamp
 
