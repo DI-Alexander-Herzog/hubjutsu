@@ -1,0 +1,94 @@
+<?php
+
+namespace {{ namespace }};
+
+use {{ namespacedModel }};
+use {{ rootNamespace }}Http\Controllers\Controller;
+use {{ namespacedRequests }}
+
+ use Inertia\Response;
+ use Inertia\Inertia;
+
+class {{ class }} extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        return Inertia::render('{{ model }}/Index', [
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        return Inertia::render('{{ model }}/Create', [
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store({{ storeRequest }} $request)
+    {
+        ${{ modelVariable }} = new ${{ model }};
+        
+        /*
+        ${{ modelVariable }}->fill($request->validate([
+        ]));
+        */
+        ${{ modelVariable }}->fill($request->only(${{ modelVariable }}->getFillable()));
+        ${{ modelVariable }}->save();
+
+        return redirect()->route('{{ modelVariablePlural }}.show', ${{ modelVariable }});
+
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show({{ model }} ${{ modelVariable }})
+    {
+        return Inertia::render('{{ model }}/View', [
+            '{{ model }}' => ${{ modelVariable }}
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit({{ model }} ${{ modelVariable }})
+    {
+        return Inertia::render('{{ model }}/Edit', [
+            '{{ model }}' => ${{ modelVariable }}
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update({{ updateRequest }} $request, {{ model }} ${{ modelVariable }})
+    {
+        /*
+        ${{ modelVariable }}->fill($request->validate([
+        ]));
+        */
+        ${{ modelVariable }}->fill($request->only(${{ modelVariable }}->getFillable()));
+        ${{ modelVariable }}->save();
+
+        return redirect()->route('{{ modelVariablePlural }}.show', ${{ modelVariable }});
+
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy({{ model }} ${{ modelVariable }})
+    {
+        ${{ modelVariable }}->delete();
+        return redirect()->route('{{ modelVariablePlural }}.index');
+    }
+}
