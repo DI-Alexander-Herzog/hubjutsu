@@ -161,6 +161,39 @@ class HubjutsuMakeCommand extends Command
 
 
         // page.tsx
+        $pages = ['Index', 'Create', 'Edit', 'View', 'Form'];
+        foreach($pages as $page) {
+            $pageTarget = $root . '/resources/js/pages/' . $name . '/'.$page.'.tsx';
+            if (file_exists($pageTarget)) {
+                $this->error($page . ' page for ' . $name . ' already exists!');
+            } else  {
+                $replace = [
+                    '{{ name }}' => $name,
+                    '{{ model }}' => $name,
+                    '{{ modelVariable }}' => $slug,
+                    '{{ modelVariablePlural }}' => $pluralslug,
+                ];
+                if (!file_exists(dirname($pageTarget))) {
+                    mkdir(dirname($pageTarget), 0755, true);
+                }
+                $content = str_replace(array_keys($replace), array_values($replace), file_get_contents($root . '/stubs/stubs/pages/'.$page.'.stub'));
+                file_put_contents($pageTarget, $content);
+            }
+
+            $stubTarget = $root . '/stubs/resources/js/Pages/' . $name . '/'.$page.'.tsx';
+            if (file_exists($stubTarget)) {
+                $this->error($page . ' stub page for ' . $name . ' already exists!');
+            } else  {
+                $content = [
+                    "import ".$name.$page." from '@hubjutsu/Pages/".$name."/".$page."';",
+                    "export default ".$name.$page.";",
+                ];
+                if (!file_exists(dirname($stubTarget))) {
+                    mkdir(dirname($stubTarget), 0755, true);
+                }
+                file_put_contents($stubTarget, implode(PHP_EOL.PHP_EOL, $content));
+            }
+        }
         
 
         $this->runCommands(['php artisan hubjutsu:setup --update']);

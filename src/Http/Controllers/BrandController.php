@@ -5,8 +5,9 @@ namespace AHerzog\Hubjutsu\Http\Controllers;
 use App\Models\Brand;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Inertia\Response;
 
+ use Inertia\Response;
+ use Inertia\Inertia;
 
 class BrandController extends Controller
 {
@@ -15,7 +16,8 @@ class BrandController extends Controller
      */
     public function index()
     {
-        //
+        return Inertia::render('Brand/Index', [
+        ]);
     }
 
     /**
@@ -23,7 +25,8 @@ class BrandController extends Controller
      */
     public function create()
     {
-        //
+        return Inertia::render('Brand/Create', [
+        ]);
     }
 
     /**
@@ -31,7 +34,17 @@ class BrandController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $brand = new Brand();
+        
+        /*
+        $brand->fill($request->validate([
+        ]));
+        */
+        $brand->fill($request->only($brand->getFillable()));
+        $brand->save();
+
+        return redirect()->route('brands.show', $brand);
+
     }
 
     /**
@@ -39,7 +52,9 @@ class BrandController extends Controller
      */
     public function show(Brand $brand)
     {
-        //
+        return Inertia::render('Brand/View', [
+            'Brand' => $brand
+        ]);
     }
 
     /**
@@ -47,7 +62,9 @@ class BrandController extends Controller
      */
     public function edit(Brand $brand)
     {
-        //
+        return Inertia::render('Brand/Edit', [
+            'Brand' => $brand
+        ]);
     }
 
     /**
@@ -56,13 +73,14 @@ class BrandController extends Controller
     public function update(Request $request, Brand $brand)
     {
         /*
-        ${{ modelVariable }}->fill($request->validate([
+        $brand->fill($request->validate([
         ]));
         */
         $brand->fill($request->only($brand->getFillable()));
         $brand->save();
 
         return redirect()->route('brands.show', $brand);
+
     }
 
     /**
@@ -70,6 +88,7 @@ class BrandController extends Controller
      */
     public function destroy(Brand $brand)
     {
-        //
+        $brand->delete();
+        return redirect()->route('brands.index');
     }
 }

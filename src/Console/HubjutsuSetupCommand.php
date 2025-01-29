@@ -213,6 +213,12 @@ class HubjutsuSetupCommand extends Command
             }
         }
 
+        // Controllers...
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Http/Controllers', app_path('Http/Controllers'));
+
+        // Requests...
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Http/Requests', app_path('Http/Requests'));
+
         if ($setup) {   
             if (!$filesystem->exists(storage_path('app/public/img/brandimage.jpeg'))) {
                 $filesystem->ensureDirectoryExists(storage_path('app/public/img'));
@@ -221,14 +227,6 @@ class HubjutsuSetupCommand extends Command
 
             $filesystem->copy(__DIR__ . '/../../stubs/database/seeder/HubjutsuSeeder.php', database_path('seeders/HubjutsuSeeder.php'));
 
-            // Controllers...
-            $filesystem->ensureDirectoryExists(app_path('Http/Controllers'));
-            $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Http/Controllers', app_path('Http/Controllers'));
-
-            // Requests...
-            $filesystem->ensureDirectoryExists(app_path('Http/Requests'));
-            $filesystem->copyDirectory(__DIR__.'/../../stubs/app/Http/Requests', app_path('Http/Requests'));
-            
             
             // Middleware...
             $this->installMiddleware([
@@ -337,7 +335,8 @@ class HubjutsuSetupCommand extends Command
         } else {
             $this->runCommands([
                 'php artisan migrate --force',
-                'php artisan ide-helper:model -RW'
+                'php artisan ide-helper:model -RW',
+                'npm run build'
             ]);
         }
 

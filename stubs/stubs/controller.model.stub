@@ -34,7 +34,7 @@ class {{ class }} extends Controller
      */
     public function store({{ storeRequest }} $request)
     {
-        ${{ modelVariable }} = new ${{ model }};
+        ${{ modelVariable }} = new {{ model }}();
         
         /*
         ${{ modelVariable }}->fill($request->validate([
