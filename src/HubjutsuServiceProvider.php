@@ -42,15 +42,18 @@ class HubjutsuServiceProvider extends ServiceProvider
             $this->foreign('updated_by')->references('id')->on('users')->nullOnDelete()->cascadeOnUpdate();
         });
 
-        LogViewer::auth(function ($request) {
-            if (!Auth::check()) return false;
-            
-            $domain = preg_replace('/^.*@/', '', Auth::getUser()->email);
-            $rootDomain = preg_replace('/^.*\.([^\.]+\.[^\.]+)/', '\1', parse_url(config('app.url'), PHP_URL_HOST) );
-
-            return in_array($domain, ['alexander-herzog.at', 'ongema.com', $rootDomain] );
-            
-        });
+        if (class_exists('LogViewer')) {
+            LogViewer::auth(function ($request) {
+                if (!Auth::check()) return false;
+                
+                $domain = preg_replace('/^.*@/', '', Auth::getUser()->email);
+                $rootDomain = preg_replace('/^.*\.([^\.]+\.[^\.]+)/', '\1', parse_url(config('app.url'), PHP_URL_HOST) );
+    
+                return in_array($domain, ['alexander-herzog.at', 'ongema.com', $rootDomain] );
+                
+            });
+        }
+        
     }
     
     public function register()
