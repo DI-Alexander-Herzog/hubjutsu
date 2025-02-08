@@ -34,6 +34,9 @@ export default defineConfig(({ mode }) => {
                 '@hubjutsu': resolve(__dirname, 'vendor/aherzog/hubjutsu/resources/js'),
             },
         },
+        build: {
+          chunkSizeWarningLimit: 1024,
+        }
     };
 });
 

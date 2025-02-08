@@ -265,7 +265,7 @@ class HubjutsuSetupCommand extends Command
             
             // Tailwind / Vite...
 
-            $this->copyIfNotContains(__DIR__.'/../../stubs/resources/css/app.scss', resource_path('css/app.scss'), "@import 'vendor/aherzog/hubjutsu/resources/css/hubjutsu';");
+            $this->copyIfNotContains(__DIR__.'/../../stubs/resources/css/app.scss', resource_path('css/app.scss'), "@import '../../vendor/aherzog/hubjutsu/resources/css/hubjutsu.scss';");
             copy(__DIR__.'/../../stubs/postcss.config.js', base_path('postcss.config.js'));
             copy(__DIR__.'/../../stubs/tailwind.config.dist.js', base_path('tailwind.config.js'));
             copy(__DIR__.'/../../stubs/vite.config.dist.js', base_path('vite.config.js'));
