@@ -38,6 +38,7 @@ class HubjutsuApiTokenController
         }
     }
 
+
     public function delete(Request $requeset) {
         $requeset->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'Token deleted']);
@@ -46,6 +47,10 @@ class HubjutsuApiTokenController
     public function deleteAll(Request $requeset) {
         $requeset->user()->tokens()->delete();
         return response()->json(['message' => 'All tokens deleted']);
+    }
+
+    public function valid(Request $requeset) {
+        return response()->json(['valid' => true]);
     }
 
     public function list() {

@@ -51,7 +51,7 @@ class HubjutsuMakeCommand extends Command
 
         // migration
         if (!glob($root . '/database/migrations/hubjutsu_*_create_' . $pluralslug . '.php')) {
-            $nextNr = glob($root . '/database/migrations/hubjutsu_*.php');
+            $nextNr = count(glob($root . '/database/migrations/hubjutsu_*.php'));
             $content = str_replace('{{ table }}', $pluralslug, file_get_contents($root . '/stubs/stubs/migration.create.stub'));
             file_put_contents($root . '/database/migrations/hubjutsu_'. sprintf('%02d', ($nextNr+1) ).'_create_' . $pluralslug . '.php', $content);
         } else {

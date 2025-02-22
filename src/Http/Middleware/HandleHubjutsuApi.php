@@ -21,6 +21,7 @@ class HandleHubjutsuApi
     {
         try {
             $ret = $next($request);
+
             if ($ret instanceof RedirectResponse) {
                 if ($ret->exception && $ret->exception->getMessage() == "Unauthenticated.") {
                     return response()->json([

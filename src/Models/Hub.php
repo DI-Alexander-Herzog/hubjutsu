@@ -5,7 +5,7 @@ namespace AHerzog\Hubjutsu\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use AHerzog\Hubjutsu\Models\Base;
 
-class Brand extends Base
+class Hub extends Base
 {
     use HasFactory; //HasTimestamp
 
