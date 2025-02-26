@@ -42,7 +42,7 @@ class HubjutsuMakeCommand extends Command
     public function handle()
     {
         $name = $this->argument('name');
-        $slug = Str::slug($name);
+        $slug = Str::snake($name);
 
         $plural = Str::plural($name);
         $pluralslug = Str::plural($slug);

@@ -37,7 +37,17 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('hubs', function (Blueprint $table) {
-            $table->dropColumn('app_id');
+            $table->dropColumn('color_primary');
+            $table->dropColumn('color_primary_text');
+            $table->dropColumn('color_secondary');
+            $table->dropColumn('color_secondary_text');
+            $table->dropColumn('color_tertiary');
+            $table->dropColumn('color_tertiary_text');
+            $table->dropColumn('color_text');
+            $table->dropColumn('color_background');
+            $table->dropColumn('has_darkmode');
+            $table->dropColumn('enable_registration');
+            $table->dropColumn('enable_guestmode');
         });
     }
 };

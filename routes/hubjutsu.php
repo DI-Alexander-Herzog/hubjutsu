@@ -16,15 +16,63 @@ use App\Http\Controllers\MediaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\HubController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\RolePermissionController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserHubRoleController;
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/hubs', [HubController::class, 'index'])->name('hubs.index');
-    Route::get('/hubs/create', [HubController::class, 'create'])->name('hubs.create');
-    Route::post('/hubs', [HubController::class, 'store'])->name('hubs.store');
-    Route::get('/hubs/{hub}', [HubController::class, 'show'])->name('hubs.show');
-    Route::get('/hubs/{hub}/edit', [HubController::class, 'edit'])->name('hubs.edit');
-    Route::addRoute(['PUT', 'POST', 'PATCH'], '/hubs/{hub}', [HubController::class, 'update'])->name('hubs.update');
-    Route::delete('/hubs/{hub}', [HubController::class, 'destroy'])->name('hubs.destroy');
+
+Route::name('admin.')->prefix('admin')->group(function() {
+    Route::middleware(['auth', 'verified'])->group(function () {
+        Route::get('/userhubroles', [UserHubRoleController::class, 'index'])->name('userhubroles.index');
+        Route::get('/userhubroles/create', [UserHubRoleController::class, 'create'])->name('userhubroles.create');
+        Route::post('/userhubroles', [UserHubRoleController::class, 'store'])->name('userhubroles.store');
+        Route::get('/userhubroles/{userhubrole}', [UserHubRoleController::class, 'show'])->name('userhubroles.show');
+        Route::get('/userhubroles/{userhubrole}/edit', [UserHubRoleController::class, 'edit'])->name('userhubroles.edit');
+        Route::addRoute(['PUT', 'POST', 'PATCH'], '/userhubroles/{userhubrole}', [UserHubRoleController::class, 'update'])->name('userhubroles.update');
+        Route::delete('/userhubroles/{userhubrole}', [UserHubRoleController::class, 'destroy'])->name('userhubroles.destroy');
+    });
+
+    Route::middleware(['auth', 'verified'])->group(function () {
+        Route::get('/rolepermissions', [RolePermissionController::class, 'index'])->name('rolepermissions.index');
+        Route::get('/rolepermissions/create', [RolePermissionController::class, 'create'])->name('rolepermissions.create');
+        Route::post('/rolepermissions', [RolePermissionController::class, 'store'])->name('rolepermissions.store');
+        Route::get('/rolepermissions/{rolepermission}', [RolePermissionController::class, 'show'])->name('rolepermissions.show');
+        Route::get('/rolepermissions/{rolepermission}/edit', [RolePermissionController::class, 'edit'])->name('rolepermissions.edit');
+        Route::addRoute(['PUT', 'POST', 'PATCH'], '/rolepermissions/{rolepermission}', [RolePermissionController::class, 'update'])->name('rolepermissions.update');
+        Route::delete('/rolepermissions/{rolepermission}', [RolePermissionController::class, 'destroy'])->name('rolepermissions.destroy');
+    });
+
+    Route::middleware(['auth', 'verified'])->group(function () {
+        Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+        Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create');
+        Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
+        Route::get('/roles/{role}', [RoleController::class, 'show'])->name('roles.show');
+        Route::get('/roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit');
+        Route::addRoute(['PUT', 'POST', 'PATCH'], '/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+        Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+    });
+
+    Route::middleware(['auth', 'verified'])->group(function () {
+        Route::get('/hubs', [HubController::class, 'index'])->name('hubs.index');
+        Route::get('/hubs/create', [HubController::class, 'create'])->name('hubs.create');
+        Route::post('/hubs', [HubController::class, 'store'])->name('hubs.store');
+        Route::get('/hubs/{hub}', [HubController::class, 'show'])->name('hubs.show');
+        Route::get('/hubs/{hub}/edit', [HubController::class, 'edit'])->name('hubs.edit');
+        Route::addRoute(['PUT', 'POST', 'PATCH'], '/hubs/{hub}', [HubController::class, 'update'])->name('hubs.update');
+        Route::delete('/hubs/{hub}', [HubController::class, 'destroy'])->name('hubs.destroy');
+    });
+        
+
+    Route::middleware(['auth', 'verified'])->group(function () {
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::addRoute(['PUT', 'POST', 'PATCH'], '/users/{hub}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{hub}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
 });
 
 Route::get('/', [HomeController::class, 'welcome'])->name('welcome');

@@ -3,16 +3,29 @@
 namespace AHerzog\Hubjutsu\Models;
 
 use AHerzog\Hubjutsu\Models\Traits\MediaTrait;
+use App\Models\Base;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
-class User extends Authenticatable implements MustVerifyEmail
+use Illuminate\Auth\Authenticatable;
+use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\Access\Authorizable;
+
+class User extends Base implements 
+    MustVerifyEmail, 
+    AuthenticatableContract,
+    AuthorizableContract,
+    CanResetPasswordContract
 {
+    use Authenticatable, Authorizable, CanResetPassword;
     use HasFactory, Notifiable, HasApiTokens, MustVerifyEmailTrait, MediaTrait;
 
 

@@ -2,10 +2,12 @@
 
 namespace AHerzog\Hubjutsu\Database;
 
+use App\Models\Hub;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Str;
 
 class HubjutsuSeeder extends Seeder
 {
@@ -14,7 +16,29 @@ class HubjutsuSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->seedUsers();        
+        $this->seedHubs();
+        $this->seedUsers();  
+    }
+
+    public function seedHubs() {
+        Hub::create([
+            'name' => config('app.name'),
+            'slug' => Str::slug(config('app.name')),
+            'url' => url('/'),
+            'primary' => true,
+            'app_id' => implode('.', array_reverse(explode('.', parse_url(url('/'), PHP_URL_HOST)))) . '.app',
+            'color_primary' => '#F39200',
+            'color_primary_text' => '#FFFFFF',
+            'color_secondary' => '#F39200',
+            'color_secondary_text' => '#FFFFFF',
+            'color_tertiary' => '#F39200',
+            'color_tertiary_text' => '#FFFFFF',
+            'color_text' => '#000000',
+            'color_background' => '#FFFFFF',
+            'has_darkmode' => true,
+            'enable_registration' => true,
+            'enable_guestmode' => true
+        ]);
     }
 
     public function seedUsers(): void

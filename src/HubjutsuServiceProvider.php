@@ -2,6 +2,7 @@
 
 namespace AHerzog\Hubjutsu;
 
+use AHerzog\Hubjutsu\App\Auth\Permission;
 use AHerzog\Hubjutsu\App\Menu\MenuManager;
 use AHerzog\Hubjutsu\Console\HubjutsuGitCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuMakeCommand;
@@ -26,6 +27,15 @@ class HubjutsuServiceProvider extends ServiceProvider
         // $this->loadViewsFrom(__DIR__.'/../resources/views', 'hubjutsu-setup');
         //$this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         // $this->loadRoutesFrom(__DIR__.'/routes.php');
+
+        // base permissions
+        Permission::addGroup('admin', 'Die Installation bearbeiten');
+        Permission::addPermission('admin', 'admin', 'administration');
+
+        Permission::addGroup('user', 'Benutzerrechte im Hub');
+        Permission::addPermission('user', 'user.admin', 'Benutzer anzeigen');
+        
+
 
         if ($this->app->runningInConsole()) {
             $this->commands([

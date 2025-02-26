@@ -9,9 +9,34 @@ class Hub extends Base
 {
     use HasFactory; //HasTimestamp
 
-    protected $fillable = [];
+    protected $fillable = [
+        'created_at',
+        'updated_at',
+        'created_by',
+        'updated_by',
+        'name',
+        'slug',
+        'url',
+        'primary',
+        'app_id',
+        'color_primary',
+        'color_primary_text',
+        'color_secondary',
+        'color_secondary_text',
+        'color_tertiary',
+        'color_tertiary_text',
+        'color_text',
+        'color_background',
+        'has_darkmode',
+        'enable_registration',
+        'enable_guestmode',
+    ];
 
-    protected $casts = [];
+    protected $casts = [
+        'has_darkmode' => 'boolean',
+        'enable_registration' => 'boolean',
+        'enable_guestmode' => 'boolean',
+    ];
 
     protected $appends = [];
 
