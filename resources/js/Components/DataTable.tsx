@@ -171,7 +171,7 @@ const DataTable: React.FC<DataTableProps> = ({
 
   // 📌 Alle Zeilen auswählen
   const toggleSelectAll = () => {
-    setSelectedRecords(records.length === selectedRecords.leng th ? [] : [...records]);
+    setSelectedRecords(records.length === selectedRecords.length ? [] : [...records]);
   };
 
   return (
