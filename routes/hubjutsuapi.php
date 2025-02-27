@@ -19,7 +19,7 @@ Route::name('api.appData')->group(function() {
 });
 
 Route::middleware(['auth:sanctum'])->name('api.')->group(function() {
-    Route::name('model')->prefix('model')->group(function() {
+    Route::name('model.')->prefix('model')->group(function() {
         Route::get('/{model}/{id}', [HubjutsuApiController::class, 'get'])->name('get');
         Route::get('/{model}', [HubjutsuApiController::class, 'search'])->name('search');
         Route::match(['post', 'put'], '/{model}/{id}/restore', [HubjutsuApiController::class, 'restore'])->name('restore');

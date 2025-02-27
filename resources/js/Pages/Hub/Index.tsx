@@ -10,7 +10,7 @@ export default function HubIndex() {
             <Head title="Hub" />
 
             <div className="">
-                    <DataTable routes='hub' height="400px" columns={[
+                    <DataTable routemodel='hub' height="400px" columns={[
                         {
                             field: 'name',
                             label: 'Name',

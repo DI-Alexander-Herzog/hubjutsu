@@ -16,7 +16,7 @@ export default function RoleIndex() {
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <DataTable routes='user' height="400px" columns={[
+                    <DataTable routemodel='user' height="400px" columns={[
                         {
                             field: 'email',
                             label: 'Mail',

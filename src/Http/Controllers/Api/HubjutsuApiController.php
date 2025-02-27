@@ -72,9 +72,10 @@ class HubjutsuApiController
 
     public function update(Request $request, string $model, $id)
     {
-        return response()->json([
-            'message' => 'Hello World!',
-        ]);
+        $modelObj = $this->getModelIfAllowed($model, $id, 'update');
+        $modelObj->fill($request->only($modelObj->getFillable()));
+        $modelObj->save();
+        return response()->json($modelObj->toArray());
     }
 
 

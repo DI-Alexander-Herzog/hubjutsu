@@ -28,15 +28,8 @@ interface Row {
   [key: string]: any;
 }
 
-interface Routes {
-  search: string;
-  delete?: string;
-  update?: string;
-  create?: string;
-}
-
 interface DataTableProps {
-  routes: string | Routes;
+  routemodel?: string;
   columns: Column[];
   filters?: Record<string, any>;
   height?: string;
@@ -44,7 +37,7 @@ interface DataTableProps {
 }
 
 const DataTable: React.FC<DataTableProps> = ({
-  routes,
+  routemodel,
   columns,
   filters = {},
   datakey = "id",
@@ -52,17 +45,6 @@ const DataTable: React.FC<DataTableProps> = ({
 }) => {
 
   const tableRef = useRef<HTMLTableElement>(null);
-
-  // 📌 Routen für API-Anfragen
-  const apiRoutes: Routes =
-    typeof routes === "string"
-      ? {
-          search: `/api/model/${routes}`,
-          delete: `/api/model/${routes}/delete`,
-          update: `/api/model/${routes}/update`,
-          create: `/api/model/${routes}/create`,
-        }
-      : routes;
 
   // 📌 State-Variablen
   const [loading, setLoading] = useState(false);
@@ -90,7 +72,7 @@ const DataTable: React.FC<DataTableProps> = ({
     setEditingRecord({});
 
     setLoading(true);
-    axios.get(apiRoutes.search, { params: searchState }).then((response) => {
+    axios.get( route('api.model.search', { model: routemodel }), { params: searchState }).then((response) => {
       setLoading(false);
       setRecords(response.data.data);
       setTotalRecords(response.data.total);
@@ -139,15 +121,33 @@ const DataTable: React.FC<DataTableProps> = ({
   
   const handleKeyDown = (e: any, field: string, row:Row, row_ofs:number) => {
     if ( (e.ctrlKey || e.metaKey) && e.key === "s") {
-      e.preventDefault();
-      
-      setRecords((prev) => {
-        const newRecords = [...prev];
-        newRecords[row_ofs] = editingRecord[row[datakey]];
-        return newRecords;
-      });
+        e.preventDefault();
+        
+        setRecords((prev) => {
+            const newRecords = [...prev];
+            newRecords[row_ofs] = editingRecord[row[datakey]];
+            return newRecords;
+        });
 
-      setEditingRecord((prev) => { delete prev[row[datakey]]; return {...prev}; } );
+        console.log('SAVE', editingRecord[row[datakey]]);
+        setLoading(true);
+        
+        
+        axios.post( route('api.model.update', {model: routemodel, id: row[datakey]}), editingRecord[row[datakey]] ).then((response) => {
+            setLoading(false);
+            console.log(response);
+            return;
+            setRecords((prev) => {
+                const newRecords = [...prev];
+                newRecords[row_ofs] = response;
+                return newRecords;
+            });
+        }).catch((error) => {
+            setError(error);
+            setLoading(false);
+        });
+
+        setEditingRecord((prev) => { delete prev[row[datakey]]; return {...prev}; } );
     }
     if (e.key === "Escape") {
         setEditingRecord((prev) => { delete prev[row[datakey]]; return {...prev}; } );
