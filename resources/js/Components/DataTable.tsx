@@ -1,9 +1,13 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/20/solid'
+import { ChevronLeftIcon, ChevronRightIcon, ArrowPathIcon } from '@heroicons/react/20/solid'
 import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
-import { ChevronDownIcon } from "@heroicons/react/16/solid";
+import classNames from "classnames";
+import Checkbox from "./Checkbox";
 
+import { Transition } from '@headlessui/react'
+import { ExclamationCircleIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon } from '@heroicons/react/20/solid'
 
 // 📌 Spalten-Typen definieren
 interface Column {
@@ -44,6 +48,7 @@ const DataTable: React.FC<DataTableProps> = ({
   columns,
   filters = {},
   datakey = "id",
+  height
 }) => {
 
   const tableRef = useRef<HTMLTableElement>(null);
@@ -64,7 +69,8 @@ const DataTable: React.FC<DataTableProps> = ({
   const [totalRecords, setTotalRecords] = useState(0);
   const [records, setRecords] = useState<Row[]>([]);
   const [selectedRecords, setSelectedRecords] = useState<Row[]>([]);
-  const [editingRecord, setEditingRecord] = useState<{ [key: string]: boolean }>({});
+  const [error, setError] = useState<null|string|any>(null);
+  const [editingRecord, setEditingRecord] = useState<{ [key: string]: Row }>({});
   const [searchState, setSearchState] = useState({
     first: 0,
     rows: 10,
@@ -79,11 +85,19 @@ const DataTable: React.FC<DataTableProps> = ({
   }, [searchState]);
 
   const loadLazyData = () => {
+    setError(null);
+    setSelectedRecords([]);
+    setEditingRecord({});
+
     setLoading(true);
     axios.get(apiRoutes.search, { params: searchState }).then((response) => {
       setLoading(false);
       setRecords(response.data.data);
       setTotalRecords(response.data.total);
+
+    }).catch((error) => {
+        setLoading(false);
+        setError(error);
     });
   };
 
@@ -117,20 +131,36 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   // 📌 Inline-Editing aktivieren
-  const enableEditing = (id: string) => {
-    setEditingRecord((prev) => ({ ...prev, [id]: true }));
+  const enableEditing = (id: string, row:Row) => {
+    setEditingRecord((prev) => ({ ...prev, [id]: row }));
   };
 
   // 📌 Inline-Editing speichern / abbrechen
-  const handleKeyDown = (e: any, id: string, field: string) => {
+  
+  const handleKeyDown = (e: any, field: string, row:Row, row_ofs:number) => {
     if ( (e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault();
-      setEditingRecord((prev) => ({ ...prev, [id]: false }));
+      
+      setRecords((prev) => {
+        const newRecords = [...prev];
+        newRecords[row_ofs] = editingRecord[row[datakey]];
+        return newRecords;
+      });
+
+      setEditingRecord((prev) => { delete prev[row[datakey]]; return {...prev}; } );
     }
     if (e.key === "Escape") {
-      setEditingRecord((prev) => ({ ...prev, [id]: false }));
+        setEditingRecord((prev) => { delete prev[row[datakey]]; return {...prev}; } );
     }
   };
+
+  const setRowValue = (id: string, field: string, value: any) => {
+    console.log(id, field, value);
+    setEditingRecord((prev) => {
+      const row = prev[id];
+      return { ...prev, [id]: { ...row, [field]: value } };
+    });
+  }
 
   // 📌 Zeile auswählen
   const toggleRowSelection = (row: Row) => {
@@ -141,181 +171,241 @@ const DataTable: React.FC<DataTableProps> = ({
 
   // 📌 Alle Zeilen auswählen
   const toggleSelectAll = () => {
-    setSelectedRecords(records.length === selectedRecords.length ? [] : [...records]);
+    setSelectedRecords(records.length === selectedRecords.leng th ? [] : [...records]);
   };
 
   return (
-    <div className="w-full overflow-x-auto">
-      {/* 📌 Tabelle */}
-      <table ref={tableRef} className="table-fixed border-collapse w-full min-w-max">
-        {/* 📌 Tabellenkopf */}
-        <thead className="bg-gray-200">
-          <tr>
-            <th className="border px-4 py-2" style={ {width: "3em"} }>
-              <input type="checkbox" checked={records.length === selectedRecords.length} onChange={toggleSelectAll} />
-            </th>
-            {columns.map((col) => (
-              <th key={col.field} className="border px-4 py-2 cursor-pointer" onClick={() => handleSort(col.field)}>
-                {col.label} ⬍
-              </th>
-            ))}
-          </tr>
-        </thead>
-
-        {/* 📌 Tabellenkörper */}
-        <tbody>
-          {records.map((row) => (
-            <tr key={row[datakey]} className="hover:bg-gray-100">
-              <td className="border px-4 py-2">
-                <input type="checkbox" checked={selectedRecords.includes(row)} onChange={() => toggleRowSelection(row)} />
-              </td>
-              {columns.map((col) => (
-                <td
-                  key={col.field}
-                  className="border px-4 py-2"
-                  onClick={ handleDoubleClick( () => toggleRowSelection(row), () => enableEditing(row[datakey]) ) }
-                >
-                    {(editingRecord[row[datakey]] && col.editor) ? (
-                        <>
-                        { !col.editor && <></>}
-                        {col.editor === "number" && <input
-                            type="number"
-                            defaultValue={row[col.field]}
-                            onKeyDown={(e) => handleKeyDown(e, row[datakey], col.field)}
-                            className="w-full px-2 py-1 border rounded"
-                            autoFocus
-                            { ...col.editor_properties }
-                        />}
-
-                        {col.editor === "select" && <select
-                            defaultValue={row[col.field]}
-                            onKeyDown={(e) => handleKeyDown(e, row[datakey], col.field)}
-                            className="w-full px-2 py-1 border rounded"
-                            { ...col.editor_properties }
-                        >
-                            {col.editor_properties?.options?.map((option:any, index:number) => (
-                            <option key={index} value={option.value}>
-                                {option.label}
-                            </option>
-                            ))}
-                        </select>}
-
-                        {col.editor === "text" && <input
-                            type="text"
-                            defaultValue={row[col.field]}
-                            onKeyDown={(e) => handleKeyDown(e, row[datakey], col.field)}
-                            className="w-full px-2 py-1 border rounded"
-                            autoFocus
-                        />
-                        }   
-                        </>
-                    ) : (
-                        <>
-                            
-                            {col.formatter ? col.formatter(row) : row[col.field] }
-                        </>
-                    )}
-                    
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* 📌 Paginierung */}
-      
-      <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
-        <div className="flex flex-1 justify-between sm:hidden">
-            <button 
-                onClick={() => onPageChange(Math.max(searchState.page - 1, 1))} 
-                disabled={searchState.page === 1}
-                className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-            Previous
-            </button>
-            <button 
-                onClick={() => onPageChange(searchState.page + 1)} 
-                disabled={searchState.page >= Math.ceil(totalRecords / searchState.rows)}
-                className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-            Next
-            </button>
-        </div>
-        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-            <div>
-                <p className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{1 + searchState.first}</span> to <span className="font-medium"> { searchState.first + searchState.rows < totalRecords ? searchState.first + searchState.rows : totalRecords }</span> of{' '}
-                    <span className="font-medium">{ totalRecords }</span> results
-                    
-                </p>
-                
-            </div>
-            <div className="mt-2 grid grid-cols-1">
-                <select
-                    id="location"
-                    name="location"
-                    defaultValue={searchState.rows}
-                    onChange={(e) => setSearchState((prev) => ({ ...prev, rows: parseInt(e.target.value) }))}
-                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+    <div className="w-full overflow-x-auto">        
+        <div className="relative overflow-y-auto" {...(height ? { style: { height } } : {})}>
+        <Transition show={ error }>
+            <div className="absolute right-2 top-2 z-10 pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black/5 transition data-[closed]:data-[enter]:translate-y-2 data-[enter]:transform data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-100 data-[enter]:ease-out data-[leave]:ease-in data-[closed]:data-[enter]:sm:translate-x-2 data-[closed]:data-[enter]:sm:translate-y-0">
+              <div className="p-4">
+                <div className="flex items-start">
+                  <div className="shrink-0">
+                    <ExclamationCircleIcon aria-hidden="true" className="size-6 text-red-400" />
+                  </div>
+                  <div className="ml-3 w-0 flex-1 pt-0.5">
+                    <p className="text-sm font-medium text-gray-900">Fehler beim Laden!</p>
+                    <p className="mt-1 text-sm text-gray-500">{ (typeof error == "string") ? error : ( error ? error.message : '') }</p>
+                  </div>
+                  <div className="ml-4 flex shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null)
+                      }}
+                      className="inline-flex rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
-                        { [2, 10, 50, 100, 1000].map( (lines) => (
-                            <option selected={ lines == searchState.rows } > { lines }</option>
-                        ))}
-                </select>
+                      <span className="sr-only">Close</span>
+                      <XMarkIcon aria-hidden="true" className="size-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-            <nav aria-label="Pagination" className="isolate inline-flex -space-x-px rounded-md shadow-sm">
+          </Transition>
+        {/* 📌 Tabelle */}
+        <table ref={tableRef} className="table-fixed border-separate border-spacing-0 min-w-full w-min">
+            {/* 📌 Tabellenkopf */}
+            <thead className="bg-gray-200 sticky top-0">
+            <tr>
+                <th className="border px-2 py-1 sticky left-0" style={ {width: "2em"} }>
+                    <Checkbox checked={records.length === selectedRecords.length} onChange={toggleSelectAll} ></Checkbox>
+                </th>
+                {columns.map((col, idx, columns) => {
+                    const completeOfs = [ "2em" ];
+                    if (col.frozen) {
+                        for (let ofs = 0; ofs < idx; ofs++) {
+                            if (columns[ofs].frozen) {
+                                completeOfs.push(columns[ofs].width || "150px");
+                            }
+                        }
+                    }
+                    return <th key={col.field} 
+                                { ...{ style: { 
+                                    width: col.width || '150px',
+                                    left: 'calc(' + completeOfs.join(' + ') + ')'
+                                } } } 
+                                className={ classNames("border text-center px-4 py-2 cursor-pointer", { "sticky": col.frozen }) } onClick={() => handleSort(col.field)}
+                            >
+                            {col.label} ⬍
+                        </th>
+                })}
+            </tr>
+            </thead>
+
+            {/* 📌 Tabellenkörper */}
+            <tbody>
+            {records.map((row, row_ofs) => (
+                <tr key={row[datakey]} className="hover:bg-gray-100">
+                <td className="border text-center px-2 py-1 sticky left-0">
+                    <Checkbox checked={selectedRecords.includes(row)} onChange={() => toggleRowSelection(row)}></Checkbox>
+                </td>
+                {columns.map((col, idx, columns) => {
+                    const completeOfs = [ "2em" ];
+                    if (col.frozen) {
+                        for (let ofs = 0; ofs < idx; ofs++) {
+                            if (columns[ofs].frozen) {
+                                completeOfs.push(columns[ofs].width || "150px");
+                            }
+                        }
+                    }
+                    return <td
+                        key={col.field}
+                        { ...{ style: { 
+                            width: col.width || '150px',
+                            left: 'calc(' + completeOfs.join(' + ') + ')'
+                        } } } 
+                        className={ classNames("border", {"px-2 py-1": !(editingRecord[row[datakey]] && col.editor) , "sticky": col.frozen }) } 
+                        onClick={ handleDoubleClick( () => toggleRowSelection(row), () => enableEditing(row[datakey], row) ) }
+                        >
+                            {(editingRecord[row[datakey]] && col.editor) ? (
+                                <>
+                                { !col.editor && <></>}
+                                {col.editor === "number" && <input
+                                    type="number"
+                                    defaultValue={row[col.field]}
+                                    onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
+                                    className="w-full px-2 py-1 border rounded"
+                                    { ...col.editor_properties }
+                                    onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
+                                />}
+
+                                {col.editor === "select" && <select
+                                    defaultValue={row[col.field]}
+                                    onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
+                                    className="w-full px-2 py-1 border rounded"
+                                    { ...col.editor_properties }
+                                    onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
+                                >
+                                    {col.editor_properties?.options?.map((option:any, index:number) => (
+                                    <option key={index} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                    ))}
+                                </select>}
+
+                                {col.editor === "text" && <input
+                                    type="text"
+                                    defaultValue={row[col.field]}
+                                    onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
+                                    onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
+                                    className="w-full px-2 py-1 border rounded"
+                                    autoFocus
+                                />
+                                }   
+                                </>
+                            ) : (
+                                <div className="whitespace-nowrap overflow-hidden overflow-ellipsis w-full block">
+                                    {col.formatter ? col.formatter(row) : row[col.field] }
+                                </div>
+                            )}
+                            
+                        </td>
+                })}
+                </tr>
+            ))}
+            </tbody>
+        </table>
+        </div>
+        {/* 📌 Paginierung */}
+        
+        <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+            <div className="flex flex-1 justify-between sm:hidden">
                 <button 
                     onClick={() => onPageChange(Math.max(searchState.page - 1, 1))} 
-                    className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
-                    >
-                    <span className="sr-only">Previous</span>
-                    <ChevronLeftIcon aria-hidden="true" className="size-5" />
+                    disabled={searchState.page === 1}
+                    className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                Previous
                 </button>
-                {Array.from({ length: Math.min(7, Math.ceil(totalRecords / searchState.rows)) }, (_, i) => {
-                    const page = i + 1;
-                    const isCurrent = page === searchState.page;
-                    const isNearCurrent = Math.abs(page - searchState.page) <= 2;
-                    const isFirstOrLast = page === 1 || page === Math.ceil(totalRecords / searchState.rows);
-
-                    if (isCurrent || isNearCurrent || isFirstOrLast) {
-                        return (
-                            <button
-                                key={page}
-                                onClick={() => onPageChange(page)}
-                                className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                                    isCurrent ? "z-10 bg-indigo-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" :  "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
-                                } focus:z-20 focus:outline-offset-0`}
-                            >
-                                {page}
-                            </button>
-                        );
-                    }
-
-                    if (page === searchState.page - 3 || page === searchState.page + 3) {
-                        return (
-                            <span key={page} className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">
-                                ...
-                            </span>
-                        );
-                    }
-
-                    return null;
-                })}
-                <button
+                <button 
                     onClick={() => onPageChange(searchState.page + 1)} 
                     disabled={searchState.page >= Math.ceil(totalRecords / searchState.rows)}
-                    className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+                    className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                    <span className="sr-only">Next</span>
-                    <ChevronRightIcon aria-hidden="true" className="size-5" />
+                Next
                 </button>
-            </nav>
+            </div>
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div className="flex flex-row items-center gap-4">
+                    <p className="text-sm text-gray-700">
+                        Showing <span className="font-medium">{1 + searchState.first}</span> to <span className="font-medium"> { searchState.first + searchState.rows < totalRecords ? searchState.first + searchState.rows : totalRecords }</span> of{' '}
+                        <span className="font-medium">{ totalRecords }</span> results
+                        
+                    </p>
+
+                    <nav aria-label="Pagination" className="isolate inline-flex -space-x-px rounded-md shadow-sm">
+                        <button 
+                            onClick={() => onPageChange(Math.max(searchState.page - 1, 1))} 
+                            className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+                            >
+                            <span className="sr-only">Previous</span>
+                            <ChevronLeftIcon aria-hidden="true" className="size-5" />
+                        </button>
+                        {Array.from({ length: Math.min(7, Math.ceil(totalRecords / searchState.rows)) }, (_, i) => {
+                            const page = i + 1;
+                            const isCurrent = page === searchState.page;
+                            const isNearCurrent = Math.abs(page - searchState.page) <= 2;
+                            const isFirstOrLast = page === 1 || page === Math.ceil(totalRecords / searchState.rows);
+
+                            if (isCurrent || isNearCurrent || isFirstOrLast) {
+                                return (
+                                    <button
+                                        key={page}
+                                        onClick={() => onPageChange(page)}
+                                        className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                                            isCurrent ? "z-10 bg-primary text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" :  "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
+                                        } focus:z-20 focus:outline-offset-0`}
+                                    >
+                                        {page}
+                                    </button>
+                                );
+                            }
+
+                            if (page === searchState.page - 3 || page === searchState.page + 3) {
+                                return (
+                                    <span key={page} className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">
+                                        ...
+                                    </span>
+                                );
+                            }
+
+                            return null;
+                        })}
+                        <button
+                            onClick={() => onPageChange(searchState.page + 1)} 
+                            disabled={searchState.page >= Math.ceil(totalRecords / searchState.rows)}
+                            className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+                        >
+                            <span className="sr-only">Next</span>
+                            <ChevronRightIcon aria-hidden="true" className="size-5" />
+                        </button>
+                    </nav>
+
+                    <select
+                        defaultValue={searchState.rows}
+                        onChange={(e) => setSearchState((prev) => ({ ...prev, rows: parseInt(e.target.value) }))}
+                        className="appearance-none rounded-md bg-white px-auto py-1 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
+                        >
+                            { [2, 10, 50, 100, 1000].map( (lines) => (
+                                <option key={lines} > { lines }</option>
+                            ))}
+                    </select>
+
+                    <button
+                            onClick={() => ( loadLazyData() ) }
+                            className="relative inline-flex items-center rounded-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+                        >
+                            <span className="sr-only">Reload</span>
+                            <ArrowPathIcon aria-hidden="true" className={ classNames("size-5 ", {"animate-spin": loading} ) } />
+                    </button>
+                </div>
+                <div>
+                    
+                </div>
             </div>
         </div>
-        </div>
-
     </div>
   );
 };

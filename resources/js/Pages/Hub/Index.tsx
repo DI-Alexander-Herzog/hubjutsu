@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import DataTable from '@/Components/DataTable';
+import { Head, router } from '@inertiajs/react';
 
 export default function HubIndex() {
     return (
@@ -8,12 +9,35 @@ export default function HubIndex() {
         >
             <Head title="Hub" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900 dark:text-gray-100">IRGENDWELCHE SETTINGS!</div>
-                    </div>
-                </div>
+            <div className="">
+                    <DataTable routes='hub' height="400px" columns={[
+                        {
+                            field: 'name',
+                            label: 'Name',
+                            sortable: true,
+                            filter: true,
+                            frozen: true,
+                            width: '500px',
+                            formatter: (row:any) => <a className="text-primary" href={route('admin.hubs.edit', row )}>{row.name}</a>
+                        },
+                        {
+                            field: 'url',
+                            label: 'URL',
+                            sortable: true,
+                            filter: true,
+                            editor: 'text',
+                            width: "300px"
+                        },
+                        {
+                            field: 'primary',
+                            label: 'Primary',
+                            sortable: true,
+                            filter: true,
+                            editor: 'text',
+                            width: "300px"
+                        }
+                    ]} >
+                    </DataTable>
             </div>
         </AuthenticatedLayout>
     );

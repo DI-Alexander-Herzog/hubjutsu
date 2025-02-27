@@ -16,26 +16,26 @@ export default function RoleIndex() {
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <DataTable routes='user' columns={[
-                            {
-                                field: 'email',
-                                label: 'Mail',
-                                sortable: true,
-                                filter: true,
-                                frozen: true,
-                                formatter: (row:any) => <a className="text-primary" href={`mailto:${row.email}`}>{row.email}</a>
-                            },
-                            {
-                                field: 'name',
-                                label: 'name',
-                                sortable: true,
-                                filter: true,
-                                editor: 'text'        
-                            },
-                        ]} >
-                        </DataTable>
-                    </div>
+                    <DataTable routes='user' height="400px" columns={[
+                        {
+                            field: 'email',
+                            label: 'Mail',
+                            sortable: true,
+                            filter: true,
+                            frozen: true,
+                            width: '500px',
+                            formatter: (row:any) => <a className="text-primary" href={`mailto:${row.email}`}>{row.email}</a>
+                        },
+                        {
+                            field: 'name',
+                            label: 'name',
+                            sortable: true,
+                            filter: true,
+                            editor: 'text',
+                            width: "300px"
+                        }
+                    ]} >
+                    </DataTable>
                 </div>
             </div>
         </AuthenticatedLayout>
