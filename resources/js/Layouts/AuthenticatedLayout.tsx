@@ -4,7 +4,7 @@ import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import classNames from 'classnames';
-import { Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import {
     Dialog,
@@ -33,7 +33,7 @@ import ThemeMode from '../../../stubs/resources/js/Components/ThemeMode';
 import InputText from '@hubjutsu/Components/InputText';
 import Avatar from '@hubjutsu/Components/Avatar';
 
-export default function Authenticated({ header, children }: PropsWithChildren<{ header?: ReactNode }>) {
+export default function Authenticated({ title, children }: PropsWithChildren<{ title?: string }>) {
 
   const page = usePage<PageProps>();
 
@@ -230,8 +230,10 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
             </div>
           </div>
 
-          <main className="py-10">
-            <main className="px-4 sm:px-6 lg:px-8">{children}</main>
+          <Head title={title} />
+          <main className="">
+          
+            {children}
           </main>
         </div>
     </>
