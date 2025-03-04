@@ -50,14 +50,35 @@ class HubjutsuApiController
         $page =  floor($offset / $paginatePerPage) + 1;
 
         $queryBuilder = $modelObj->newModelQuery();
+
+        $request->get('multiSortMeta', [])->forEach(function($sort) use ($queryBuilder) {
+            $queryBuilder->orderBy($sort['field'], $sort['order']);
+        });
         
-        return response()->json($queryBuilder->paginate($paginatePerPage, ['*'], 'page', $page));
+        $request->get('filters', [])->forEach(function($filter) use ($queryBuilder) {
+            $queryBuilder->where($filter['field'], $filter['matchMode'], $filter['value']);
+        });
+
+        $request->get('with', [])->forEach(function($with) use ($queryBuilder) {
+            $queryBuilder->with($with);
+        });
+        
+        $result = $queryBuilder->paginate($paginatePerPage, ['*'], 'page', $page);
+        foreach($result->items() as $item) {
+            if ($item instanceof Base) {
+                $item->prepareForApi($request);
+            }
+        }
+
+        return response()->json($result);
     }
 
     public function get(Request $request, string $model, $id)
     {
         $modelObj = $this->getModelIfAllowed($model, null, 'view');
-        
+        if ($modelObj instanceof Base) {        
+            $modelObj->prepareForApi($request);
+        }
         return response()->json([
             'message' => 'Hello World!',
         ]);
@@ -75,7 +96,7 @@ class HubjutsuApiController
         $modelObj = $this->getModelIfAllowed($model, $id, 'update');
         $modelObj->fill($request->only($modelObj->getFillable()));
         $modelObj->save();
-        return response()->json($modelObj->toArray());
+        return response()->json($modelObj->prepareForApi($request)->toArray());
     }
 
 
