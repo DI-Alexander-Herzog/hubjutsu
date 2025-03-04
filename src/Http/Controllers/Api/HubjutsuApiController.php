@@ -51,17 +51,17 @@ class HubjutsuApiController
 
         $queryBuilder = $modelObj->newModelQuery();
 
-        $request->get('multiSortMeta', [])->forEach(function($sort) use ($queryBuilder) {
-            $queryBuilder->orderBy($sort['field'], $sort['order']);
-        });
+        foreach($request->get('multiSortMeta', []) as $field => $order){
+            $queryBuilder->orderBy($field, $order > 0 ? 'asc' : 'desc');
+        };
         
-        $request->get('filters', [])->forEach(function($filter) use ($queryBuilder) {
+        foreach($request->get('filters', []) as $filter) {
             $queryBuilder->where($filter['field'], $filter['matchMode'], $filter['value']);
-        });
+        };
 
-        $request->get('with', [])->forEach(function($with) use ($queryBuilder) {
+        foreach($request->get('with', []) as $with) {
             $queryBuilder->with($with);
-        });
+        };
         
         $result = $queryBuilder->paginate($paginatePerPage, ['*'], 'page', $page);
         foreach($result->items() as $item) {
