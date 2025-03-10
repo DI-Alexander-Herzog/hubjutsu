@@ -4,6 +4,7 @@ namespace AHerzog\Hubjutsu;
 
 use AHerzog\Hubjutsu\App\Auth\Permission;
 use AHerzog\Hubjutsu\App\Menu\MenuManager;
+use AHerzog\Hubjutsu\Console\HubjutsuGenerateTypesCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuGitCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuMakeCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuSetupCommand;
@@ -40,7 +41,9 @@ class HubjutsuServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 HubjutsuSetupCommand::class,
-                HubjutsuMakeCommand::class
+                HubjutsuMakeCommand::class,
+                HubjutsuGenerateTypesCommand::class,
+                
             ]);
         }
 
@@ -84,7 +87,8 @@ class HubjutsuServiceProvider extends ServiceProvider
     {
         return [
             MenuManager::class,
-            HubjutsuSetupCommand::class
+            HubjutsuSetupCommand::class,
+            HubjutsuGenerateTypesCommand::class
         ];
     }
 }
