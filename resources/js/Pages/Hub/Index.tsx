@@ -1,13 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DataTable from '@/Components/DataTable';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 
 export default function HubIndex() {
     return (
         <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Hub</h2>}
+            title="Hubs"
         >
-            <Head title="Hub" />
 
             <div className="">
                     <DataTable routemodel='hub' height="400px" columns={[
@@ -18,7 +17,7 @@ export default function HubIndex() {
                             filter: true,
                             frozen: true,
                             width: '500px',
-                            formatter: (row:any) => <a className="text-primary" href={route('admin.hubs.edit', row )}>{row.name}</a>
+                            formatter: (row:any) => <Link href={route('admin.hubs.edit', row )}>{row.name}</Link>
                         },
                         {
                             field: 'url',

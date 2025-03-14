@@ -189,7 +189,7 @@ class HubjutsuSetupCommand extends Command
 
             $this->runCommands([
                 'npm install '.
-                '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss react react-dom '.
+                '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss@3 react react-dom '.
                 '@types/node @types/react @types/react-dom @types/ziggy-js typescript laravel-react-i18n primereact tailwind-merge ' . 
                 '@heroicons/react classnames'
             ]);

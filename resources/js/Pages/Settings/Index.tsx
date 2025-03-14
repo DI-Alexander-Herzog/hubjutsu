@@ -13,9 +13,8 @@ const projects = [
 export default function Settings() {
     return (
         <AuthenticatedLayout
-            header="Dashboard"
+            title="Settings"
         >
-            <Head title="Settings" />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">

@@ -24,7 +24,7 @@ class HubjutsuMakeCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'hubjutsu:make {name} {--skip-controller}  {--skip-model} {--skip-migration} {--skip-seeder} {--skip-policy} {--skip-middleware} {--skip-page} {--skip-route} {--update} {--skip-view}';
+    protected $signature = 'hubjutsu:make {name} ';
 
     /**
      * The console command description.

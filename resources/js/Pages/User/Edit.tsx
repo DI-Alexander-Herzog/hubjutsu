@@ -4,7 +4,7 @@ import { Head } from '@inertiajs/react';
 export default function RoleEdit() {
     return (
         <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Role</h2>}
+            title="Role"
         >
             <Head title="Role" />
 

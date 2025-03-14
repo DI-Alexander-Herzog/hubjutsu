@@ -7,6 +7,7 @@ use AHerzog\Hubjutsu\App\Menu\MenuManager;
 use AHerzog\Hubjutsu\Console\HubjutsuGenerateTypesCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuGitCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuMakeCommand;
+use AHerzog\Hubjutsu\Console\HubjutsuMakeComponentCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuSetupCommand;
 use AHerzog\Hubjutsu\Events\BuildMenuEvent;
 use Auth;
@@ -43,7 +44,7 @@ class HubjutsuServiceProvider extends ServiceProvider
                 HubjutsuSetupCommand::class,
                 HubjutsuMakeCommand::class,
                 HubjutsuGenerateTypesCommand::class,
-                
+                HubjutsuMakeComponentCommand::class
             ]);
         }
 
@@ -88,7 +89,8 @@ class HubjutsuServiceProvider extends ServiceProvider
         return [
             MenuManager::class,
             HubjutsuSetupCommand::class,
-            HubjutsuGenerateTypesCommand::class
+            HubjutsuGenerateTypesCommand::class,
+            HubjutsuMakeComponentCommand::class
         ];
     }
 }

@@ -10,10 +10,8 @@ const textEditor = (options:any) => {
 export default function RoleIndex() {
     return (
         <AuthenticatedLayout
-            header={"User"}
+            title={"User"}
         >
-            <Head title="User" />
-
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <DataTable routemodel='user' height="400px" columns={[

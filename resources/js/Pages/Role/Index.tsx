@@ -1,13 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DataTable from '@hubjutsu/Components/DataTable';
-import { Head } from '@inertiajs/react';
+import {Link } from '@inertiajs/react';
 
 export default function RoleIndex() {
     return (
         <AuthenticatedLayout
-            header={"Role"}
+          title="Roles"
         >
-            <Head title="Role" />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -16,8 +15,11 @@ export default function RoleIndex() {
                             field: 'name',
                             label: 'Name',
                             sortable: true,
-                            filter: true
-
+                            filter: true,
+                            formatter: (row:any) => {
+                                return <Link href={route('roles.show', row)}>{row.name}</Link>;
+                            },
+                        
                         }
                     ]} >
                     </DataTable>
