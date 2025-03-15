@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, JSX } from "react";
 import axios from "axios";
 import { ChevronLeftIcon, ChevronRightIcon, ArrowPathIcon } from '@heroicons/react/20/solid'
 import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
