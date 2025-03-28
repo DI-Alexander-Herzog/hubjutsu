@@ -69,7 +69,7 @@ class User extends Base implements
     }
 
 
-        /** 
+    /** 
      * @return Media
      */
     public function avatar(): MorphOne

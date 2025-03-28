@@ -5,6 +5,7 @@ namespace AHerzog\Hubjutsu\Models;
 
 use AHerzog\Hubjutsu\Models\Traits\UserTrait;
 use App\Models\Base;
+use File;
 use finfo;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Http\UploadedFile;
@@ -119,6 +120,36 @@ class Media extends Base {
             $this->mimetype = finfo_buffer(new finfo(FILEINFO_MIME_TYPE), $content);
         }
         Storage::disk($this->storage)->put($this->filename, $content);
+    }
+
+    static function fromPath($path, $type='media', $storage="public", $private=true) {
+        if (!file_exists($path)) {
+            throw new \InvalidArgumentException("File $path does not exist");
+        }
+
+        $filenamePrefix = "";
+        $disks = config("filesystems.disks");
+        if (!isset($disks[$storage])) {
+            $filenamePrefix = '/' . $storage;
+            $storage = 'public';
+        }
+        
+        $ext = pathinfo($path, PATHINFO_EXTENSION);
+        $title = basename($path, '.' . $ext);
+
+        $media = new \App\Models\Media([
+            'name' => $title,
+            'description' => $title,
+            'tags' => [$type],
+            'storage' => $storage,
+            'filename' => $filenamePrefix . '/' . Str::slug($type) . '/' . date('Y/m') . '/' . $title. '.' . $ext,
+            'private' => $private,
+        ]);
+        $media->save();
+        $media->setContent(file_get_contents($path));
+        $media->save();
+
+        return $media;
     }
 
 }
