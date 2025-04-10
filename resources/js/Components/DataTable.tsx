@@ -72,7 +72,7 @@ const DataTable: React.FC<DataTableProps> = ({
     setEditingRecord({});
 
     setLoading(true);
-    axios.get( route('api.model.search', { model: routemodel }), { params: searchState }).then((response) => {
+    axios.get( route('api.model.search', { model: routemodel }), { params: searchState } ).then((response) => {
       setLoading(false);
       setRecords(response.data.data);
       setTotalRecords(response.data.total);
