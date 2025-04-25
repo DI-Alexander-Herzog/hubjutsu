@@ -34,6 +34,7 @@ interface DataTableProps {
   filters?: Record<string, any>;
   height?: string;
   datakey?: string;
+  newRecord?: false | Record<string, any> | string | (() => void) | null; // Neuer Parameter
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -41,7 +42,8 @@ const DataTable: React.FC<DataTableProps> = ({
   columns,
   filters = {},
   datakey = "id",
-  height
+  height,
+  newRecord = null, // Standardwert
 }) => {
 
   const tableRef = useRef<HTMLTableElement>(null);
@@ -174,9 +176,30 @@ const DataTable: React.FC<DataTableProps> = ({
     setSelectedRecords(records.length === selectedRecords.length ? [] : [...records]);
   };
 
+  // 📌 Neue Zeile hinzufügen oder Aktion ausführen
+  const handleNewRecord = () => {
+    if (newRecord === false) return; // Keine Aktion, wenn `newRecord` false ist
+
+    if (typeof newRecord === "string") {
+      // Route öffnen
+      window.location.href = newRecord;
+    } else if (typeof newRecord === "function") {
+      // Callback ausführen
+      newRecord();
+    } else {
+      // Neue Zeile erstellen
+      const newRow = newRecord || {}; // Leere Zeile oder Initialwerte
+      setRecords((prev) => [newRow, ...prev]); // Neue Zeile oben hinzufügen
+      setEditingRecord((prev) => ({
+        ...prev,
+        [newRow[datakey] || "new"]: newRow,
+      })); // Direkt in den Bearbeitungsmodus wechseln
+    }
+  };
+
   return (
-    <div className="w-full overflow-x-auto">        
-        <div className="relative overflow-y-auto" {...(height ? { style: { height } } : {})}>
+    <div className={ classNames("w-full flex flex-col overflow-x-auto", {'h-full': !height}) }>
+        <div className="relative flex-grow overflow-y-auto" {...(height ? { style: { height } } : {})}>
         <Transition show={ error }>
             <div className="absolute right-2 top-2 z-10 pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black/5 transition data-[closed]:data-[enter]:translate-y-2 data-[enter]:transform data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-100 data-[enter]:ease-out data-[leave]:ease-in data-[closed]:data-[enter]:sm:translate-x-2 data-[closed]:data-[enter]:sm:translate-y-0">
               <div className="p-4">
@@ -400,6 +423,16 @@ const DataTable: React.FC<DataTableProps> = ({
                             <span className="sr-only">Reload</span>
                             <ArrowPathIcon aria-hidden="true" className={ classNames("size-5 ", {"animate-spin": loading} ) } />
                     </button>
+
+                    {/* "New"-Button */}
+                    {newRecord !== false && (
+                      <button
+                        onClick={handleNewRecord}
+                        className="relative inline-flex items-center rounded-md border border-gray-300 bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                      >
+                        New
+                      </button>
+                    )}
                 </div>
                 <div>
                     
