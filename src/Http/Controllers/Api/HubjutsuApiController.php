@@ -77,18 +77,17 @@ class HubjutsuApiController
     {
         $modelObj = $this->getModelIfAllowed($model, null, 'view');
         if ($modelObj instanceof Base) {        
-            $modelObj->prepareForApi($request);
+            return response()->json($modelObj->prepareForApi($request));
         }
-        return response()->json([
-            'message' => 'Hello World!',
-        ]);
+        return response()->json($modelObj->toArray());
     }
 
     public function create(Request $request, string $model)
     {
-        return response()->json([
-            'message' => 'Hello World!',
-        ]);
+        $modelObj = $this->getModelIfAllowed($model, null, 'create');
+        $modelObj->fill($request->only($modelObj->getFillable()));
+        $modelObj->save();
+        return response()->json($modelObj->prepareForApi($request)->toArray());
     }
 
     public function update(Request $request, string $model, $id)
@@ -102,9 +101,10 @@ class HubjutsuApiController
 
     public function delete(Request $request, string $model, $id)
     {
-        return response()->json([
-            'message' => 'Hello World!',
-        ]);
+        $modelObj = $this->getModelIfAllowed($model, $id, 'delete');
+        $return = $modelObj->prepareForApi($request)->toArray();
+        $modelObj->delete();
+        return response()->json($return);
     }
 
     public function restore(Request $request, string $model, $id)

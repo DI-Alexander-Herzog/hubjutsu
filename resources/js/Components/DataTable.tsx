@@ -115,8 +115,16 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   // 📌 Inline-Editing aktivieren
-  const enableEditing = (id: string, row:Row) => {
-    setEditingRecord((prev) => ({ ...prev, [id]: row }));
+  const enableEditing = (row:Row) => {
+    toggleRowSelection(row, true);
+    setEditingRecord((prev) => ({ ...prev, [row[datakey]]: row }));
+  };
+
+  const disableEditing = (id: string) => {
+    setEditingRecord((prev) => {
+      delete prev[id]; 
+      return {...prev};
+    });
   };
 
   // 📌 Inline-Editing speichern / abbrechen
@@ -134,30 +142,32 @@ const DataTable: React.FC<DataTableProps> = ({
         console.log('SAVE', editingRecord[row[datakey]]);
         setLoading(true);
         
-        
-        axios.post( route('api.model.update', {model: routemodel, id: row[datakey]}), editingRecord[row[datakey]] ).then((response) => {
+        const updateOrCreateRoute = row[datakey] ? route('api.model.update', {model: routemodel, id: row[datakey]}) : route('api.model.create', {model: routemodel});
+        console.log('ROUTE', row[datakey], updateOrCreateRoute);
+
+        axios.post( updateOrCreateRoute , editingRecord[row[datakey]] ).then((response) => {
             setLoading(false);
-            console.log(response);
-            return;
+            console.log('RESPONSE', response);
+
+            disableEditing(row[datakey]); 
+
             setRecords((prev) => {
                 const newRecords = [...prev];
-                newRecords[row_ofs] = response;
+                newRecords[row_ofs] = response.data;
                 return newRecords;
             });
+
         }).catch((error) => {
             setError(error);
             setLoading(false);
         });
-
-        setEditingRecord((prev) => { delete prev[row[datakey]]; return {...prev}; } );
     }
     if (e.key === "Escape") {
-        setEditingRecord((prev) => { delete prev[row[datakey]]; return {...prev}; } );
+      disableEditing(row[datakey]);
     }
   };
 
   const setRowValue = (id: string, field: string, value: any) => {
-    console.log(id, field, value);
     setEditingRecord((prev) => {
       const row = prev[id];
       return { ...prev, [id]: { ...row, [field]: value } };
@@ -165,10 +175,21 @@ const DataTable: React.FC<DataTableProps> = ({
   }
 
   // 📌 Zeile auswählen
-  const toggleRowSelection = (row: Row) => {
-    setSelectedRecords((prev) =>
-      prev.includes(row) ? prev.filter((r) => r !== row) : [...prev, row]
-    );
+  const toggleRowSelection = (row: Row, state?:boolean) => {
+    if (editingRecord[row[datakey]]) {
+      state = true;
+    }
+
+    if (state === undefined) {
+      setSelectedRecords((prev) =>
+        prev.includes(row) ? prev.filter((r) => r !== row) : [...prev, row]
+      );  
+    } else if (state) {
+      setSelectedRecords((prev) => [...prev, row]);
+    } else {
+      setSelectedRecords((prev) => prev.filter((r) => r !== row));  
+    }
+    
   };
 
   // 📌 Alle Zeilen auswählen
@@ -188,14 +209,15 @@ const DataTable: React.FC<DataTableProps> = ({
       newRecord();
     } else {
       // Neue Zeile erstellen
-      const newRow = newRecord || {}; // Leere Zeile oder Initialwerte
+      const newRow = newRecord || { [datakey]: 0 };
       setRecords((prev) => [newRow, ...prev]); // Neue Zeile oben hinzufügen
       setEditingRecord((prev) => ({
         ...prev,
-        [newRow[datakey] || "new"]: newRow,
+        [newRow[datakey] ]: newRow,
       })); // Direkt in den Bearbeitungsmodus wechseln
     }
   };
+
 
   return (
     <div className={ classNames("w-full flex flex-col overflow-x-auto", {'h-full': !height}) }>
@@ -259,75 +281,83 @@ const DataTable: React.FC<DataTableProps> = ({
 
             {/* 📌 Tabellenkörper */}
             <tbody>
-            {records.map((row, row_ofs) => (
-                <tr key={row[datakey]} className="hover:bg-gray-100">
-                <td className="border text-center px-2 py-1 sticky left-0">
-                    <Checkbox checked={selectedRecords.includes(row)} onChange={() => toggleRowSelection(row)}></Checkbox>
-                </td>
-                {columns.map((col, idx, columns) => {
-                    const completeOfs = [ "2em" ];
-                    if (col.frozen) {
-                        for (let ofs = 0; ofs < idx; ofs++) {
-                            if (columns[ofs].frozen) {
-                                completeOfs.push(columns[ofs].width || "150px");
-                            }
-                        }
-                    }
-                    return <td
-                        key={col.field}
-                        { ...{ style: { 
-                            width: col.width || '150px',
-                            left: 'calc(' + completeOfs.join(' + ') + ')'
-                        } } } 
-                        className={ classNames("border", {"px-2 py-1": !(editingRecord[row[datakey]] && col.editor) , "sticky": col.frozen }) } 
-                        onClick={ handleDoubleClick( () => toggleRowSelection(row), () => enableEditing(row[datakey], row) ) }
-                        >
-                            {(editingRecord[row[datakey]] && col.editor) ? (
-                                <>
-                                { !col.editor && <></>}
-                                {col.editor === "number" && <input
-                                    type="number"
-                                    defaultValue={row[col.field]}
-                                    onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
-                                    className="w-full px-2 py-1 border rounded"
-                                    { ...col.editor_properties }
-                                    onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
-                                />}
+            {records.map((row, row_ofs) =>  {
+                let firstEditor = true;
+                return (
+                  <tr key={row[datakey]} className="hover:bg-gray-100">
+                  <td className="border text-center px-2 py-1 sticky left-0">
+                      <Checkbox checked={selectedRecords.includes(row)} onChange={() => toggleRowSelection(row)}></Checkbox>
+                  </td>
+                  {columns.map((col, idx, columns) => {
+                      const completeOfs = [ "2em" ];
+                      if (col.frozen) {
+                          for (let ofs = 0; ofs < idx; ofs++) {
+                              if (columns[ofs].frozen) {
+                                  completeOfs.push(columns[ofs].width || "150px");
+                              }
+                          }
+                      }
+                      if (col.editor && firstEditor) {
+                          col.editor_properties = col.editor_properties || {};
+                          col.editor_properties.autoFocus = true;
+                          firstEditor = false;
+                      } 
+                      return <td
+                          key={col.field}
+                          { ...{ style: { 
+                              width: col.width || '150px',
+                              left: 'calc(' + completeOfs.join(' + ') + ')'
+                          } } } 
+                          className={ classNames("border", {"px-2 py-1": !(editingRecord[row[datakey]] && col.editor) , "sticky": col.frozen }) } 
+                          onClick={ handleDoubleClick( () => toggleRowSelection(row), () => enableEditing(row) ) }
+                          >
+                              {(editingRecord[row[datakey]] && col.editor) ? (
+                                  <>
+                                  {col.editor === "number" && <input
+                                      type="number"
+                                      defaultValue={row[col.field]}
+                                      onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
+                                      className="w-full px-2 py-1 border rounded"
+                                      { ...col.editor_properties }
+                                      onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
+                                  />}
 
-                                {col.editor === "select" && <select
-                                    defaultValue={row[col.field]}
-                                    onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
-                                    className="w-full px-2 py-1 border rounded"
-                                    { ...col.editor_properties }
-                                    onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
-                                >
-                                    {col.editor_properties?.options?.map((option:any, index:number) => (
-                                    <option key={index} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                    ))}
-                                </select>}
+                                  {col.editor === "select" && <select
+                                      defaultValue={row[col.field]}
+                                      onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
+                                      className="w-full px-2 py-1 border rounded"
+                                      { ...col.editor_properties }
+                                      onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
+                                  >
+                                      {col.editor_properties?.options?.map((option:any, index:number) => (
+                                      <option key={index} value={option.value}>
+                                          {option.label}
+                                      </option>
+                                      ))}
+                                  </select>}
 
-                                {col.editor === "text" && <input
-                                    type="text"
-                                    defaultValue={row[col.field]}
-                                    onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
-                                    onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
-                                    className="w-full px-2 py-1 border rounded"
-                                    autoFocus
-                                />
-                                }   
-                                </>
-                            ) : (
-                                <div className="whitespace-nowrap overflow-hidden overflow-ellipsis w-full block">
-                                    {col.formatter ? col.formatter(row) : row[col.field] }
-                                </div>
-                            )}
-                            
-                        </td>
-                })}
-                </tr>
-            ))}
+                                  {col.editor === "text" && <input
+                                      type="text"
+                                      defaultValue={row[col.field]}
+                                      onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
+                                      onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
+                                      className="w-full px-2 py-1 border rounded"
+                                      { ...col.editor_properties }
+                                  />
+                                  }   
+                                  </>
+                              ) : (
+                                  <div className="whitespace-nowrap overflow-hidden overflow-ellipsis w-full block">
+                                      {col.formatter ? col.formatter(row) : row[col.field] }
+                                  </div>
+                              )}
+                              
+                          </td>
+                  })}
+                  </tr>
+                );
+              }
+            )}
             </tbody>
         </table>
         </div>
