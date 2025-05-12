@@ -187,6 +187,7 @@ class HubjutsuSetupCommand extends Command
                 return 1;
             }
 
+            $this->components->info('Installing NPM - might take a while...');
             $this->runCommands([
                 'npm install '.
                 '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss@3 react react-dom '.
@@ -194,8 +195,10 @@ class HubjutsuSetupCommand extends Command
                 '@heroicons/react classnames'
             ]);
 
+            $this->components->info('Installing npm types - might take a while as well...');
             $this->runCommands(['npm install -D sass @types/qs']);
 
+            $this->components->info('Running artisan commands...');
             $this->runCommands(['php artisan lang:publish']);
             $this->runCommands(['php artisan install:api --without-migration-prompt']);
             $this->runCommands(['php artisan vendor:publish --tag="log-viewer-config"']);
@@ -327,7 +330,7 @@ class HubjutsuSetupCommand extends Command
                 $contents = file_put_contents(base_path($file), $contents);
             }
 
-            $this->components->info('Building node dependencies.');
+            $this->components->info('Building node...');
             $this->runCommands(['npm run build']);
             
             $this->runCommands(['php artisan migrate --force']);

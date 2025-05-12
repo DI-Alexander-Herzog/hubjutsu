@@ -21,9 +21,10 @@ class HubjutsuSeeder extends Seeder
     }
 
     public function seedHubs() {
-        Hub::create([
-            'name' => config('app.name'),
+        Hub::updateOrCreate([
             'slug' => Str::slug(config('app.name')),
+        ],[
+            'name' => config('app.name'),
             'url' => url('/'),
             'primary' => true,
             'app_id' => implode('.', array_reverse(explode('.', parse_url(url('/'), PHP_URL_HOST)))) . '.app',
