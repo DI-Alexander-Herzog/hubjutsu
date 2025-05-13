@@ -2,6 +2,7 @@
 
 namespace AHerzog\Hubjutsu\Http\Controllers\Api;
 
+use AHerzog\Hubjutsu\DTO\Colors;
 use App\Models\Hub;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Request;
@@ -10,7 +11,7 @@ use Auth;
 class HubjutsuApiAppDataController
 {
     public function getAppData(Request $request) {
-        $colors = Hub::colors();
+        $colors = Hub::appColors(Colors::green());
         return response()->json([
             'hasDarkMode' => config('hubjutsu.dark_mode'),
             'hasGuestMode' => config('hubjutsu.allow_guest_mode'),

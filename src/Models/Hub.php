@@ -2,6 +2,7 @@
 
 namespace AHerzog\Hubjutsu\Models;
 
+use AHerzog\Hubjutsu\DTO\Colors;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use AHerzog\Hubjutsu\Models\Base;
 
@@ -43,23 +44,16 @@ class Hub extends Base
     protected $with = [];
 
 
-    public static function colors(
-        string $primary = '#F39200',
-        string $onPrimary = '#FFFFFF',
-        string $secondary = '#F39200',
-        string $onSecondary = '#FFFFFF',
-        string $tertiary = '#F39200',
-        string $onTertiary = '#FFFFFF',
-        string $error = '#B3261E',
-        string $onError = '#FFFFFF'
-    ) {
-        
-        return self::getColors(compact('primary', 'onPrimary', 'secondary', 'onSecondary', 'tertiary', 'onTertiary', 'error', 'onError'));
+    public static function appColors(?Colors $colors=null) {
+        if (!$colors) {
+            $colors = new Colors();
+        }
+        return self::getColors($colors);
     }
 
 
 
-    protected static function getColors($baseColors) { 
+    protected static function getColors(Colors $baseColors) { 
         return (object) [
             'lightColors' => self::generateTheme($baseColors, 'light'),
             'darkColors' => self::generateTheme($baseColors, 'dark')
@@ -68,6 +62,9 @@ class Hub extends Base
 
     // Farbmanipulations-Funktionen
     protected static function lightenColor($hex, $percent) {
+        if ($percent < 0) {
+            return self::darkenColor($hex, -$percent);
+        }
         $hex = ltrim($hex, '#');
         if (strlen($hex) === 3)
             $hex = preg_replace('/(.)(.)(.)/', '$1$1$2$2$3$3', $hex);
@@ -83,6 +80,9 @@ class Hub extends Base
     }
 
     protected static function darkenColor($hex, $percent) {
+        if ($percent < 0) {
+            return self::lightenColor($hex, -$percent);
+        }
         $hex = ltrim($hex, '#');
         if (strlen($hex) === 3)
             $hex = preg_replace('/(.)(.)(.)/', '$1$1$2$2$3$3', $hex);
@@ -131,27 +131,27 @@ class Hub extends Base
     }
 
     // Theme-Generierung: Für Light-Theme bleiben die Basiswerte, für Dark-Theme tauschen wir Textfarben (primary, secondary, tertiary) aus.
-    protected static function generateTheme($baseColors, $theme = 'light') {
+    protected static function generateTheme(Colors $baseColors, $theme = 'light') {
         if ($theme === 'light') {
             // Verwende die Basiswerte direkt:
-            $p  = $baseColors['primary'];
-            $op = $baseColors['onPrimary'];
-            $s  = $baseColors['secondary'];
-            $os = $baseColors['onSecondary'];
-            $t  = $baseColors['tertiary'];
-            $ot = $baseColors['onTertiary'];
-            $e  = $baseColors['error'];
-            $oe = $baseColors['onError'];
+            $p  = $baseColors->primary;
+            $op = $baseColors->onPrimary;
+            $s  = $baseColors->secondary;
+            $os = $baseColors->onSecondary;
+            $t  = $baseColors->tertiary;
+            $ot = $baseColors->onTertiary;
+            $e  = $baseColors->error;
+            $oe = $baseColors->onError;
         } else { // dark theme: Swap!
-            $p  = $baseColors['onPrimary'];
-            $op = $baseColors['primary'];
-            $s  = $baseColors['onSecondary'];
-            $os = $baseColors['secondary'];
-            $t  = $baseColors['onTertiary'];
-            $ot = $baseColors['tertiary'];
+            $p  = $baseColors->onPrimary;
+            $op = $baseColors->primary;
+            $s  = $baseColors->onSecondary;
+            $os = $baseColors->secondary;
+            $t  = $baseColors->onTertiary;
+            $ot = $baseColors->tertiary;
             // Error-Farben bleiben hier unverändert – typischerweise nicht geswappt.
-            $e  = $baseColors['error'];
-            $oe = $baseColors['onError'];
+            $e  = $baseColors->error;
+            $oe = $baseColors->onError;
         }
         
         // Container: Ableitung aus der definierten Textfarbe.
@@ -165,6 +165,8 @@ class Hub extends Base
         $backdrop = ($theme === 'light') ? self::lightenColor($p, 0.8) : self::darkenColor($p, 0.8);
         $outline  = ($theme === 'light') ? self::lightenColor($p, 0.6) : self::darkenColor($p, 0.6);
         
+        $surfaceVariant = ($theme === 'light') ? self::lightenColor($p, 0.8) : self::darkenColor($p, 0.8);
+
         // Elevation
         $elevation = self::generateElevation($surface, $theme);
         
@@ -197,7 +199,28 @@ class Hub extends Base
             
             'outline'               => $outline,
             
-            'elevation'             => $elevation
+            'elevation'             => $elevation,
+
+
+            'surfaceVariant'        => $surfaceVariant,
+            'onSurfaceVariant'      => self::getContrastColor($surfaceVariant),
+
+            'background'            => $surface,
+            'onBackground'          => $surface,
+            
+            'surfaceDisabled'       => $surface,
+            'onSurfaceDisabled'     => $surface,
+
+            'outlineVariant'        => $surface,
+
+            'inversePrimary'        => $surface,
+
+            'inverseSurface'        => $surface,
+            'inverseOnSurface'      => $surface,
+            
+            'shadow'                => $surface,
+
+            'scrim'                 => $surface,
         ];
     }
 
