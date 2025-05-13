@@ -3,7 +3,7 @@
 namespace AHerzog\Hubjutsu\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use AHerzog\Hubjutsu\Models\Base;
+use App\Models\Base;
 
 class Role extends Base
 {

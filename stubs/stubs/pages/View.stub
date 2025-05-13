@@ -1,7 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
+import { Models } from '@/types/models';
+import {{ name }}Form from './Form';
 
-export default function {{ name }}View() {
+export default function {{ name }}View( { {{ modelVariable }} } : { {{ modelVariable }}: Models.{{ name }} }) {
     return (
         <AuthenticatedLayout
             title="{{ name }}"
@@ -9,7 +11,9 @@ export default function {{ name }}View() {
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900 dark:text-gray-100">IRGENDWELCHE SETTINGS!</div>
+                        <div className="p-6 text-gray-900 dark:text-gray-100">
+                            <{{ name }}Form {{ modelVariable }}={ {{ modelVariable }} } disabled={true}/>
+                        </div>
                     </div>
                 </div>
             </div>

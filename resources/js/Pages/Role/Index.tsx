@@ -17,7 +17,7 @@ export default function RoleIndex() {
                             sortable: true,
                             filter: true,
                             formatter: (row:any) => {
-                                return <Link href={route('roles.show', row)}>{row.name}</Link>;
+                                return <Link href={route('admin.roles.show', row)}>{row.name}</Link>;
                             },
                         
                         }

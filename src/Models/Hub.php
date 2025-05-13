@@ -4,7 +4,7 @@ namespace AHerzog\Hubjutsu\Models;
 
 use AHerzog\Hubjutsu\DTO\Colors;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use AHerzog\Hubjutsu\Models\Base;
+use App\Models\Base;
 
 class Hub extends Base
 {

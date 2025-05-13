@@ -53,7 +53,7 @@ class {{ class }} extends Controller
     public function show({{ model }} ${{ modelVariable }})
     {
         return Inertia::render('{{ model }}/View', [
-            '{{ model }}' => ${{ modelVariable }}
+            '{{ modelVariable }}' => ${{ modelVariable }}
         ]);
     }
 
@@ -63,7 +63,7 @@ class {{ class }} extends Controller
     public function edit({{ model }} ${{ modelVariable }})
     {
         return Inertia::render('{{ model }}/Edit', [
-            '{{ model }}' => ${{ modelVariable }}
+            '{{ modelVariable }}' => ${{ modelVariable }}
         ]);
     }
 

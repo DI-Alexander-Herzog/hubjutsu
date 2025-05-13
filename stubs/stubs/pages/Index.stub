@@ -14,7 +14,7 @@ export default function {{ name }}Index() {
                     filter: true,
                     frozen: true,
                     width: '300px',
-                    formatter: (row:any) => <Link href={route( '{{ pluralslug }}.show', row)}>{row.id}</Link>
+                    formatter: (row:any) => <Link href={route( '{{ modelVariablePlural }}.show', row)}>{row.id}</Link>
                 }
             ]} >
             </DataTable>

@@ -59,7 +59,7 @@ const DataTable: React.FC<DataTableProps> = ({
     first: 0,
     rows: 10,
     page: 1,
-    filters,
+    filters: Object.keys(filters).map((key) => ({ field:key, matchMode:'=', value: filters[key] })),
     multiSortMeta: { [datakey]: 1 },
   });
 
