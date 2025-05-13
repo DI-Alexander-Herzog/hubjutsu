@@ -156,7 +156,7 @@ export function hubjutsuLocale() {
             "rotateRight": "Nach rechts drehen",
             "rotateLeft": "Nach links drehen"
         }
-    });
+    } as any);
     locale('de');
 }
 
