@@ -106,6 +106,7 @@ class HubjutsuAppModelCommand extends Command
             8 => "    Route::delete('/".$pluralslug."/{".$slug."}', [".$name."Controller::class, 'destroy'])->name('".$pluralslug.".destroy');",
             9 => "});",
         ];
+        
         $routesFile = $app_root . '/routes/web.php';
         $routesFileContent = file_get_contents($routesFile);
         $useFound = false;
@@ -136,7 +137,7 @@ class HubjutsuAppModelCommand extends Command
         // page.tsx
         $pages = ['Index', 'Create', 'Edit', 'View', 'Form'];
         foreach($pages as $page) {
-            $pageTarget = $app_root . '/resources/js/pages/' . $name . '/'.$page.'.tsx';
+            $pageTarget = $app_root . '/resources/js/Pages/' . $name . '/'.$page.'.tsx';
             if (file_exists($pageTarget)) {
                 $this->error($page . ' page for ' . $name . ' already exists!');
             } else  {
