@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Link } from '@inertiajs/react';
+import DataTable from '@/Components/DataTable';
 
 export default function {{ name }}Index() {
     return (

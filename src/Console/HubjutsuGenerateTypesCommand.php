@@ -54,6 +54,18 @@ class HubjutsuGenerateTypesCommand extends Command
 
         fwrite($targetFile, "/** Generated ".date('Y-m-d H:i:s')." */\n\n");
 
+        $replaceTypes = [
+            'string' => 'string',
+            'text' => 'string',
+            'int' => 'number',
+            'float' => 'number',
+            'bool' => 'boolean',
+            'boolean' => 'boolean',
+            'datetime' => 'Date',
+            'array' => '{ [key: string | number]: any }|any[]',
+            'object' => '{ [key: string | number]: any }|any',
+            'mixed' => '{ [key: string | number]: any }|any'
+        ];
 
         fwrite($targetFile, "export namespace Models {\n");
         $files = glob(app_path('Models/*.php'));
@@ -65,9 +77,10 @@ class HubjutsuGenerateTypesCommand extends Command
             
             fwrite($targetFile, "   export type ".basename($file, '.php')." = {\n");
             foreach($properties['fields'] as $prop) {
-                fwrite($targetFile, "       ".$prop['name'].($prop['nullable'] ? '?' : '').": ".$prop['type'].";\n");
-
+                $type = $replaceTypes[$prop['type']] ?? $prop['type'];
+                fwrite($targetFile, "       ".$prop['name'].($prop['nullable'] ? '?' : '').": ".$type.";\n");
             }
+            fwrite($targetFile, "       [key: string]: any;\n");
             fwrite($targetFile, "   }\n");
         }
         fwrite($targetFile, "}\n");
@@ -111,7 +124,7 @@ class HubjutsuGenerateTypesCommand extends Command
                 '\Illuminate\Database\Eloquent\Model' => 'any',
                 '\Eloquent' => 'any',
                 '\Illuminate\Support\Carbon' => 'date',
-                'string' => 'text',
+                'string' => 'string',
                 'array<array-key, mixed>' => '{ [key: string | number]: any }|any[]'
 
             ];

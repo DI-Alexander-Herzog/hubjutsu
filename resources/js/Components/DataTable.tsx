@@ -34,6 +34,7 @@ interface DataTableProps {
   filters?: Record<string, any>;
   height?: string;
   datakey?: string;
+  with?: string[];
   newRecord?: false | Record<string, any> | string | (() => void) | null; // Neuer Parameter
 }
 
@@ -44,6 +45,7 @@ const DataTable: React.FC<DataTableProps> = ({
   datakey = "id",
   height,
   newRecord = null, // Standardwert
+  with: withRelations = [],
 }) => {
 
   const tableRef = useRef<HTMLTableElement>(null);
@@ -61,6 +63,7 @@ const DataTable: React.FC<DataTableProps> = ({
     page: 1,
     filters: Object.keys(filters).map((key) => ({ field:key, matchMode:'=', value: filters[key] })),
     multiSortMeta: { [datakey]: 1 },
+    with: withRelations,
   });
 
   // 📌 Daten laden
