@@ -6,7 +6,7 @@ export default function NavLink({ active = false, className = '', children, icon
     if (props.target == '_blank') {
        props.onClick = (event) => {
            event.preventDefault();
-           window.open(props.href, '_blank');
+           window.open(props.href as string, '_blank');
        };
     }
     return (
