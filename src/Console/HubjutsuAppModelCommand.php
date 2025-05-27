@@ -1,19 +1,9 @@
 <?php
 namespace AHerzog\Hubjutsu\Console;
 
-use Faker\Core\File;
-use FilesystemIterator;
 use Illuminate\Console\Command;
-use Illuminate\Filesystem\Filesystem;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\File as FacadesFile;
 use Illuminate\Support\Str;
-use PHPUnit\Framework\MockObject\Builder\Stub;
 use RuntimeException;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Finder\Finder;
-use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 
 class HubjutsuAppModelCommand extends Command
@@ -124,8 +114,15 @@ class HubjutsuAppModelCommand extends Command
                     foreach($rules as $rule) {
                         $contentLines[] = $rule;
                     }
+                    $rules = [];
                 }
                 $contentLines[] = $line;
+            }
+            if (!$useFound && $rules) {
+                array_splice($contentLines, 1, 0, 'use App\\Http\\Controllers\\'.$name.'Controller;');
+                foreach($rules as $rule) {
+                    $contentLines[] = $rule;
+                }
             }
             file_put_contents($routesFile, implode(PHP_EOL, $contentLines));
 
