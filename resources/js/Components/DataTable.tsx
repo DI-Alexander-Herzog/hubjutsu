@@ -35,6 +35,7 @@ interface DataTableProps {
   height?: string;
   datakey?: string;
   with?: string[];
+  perPage?: number; // Anzahl der Einträge pro Seite
   newRecord?: false | Record<string, any> | string | (() => void) | null; // Neuer Parameter
 }
 
@@ -44,6 +45,7 @@ const DataTable: React.FC<DataTableProps> = ({
   filters = {},
   datakey = "id",
   height,
+  perPage = 10, // Standardwert für Einträge pro Seite
   newRecord = null, // Standardwert
   with: withRelations = [],
 }) => {
@@ -59,7 +61,7 @@ const DataTable: React.FC<DataTableProps> = ({
   const [editingRecord, setEditingRecord] = useState<{ [key: string]: Row }>({});
   const [searchState, setSearchState] = useState({
     first: 0,
-    rows: 10,
+    rows: perPage,
     page: 1,
     filters: Object.keys(filters).map((key) => {
       const value = filters[key];;
@@ -76,6 +78,12 @@ const DataTable: React.FC<DataTableProps> = ({
     multiSortMeta: { [datakey]: 1 },
     with: withRelations,
   });
+
+  const perPageList = [2, 10, 50, 100, 1000];
+  if (perPageList.indexOf(perPage) === -1) {
+    perPageList.push(perPage);
+    perPageList.sort((a, b) => a - b);
+  }
 
   // 📌 Daten laden
   useEffect(() => {
@@ -155,9 +163,10 @@ const DataTable: React.FC<DataTableProps> = ({
 
         console.log('SAVE', editingRecord[row[datakey]]);
         setLoading(true);
-        
-        const updateOrCreateRoute = row[datakey] ? route('api.model.update', {model: routemodel, id: row[datakey]}) : route('api.model.create', {model: routemodel});
+
+        const updateOrCreateRoute = row[datakey] ? route('api.model.update', {model: routemodel, id: row[datakey], with: withRelations}) : route('api.model.create', {model: routemodel, with: withRelations});
         console.log('ROUTE', row[datakey], updateOrCreateRoute);
+
 
         axios.post( updateOrCreateRoute , editingRecord[row[datakey]] ).then((response) => {
             setLoading(false);
@@ -266,7 +275,7 @@ const DataTable: React.FC<DataTableProps> = ({
         {/* 📌 Tabelle */}
         <table ref={tableRef} className="table-fixed border-separate border-spacing-0 min-w-full w-min">
             {/* 📌 Tabellenkopf */}
-            <thead className="bg-gray-200 sticky top-0">
+            <thead className="bg-gray-200 sticky top-0 z-10">
             <tr>
                 <th className="border px-2 py-1 sticky left-0" style={ {width: "2em"} }>
                     <Checkbox checked={records.length === selectedRecords.length} onChange={toggleSelectAll} ></Checkbox>
@@ -482,7 +491,7 @@ const DataTable: React.FC<DataTableProps> = ({
                         onChange={(e) => setSearchState((prev) => ({ ...prev, rows: parseInt(e.target.value) }))}
                         className="appearance-none rounded-md bg-white px-auto py-1 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
                         >
-                            { [2, 10, 50, 100, 1000].map( (lines) => (
+                            { perPageList.map( (lines) => (
                                 <option key={lines} > { lines }</option>
                             ))}
                     </select>
