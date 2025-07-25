@@ -61,7 +61,18 @@ const DataTable: React.FC<DataTableProps> = ({
     first: 0,
     rows: 10,
     page: 1,
-    filters: Object.keys(filters).map((key) => ({ field:key, matchMode:'=', value: filters[key] })),
+    filters: Object.keys(filters).map((key) => {
+      const value = filters[key];;
+
+      if (Array.isArray(value) && value.length > 0) {
+        return { field: key, matchMode: 'IN', value: value };
+      }
+      //test if value is an object with matchmode and value props
+      if (typeof value === 'object' && value !== null && 'matchMode' in value && 'value' in value) {
+        return { field: key, matchMode: value.matchMode, value: value.value };
+      }
+      return { field: key, matchMode: '=', value: value };
+    }),
     multiSortMeta: { [datakey]: 1 },
     with: withRelations,
   });
@@ -399,36 +410,63 @@ const DataTable: React.FC<DataTableProps> = ({
                             <span className="sr-only">Previous</span>
                             <ChevronLeftIcon aria-hidden="true" className="size-5" />
                         </button>
-                        {Array.from({ length: Math.min(7, Math.ceil(totalRecords / searchState.rows)) }, (_, i) => {
-                            const page = i + 1;
-                            const isCurrent = page === searchState.page;
-                            const isNearCurrent = Math.abs(page - searchState.page) <= 2;
-                            const isFirstOrLast = page === 1 || page === Math.ceil(totalRecords / searchState.rows);
+                        {(() => {
+                          const totalPages = Math.ceil(totalRecords / searchState.rows);
+                          const maxVisiblePages = 7;
+                          const pages = [];
 
-                            if (isCurrent || isNearCurrent || isFirstOrLast) {
-                                return (
-                                    <button
-                                        key={page}
-                                        onClick={() => onPageChange(page)}
-                                        className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                                            isCurrent ? "z-10 bg-primary text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" :  "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
-                                        } focus:z-20 focus:outline-offset-0`}
-                                    >
-                                        {page}
-                                    </button>
-                                );
-                            }
+                          if (totalPages <= maxVisiblePages) {
+                              for (let i = 1; i <= totalPages; i++) {
+                                  pages.push(i);
+                              }
+                          } else {
+                              pages.push(1);
+                              if (searchState.page <= 4) {
+                                  for (let i = 2; i <= Math.min(5, totalPages); i++) {
+                                      pages.push(i);
+                                  }
+                                  pages.push('...');
+                                  pages.push(totalPages);
+                              } else if (searchState.page >= totalPages - 4) {
+                                  pages.push('...');
+                                  for (let i = totalPages - 4; i <= totalPages; i++) {
+                                      pages.push(i);
+                                  }
 
-                            if (page === searchState.page - 3 || page === searchState.page + 3) {
-                                return (
-                                    <span key={page} className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">
-                                        ...
-                                    </span>
-                                );
-                            }
+                              } else {
+                                pages.push('...');
+                                pages.push(searchState.page - 1);
+                                pages.push(searchState.page);
+                                pages.push(searchState.page + 1);
+                                pages.push('...');
+                                pages.push(totalPages);
+                              }
+                                  
+                          }
 
-                            return null;
-                        })}
+                          return pages.map((page, index) => {
+                              if (page === "...") {
+                                  return (
+                                      <span key={`ellipsis-${index}`} className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">
+                                          ...
+                                      </span>
+                                  );
+                              }
+
+                              const isCurrent = page === searchState.page;
+                              return (
+                                  <button
+                                      key={page}
+                                      onClick={() => typeof page === 'number' && onPageChange(page)}
+                                      className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                                          isCurrent ? "z-10 bg-primary text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
+                                      } focus:z-20 focus:outline-offset-0`}
+                                  >
+                                      {page}
+                                  </button>
+                              );
+                          });
+                        })()}
                         <button
                             onClick={() => onPageChange(searchState.page + 1)} 
                             disabled={searchState.page >= Math.ceil(totalRecords / searchState.rows)}

@@ -56,7 +56,13 @@ class HubjutsuApiController
         };
         
         foreach($request->get('filters', []) as $filter) {
-            $queryBuilder->where($filter['field'], $filter['matchMode'], $filter['value']);
+            if ($filter['matchMode'] == "NOT IN") {
+                $queryBuilder->whereNotIn($filter['field'], $filter['value']);
+            } elseif ($filter['matchMode'] == "IN") {
+                $queryBuilder->whereIn($filter['field'], $filter['value']);
+            } else {
+                $queryBuilder->where($filter['field'], $filter['matchMode'], $filter['value']);
+            }
         };
 
         foreach($request->get('with', []) as $with) {
