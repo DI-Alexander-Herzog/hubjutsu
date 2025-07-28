@@ -4,12 +4,7 @@ import '../css/app.scss';
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { PrimeReactProvider } from 'primereact/api';
 import { LaravelReactI18nProvider } from 'laravel-react-i18n';
-import Tailwind from 'primereact/passthrough/tailwind';
-import { twMerge } from 'tailwind-merge';
-import { hubjutsuLocale } from '@hubjutsu/bootstrap';
-
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -19,19 +14,16 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
 
-        hubjutsuLocale();
             
         root.render(
-            <PrimeReactProvider value={{ unstyled: true, pt: Tailwind,  ptOptions: { mergeSections: true, mergeProps: true, classNameMergeFunction: twMerge } }}>
-                <LaravelReactI18nProvider
-                    locale={'de'}
-                    fallbackLocale={'en'}
-                    files={import.meta.glob('/lang/*.json')}
-                >
-                
-                    <App {...props} />
-                </LaravelReactI18nProvider>
-            </PrimeReactProvider>
+            <LaravelReactI18nProvider
+                locale={'de'}
+                fallbackLocale={'en'}
+                files={import.meta.glob('/lang/*.json')}
+            >
+            
+                <App {...props} />
+            </LaravelReactI18nProvider>
         );
     },
     progress: {

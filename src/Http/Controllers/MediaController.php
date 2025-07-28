@@ -55,4 +55,67 @@ class MediaController extends Controller
         return $uploads;
     }
 
+
+    public function chunkedUpload(Request $request) {
+        $uuid = $request->input('upload_id'); // UUID pro Datei
+        $chunkIndex = $request->input('chunk_index');
+        $totalChunks = $request->input('total_chunks');
+        $originalName = $request->input('filename');
+        $diskKey = $request->input('disk', 'public');
+
+        $file = $request->file('chunk');
+        if (!$file instanceof UploadedFile) {
+            return response()->json(['error' => 'no chunk'], 400);
+        }
+
+        $tempDir = storage_path("app/uploads/tmp/{$uuid}");
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0777, true);
+        }
+
+        $chunkPath = "{$tempDir}/chunk_{$chunkIndex}";
+        $file->move($tempDir, basename($chunkPath));
+
+        // Prüfung auf vollständigkeit
+        $chunks = glob("{$tempDir}/chunk_*");
+        if (count($chunks) < $totalChunks) {
+            return response()->json(['status' => 'waiting']);
+        }
+
+        // Zusammensetzen
+        $filename = date('Y/m') . '/' . $uuid . '_' . basename($originalName);
+        $disk = config("filesystems.disks.{$diskKey}") ? $diskKey : 'public';
+        $targetPath = Storage::disk($disk)->path($filename);
+        $targetDir = dirname($targetPath);
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0777, true);
+        }
+
+        $output = fopen($targetPath, 'ab');
+        for ($i = 0; $i < $totalChunks; $i++) {
+            $chunk = "{$tempDir}/chunk_{$i}";
+            $in = fopen($chunk, 'rb');
+            stream_copy_to_stream($in, $output);
+            fclose($in);
+            unlink($chunk);
+        }
+        fclose($output);
+        rmdir($tempDir);
+
+        // Media anlegen
+        $media = new Media([
+            'name' => $originalName,
+            'description' => $originalName,
+            'tags' => 'chunked',
+            'storage' => $disk,
+            'filename' => '/' . $filename,
+            'private' => true,
+        ]);
+        $media->save();
+        $media->setContent(file_get_contents($targetPath));
+        $media->save();
+
+        return response()->json(['done' => true, 'media' => $media]);
+    }
+
 }

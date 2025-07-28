@@ -1,95 +1,111 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
-import { FileUpload, FileUploadErrorEvent, FileUploadProps } from 'primereact/fileupload';
-import { forwardRef, useEffect, useRef, InputHTMLAttributes, useState, RefObject, SyntheticEvent } from 'react';
-import { UseForm, Arr } from "@/types";
+import { forwardRef, useEffect, useRef, useState, SyntheticEvent } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
 import InputError from './InputError';
 
-interface ExtendedFileUploadErrorEvent extends FileUploadErrorEvent, React.SyntheticEvent<HTMLInputElement> {}
+interface Props {
+  useForm?: any;
+  className?: string;
+  name: string;
+  label?: string;
+  attributes?: Record<string, any>;
+  onChange?: (event: SyntheticEvent) => void;
+  accept?: string;
+}
 
-export default forwardRef(function MediaUpload(
-  { attributes, className = '', name, onChange, useForm, mode="basic", label, ...props }: { attributes?: Arr, className?:string, useForm?: UseForm, mode?: 'basic' | 'advanced', name: string, label?: string, onChange?: (event: SyntheticEvent) => void } & FileUploadProps,
+export default forwardRef(function ChunkedMediaUpload(
+  { useForm, className = '', name, label, attributes = {}, onChange, accept }: Props,
   ref
 ) {
-    const { t } = useLaravelReactI18n();
+  const { t } = useLaravelReactI18n();
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(useForm?.data?.[name]?.thumbnail || null);
+  const [progress, setProgress] = useState<number>(0);
+  const [err, setErr] = useState<string | null>(null);
 
-    const [previewSrc, setPreviewSrc] = useState(useForm?.data &&  useForm.data[name] && useForm.data[name].thumbnail ? useForm?.data[name].thumbnail : "");
-    const [err, setErr] = useState("");
+  const upload = async (file: File) => {
+    const chunkSize = 1024 * 512; // 512KB
 
+    const uuid = uuidv4();
+    const totalChunks = Math.ceil(file.size / chunkSize);
+    const filename = file.name;
 
-    const [buttonLabel, setButtonLabel] = useState(t('Select file'));
-    
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
+      const form = new FormData();
+      form.append('chunk', chunk);
+      form.append('upload_id', uuid);
+      form.append('chunk_index', i.toString());
+      form.append('total_chunks', totalChunks.toString());
+      form.append('filename', filename);
 
-    const onUpload = ({ xhr, files } : {xhr: XMLHttpRequest, files: any}) => {
-        const ret = {
-            target: {
-                files: files,
-            },
-            ...JSON.parse(xhr.responseText),
-        };
-        
-        if (ret[name]) {
-            setPreviewSrc(ret[name].thumbnail);
-            setButtonLabel(ret[name].name);
-        } else {
-            setPreviewSrc("");
-            setButtonLabel(t('Select file'));
-        }
-        
-        useForm?.setData((data: { [key: string]: any }) => {
-            return {
-                ...data,
-                [name]: ret[name]
-            };
+      try {
+        const res = await axios.post('/media/chunked-upload', form, {
+          onUploadProgress: (e) => {
+            const percent = Math.min(100, ((i + e.loaded / e.total!) / totalChunks) * 100);
+            setProgress(percent);
+          },
         });
-    };
 
-    const onError = (event: ExtendedFileUploadErrorEvent) => {
-
-        try {
-            let res = JSON.parse(event.xhr.responseText);
-            setErr('ERROR: ' + res.message);
-        } catch (e) {
-            console.error('onError', event.xhr);
-            setErr(event.xhr.responseText);
+        if (res.data.done) {
+          const result = res.data.media;
+          setPreview(result.thumbnail ?? null);
+          useForm?.setData((data: any) => ({ ...data, [name]: result }));
+          onChange?.({
+            target: { name, value: result },
+          } as unknown as SyntheticEvent);
         }
-        setPreviewSrc("");
-    };
+      } catch (e: any) {
+        console.error(e);
+        setErr('Upload fehlgeschlagen');
+        break;
+      }
+    }
+  };
 
-    const onBeforeSend = ({ xhr, formData } : {xhr: XMLHttpRequest, formData: any}) => {
-        const { xsrfCookieName, xsrfHeaderName } = window.axios.defaults;
+  const onDrop = (accepted: File[]) => {
+    const f = accepted[0];
+    if (!f) return;
 
-        setErr("");
+    setFile(f);
+    setPreview(f.type.startsWith('image/') ? URL.createObjectURL(f) : null);
+    setProgress(0);
+    upload(f);
+  };
 
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('Accept', 'application/json');
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+    onDrop,
+    accept: accept ? { [accept]: [] } : undefined,
+  });
 
-        const csrftoken = decodeURIComponent(
-            document.cookie.replace(new RegExp('^.*' + xsrfCookieName + '=([^;]*).*$'), '$1'),
-        );
-        xhr.setRequestHeader(xsrfHeaderName as string, csrftoken);
-    };
+  return (
+    <div className={`space-y-2 ${className}`}>
+      {label && <label className="block font-semibold text-sm">{label}</label>}
 
-    return (
-        <div className="space-y-1">
-            
-            {previewSrc && <img src={previewSrc} className="w-24 h-24 object-contain" />}
+      {preview && <img src={preview} className="w-24 h-24 object-contain" />}
 
-            <FileUpload
-                url={ route('media.upload', { ...attributes }) }
-                onBeforeSend={onBeforeSend}
-                onUpload={onUpload}
-                onError={onError}
-                chooseLabel={buttonLabel}
-                mode={mode}
-                auto={mode == 'basic'}
-                className='w-max'
-                name={name}
-                {...props}
-            />
+      <div
+        {...getRootProps()}
+        className={`border border-dashed p-4 rounded cursor-pointer text-center ${
+          isDragActive ? 'bg-blue-50' : 'bg-white'
+        }`}
+      >
+        <input {...getInputProps()} />
+        <p>{isDragActive ? t('Drop file…') : t('Select or drag file here')}</p>
+      </div>
 
-            <InputError message={err || (useForm?.errors ? useForm.errors[name] as string : '') } className="mt-2" />
+      {progress > 0 && progress < 100 && (
+        <div className="w-full bg-gray-200 h-2 rounded">
+          <div className="bg-blue-600 h-2 rounded" style={{ width: `${progress}%` }} />
         </div>
-    );
+      )}
 
+      <InputError
+        message={err || (useForm?.errors ? useForm.errors[name] : '')}
+        className="mt-2"
+      />
+    </div>
+  );
 });
- 

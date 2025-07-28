@@ -191,8 +191,8 @@ class HubjutsuSetupCommand extends Command
             $this->runCommands([
                 'npm install '.
                 '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss@3 react react-dom '.
-                '@types/node @types/react @types/react-dom @types/ziggy-js typescript laravel-react-i18n primereact tailwind-merge ' . 
-                '@heroicons/react classnames'
+                '@types/node @types/react @types/react-dom @types/ziggy-js typescript laravel-react-i18n ' . 
+                '@heroicons/react classnames react-dropzone uuid'
             ]);
 
             $this->components->info('Installing npm types - might take a while as well...');
