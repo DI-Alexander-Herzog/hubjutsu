@@ -192,11 +192,11 @@ class HubjutsuSetupCommand extends Command
                 'npm install '.
                 '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss@3 react react-dom '.
                 '@types/node @types/react @types/react-dom @types/ziggy-js typescript laravel-react-i18n ' . 
-                '@heroicons/react classnames react-dropzone uuid'
+                '@heroicons/react classnames react-dropzone uuid luxon'
             ]);
 
             $this->components->info('Installing npm types - might take a while as well...');
-            $this->runCommands(['npm install -D sass @types/qs']);
+            $this->runCommands(['npm install -D sass @types/qs @types/luxon']);
 
             $this->components->info('Running artisan commands...');
             $this->runCommands(['php artisan lang:publish']);

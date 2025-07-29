@@ -28,7 +28,6 @@ module.exports = {
         './vendor/aherzog/hubjutsu/resources/js/**/*.tsx',
         './vendor/aherzog/hubjutsu/resources/js/hubjutsu-style.js',
         './vendor/aherzog/hubjutsu/resources/js/tailwind.conig.js',
-        './node_modules/primereact/**/*.{js,ts,jsx,tsx}',
     ],
 
     darkMode: 'selector',

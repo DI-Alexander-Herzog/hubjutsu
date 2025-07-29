@@ -60,7 +60,7 @@ class HubjutsuApiController
                 $queryBuilder->whereNotIn($filter['field'], $filter['value']);
             } elseif ($filter['matchMode'] == "IN") {
                 $queryBuilder->whereIn($filter['field'], $filter['value']);
-            } else {
+            } elseif (isset($filter['value'])) {
                 $queryBuilder->where($filter['field'], $filter['matchMode'], $filter['value']);
             }
         };

@@ -4,6 +4,7 @@ import { ChevronLeftIcon, ChevronRightIcon, ArrowPathIcon } from '@heroicons/rea
 import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
 import classNames from "classnames";
 import Checkbox from "./Checkbox";
+import { DateTime } from 'luxon';
 
 import { Transition } from '@headlessui/react'
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline'
@@ -21,7 +22,7 @@ interface Column {
   width?: string;
   align?: string;
   headerAlign?: string;
-  formatter?: (row: Row) => JSX.Element;
+  formatter?: (row: Row, field:string) => JSX.Element;
 }
 
 interface Row {
@@ -44,7 +45,7 @@ const DataTable: React.FC<DataTableProps> = ({
   columns,
   filters = {},
   datakey = "id",
-  height,
+  height = null,
   perPage = 10, // Standardwert für Einträge pro Seite
   newRecord = null, // Standardwert
   with: withRelations = [],
@@ -344,6 +345,17 @@ const DataTable: React.FC<DataTableProps> = ({
                                       { ...col.editor_properties }
                                       onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
                                   />}
+                                   
+                                  {col.editor === "datetime" && 
+                                    <input
+                                      type="datetime-local"
+                                      defaultValue={row[col.field] ? DateTime.fromISO(row[col.field], { zone: 'utc' }).setZone("Europe/Vienna").toFormat("yyyy-MM-dd'T'HH:mm") : ''}
+                                      onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
+                                      className="w-full px-2 py-1 border rounded"
+                                      { ...col.editor_properties }
+                                      onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
+                                  />
+                                  }
 
                                   {col.editor === "select" && <select
                                       defaultValue={row[col.field]}
@@ -359,8 +371,8 @@ const DataTable: React.FC<DataTableProps> = ({
                                       ))}
                                   </select>}
 
-                                  {col.editor === "text" && <input
-                                      type="text"
+                                  { !['select', 'number', 'datetime'].includes(col.editor) && <input
+                                      type={col.editor}
                                       defaultValue={row[col.field]}
                                       onKeyDown={(e) => handleKeyDown(e, col.field, row, row_ofs )}
                                       onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
@@ -371,7 +383,7 @@ const DataTable: React.FC<DataTableProps> = ({
                                   </>
                               ) : (
                                   <div className="whitespace-nowrap overflow-hidden overflow-ellipsis w-full block">
-                                      {col.formatter ? col.formatter(row) : row[col.field] }
+                                      {col.formatter ? col.formatter(row, col.field) : DataTableFormatter.default(row, col.field) }
                                   </div>
                               )}
                               
@@ -523,4 +535,32 @@ const DataTable: React.FC<DataTableProps> = ({
   );
 };
 
+
+const DataTableFormatter = {
+  default(row: Row, field: string) {
+    // if the field has . in it, split it and return the value
+    if (field.includes('.')) {
+      const parts = field.split('.');
+      return parts.reduce((acc, part) => acc && acc[part], row) || '';
+    }
+    // otherwise return the value directly
+    // console.log('default formatter', row, field, row[field]);
+    if (row[field] === undefined || row[field] === null) return '';
+    if (typeof row[field] === 'object') {
+      // if the value is an object, return its string representation
+      return JSON.stringify(row[field]);
+    }
+    // otherwise return the value directly
+    return row[field] || '';
+  },
+
+  datetime: (row: Row, field: string) => {
+    if (!row[field]) return ''; 
+    const date = DateTime.fromISO(row[field], { zone: 'utc' }).setZone("Europe/Vienna");
+    return date.isValid ? date.toLocaleString(DateTime.DATETIME_MED) : row[field];
+  }
+};
+
+
 export default DataTable;
+export { DataTableFormatter };
