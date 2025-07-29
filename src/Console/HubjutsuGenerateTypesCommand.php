@@ -100,7 +100,7 @@ class HubjutsuGenerateTypesCommand extends Command
         ];
 
         $rc = new ReflectionClass(get_class($model));
-        preg_match_all('/@property(?<readonly>-read)? (?<type>.*) \$(?<name>.*)/', $rc->getDocComment(), $matches, PREG_SET_ORDER);
+        preg_match_all('/@property(?<readonly>-read)? (?<type>.*) \$(?<name>[^ ]*)/', $rc->getDocComment(), $matches, PREG_SET_ORDER);
 
         foreach ($matches as $prop) {
             $prop['name'] = trim($prop['name']);
