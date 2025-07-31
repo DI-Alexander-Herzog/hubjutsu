@@ -26,4 +26,8 @@ class Base extends Model {
         return $this;
     }
 
+    public function searchInApi(\Illuminate\Database\Eloquent\Builder $builder, string $field, $value, string $matchMode = 'contains') {
+        return false;
+    }
+
 }

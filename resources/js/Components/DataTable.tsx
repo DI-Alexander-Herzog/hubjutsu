@@ -65,7 +65,7 @@ const DataTable: React.FC<DataTableProps> = ({
     rows: perPage,
     page: 1,
     filters: Object.keys(filters).map((key) => {
-      const value = filters[key];;
+      const value = filters[key];
 
       if (Array.isArray(value) && value.length > 0) {
         return { field: key, matchMode: 'IN', value: value };
