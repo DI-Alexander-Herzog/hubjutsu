@@ -3,6 +3,7 @@
 namespace AHerzog\Hubjutsu\Http\Middleware;
 
 use AHerzog\Hubjutsu\App\Menu\MenuManager;
+use App\Models\Hub;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,6 +36,20 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+
+            'hub' => function() {
+                $hub = Hub::first();
+                return [
+                    'id' => $hub->id,
+                    'name' => $hub->name,
+                    'slug' => $hub->slug,
+                    'url' => $hub->url,
+                    'has_darkmode' => $hub->has_darkmode,
+                    'enable_registration' => $hub->enable_registration,
+                    'enable_guestmode' => $hub->enable_guestmode,
+                    'cssVars' => $hub->cssVars()
+                ];
+            },  
             'menus' => function() {
                 $menuMenager = app('menuManager');
                 $this->generateMenus($menuMenager);
