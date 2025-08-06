@@ -68,6 +68,7 @@ class Hub extends Base
         $hex = ltrim($hex, '#');
         if (strlen($hex) === 3)
             $hex = preg_replace('/(.)(.)(.)/', '$1$1$2$2$3$3', $hex);
+
         list($r, $g, $b) = [
             hexdec(substr($hex, 0, 2)),
             hexdec(substr($hex, 2, 2)),
@@ -223,5 +224,55 @@ class Hub extends Base
             'scrim'                 => $surface,
         ];
     }
+
+    public function cssVars(): string
+    {
+        $out = ":root{\n";
+        $out .= $this->shadeVars('text', $this->color_text) . "\n";
+        $out .= $this->shadeVars('primary', $this->color_primary) . "\n";
+        $out .= $this->shadeVars('onprimary', $this->color_primary_text) . "\n";
+        $out .= $this->shadeVars('secondary', $this->color_secondary) . "\n";
+        $out .= $this->shadeVars('onsecondary', $this->color_secondary_text) . "\n";
+        $out .= $this->shadeVars('tertiary', $this->color_tertiary) . "\n";
+        $out .= $this->shadeVars('ontertiary', $this->color_tertiary_text) . "\n";
+
+        $out .= $this->shadeVars('background', $this->color_background) . "\n";
+        $out .= $this->shadeVars('onbackground', $this->color_text) . "\n";
+        
+        $out .= "}\n";
+        return $out;
+    }
+
+    protected function adjust(string $hex, float $amount): array
+    {
+        [$r,$g,$b] = sscanf($hex, "#%02x%02x%02x");
+        if ($amount > 0) {
+            $t = $amount / 100;
+            $r = (1-$t)*$r + $t*255;
+            $g = (1-$t)*$g + $t*255;
+            $b = (1-$t)*$b + $t*255;
+        } else {
+            $t = -$amount / 100;
+            $r = (1-$t)*$r;
+            $g = (1-$t)*$g;
+            $b = (1-$t)*$b;
+        }
+        return [round($r), round($g), round($b)];
+    }
+
+    protected function shadeVars(string $name, string $hex): string
+    {
+        $steps = [0,90,80,60,40,20,0,-10,-20,-30,-40,-50];
+        $suf   = ['',50,100,200,300,400,500,600,700,800,900,950];
+
+        $out = [];
+        foreach ($steps as $i => $amt) {
+            [$r,$g,$b] = $this->adjust($hex, $amt);
+            $key = "--color-{$name}" . ($suf[$i] !== '' ? "-{$suf[$i]}" : '');
+            $out[] = "{$key}: {$r} {$g} {$b};";
+        }
+        return implode("\n", $out);
+    }
+
 
 }
