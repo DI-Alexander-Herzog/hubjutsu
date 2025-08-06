@@ -1,37 +1,57 @@
 # Very short description of the package
 
-This is the main Setup-Guide for Laravel Projects at alexander-herzog.at
-
+This is the main Setup-Guide for Laravel Projects at alexander-herzog.at.
 
 ## Installation
 
-Most of the time, you will want to use git subtree to install this package as you might want to change stuff directly in the project and we don't want to provide our package to customers via github public repo and we defenately don't want to handel multipe git repo accesses...
+### 1. Initial commit im Zielprojekt
 
-Make sure you did at least an empty commit in the current project
 ```bash
 git commit --allow-empty -n -m "Initial commit."
 ```
 
+### 2. Submodule hinzufügen
+
+**Lokal (mit SSH):**
+
 ```bash
 git submodule add git@github.com:DI-Alexander-Herzog/hubjutsu.git packages/aherzog/hubjutsu
 ```
-this will fetch into the packages directory which is used most of the time for local Laravel Package Development.
 
-Add the repository to your composer.json
+**Server (ohne SSH-Key, nur HTTPS):**
+
 ```bash
-composer config repositories.aherzog/hubjutsu  -j '{"type":"path","url":"./packages/aherzog/hubjutsu","options":{"symlink":true}}'
-
-composer require "aherzog/hubjutsu @dev"
-
-php artisan hubjutsu:setup
-
+git submodule add https://github.com/DI-Alexander-Herzog/hubjutsu.git packages/aherzog/hubjutsu
 ```
 
-## Push/Pull submodule
-in den Ordner wechseln und git command direkt absetzten.
+Falls das Submodule schon existiert und auf dem Server umgestellt werden muss:
+
+```bash
+git config submodule.packages/aherzog/hubjutsu.url "https://github.com/DI-Alexander-Herzog/hubjutsu.git"
+git submodule sync packages/aherzog/hubjutsu
+```
+
+### 3. Composer einbinden
+
+```bash
+composer config repositories.aherzog/hubjutsu -j '{"type":"path","url":"./packages/aherzog/hubjutsu","options":{"symlink":true}}'
+composer require "aherzog/hubjutsu @dev"
+php artisan hubjutsu:setup
+```
+
+## Push/Pull Submodule
+
+In das Submodule wechseln und direkt Git-Befehle ausführen.
+
+Empfohlene Einstellung:
+
 ```bash
 git config push.recurseSubmodules on-demand
+```
 
+Alle Submodules committen & pushen:
+
+```bash
 git submodule foreach "git add . && git commit -m 'update' && git push"
 ```
 
@@ -41,32 +61,28 @@ git submodule foreach "git add . && git commit -m 'update' && git push"
 // Usage description here
 ```
 
-### Testing
+## Testing
 
 ```bash
 composer test
 ```
 
-### Changelog
+## Changelog
 
-Please see [CHANGELOG](CHANGELOG.md) for more information what has changed recently.
+See [CHANGELOG](CHANGELOG.md).
 
 ## Contributing
 
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
+See [CONTRIBUTING](CONTRIBUTING.md).
 
-### Security
+## Security
 
-If you discover any security related issues, please email alexander@alexander-herzog.at instead of using the issue tracker.
+Report security issues to [alexander@alexander-herzog.at](mailto:alexander@alexander-herzog.at).
 
 ## Credits
 
--   [Alexander Herzog](https://github.com/aherzog)
+* [Alexander Herzog](https://github.com/aherzog)
 
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
-
-## Laravel Package Boilerplate
-
-This package was generated using the [Laravel Package Boilerplate](https://laravelpackageboilerplate.com).
+MIT – see [LICENSE.md](LICENSE.md).
