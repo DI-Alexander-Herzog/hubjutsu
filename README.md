@@ -31,6 +31,14 @@ git config submodule.packages/aherzog/hubjutsu.url "https://github.com/DI-Alexan
 git submodule sync packages/aherzog/hubjutsu
 ```
 
+wenns echt weiter klemmt, dann direkt den Remote-URL des Submodules ändern:
+```bash
+cd packages/aherzog/hubjutsu
+git remote set-url origin https://github.com/DI-Alexander-Herzog/hubjutsu.git
+cd ../..
+git submodule update --init --recursive
+```
+
 ### 3. Composer einbinden
 
 ```bash
