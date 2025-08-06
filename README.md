@@ -13,7 +13,7 @@ git commit --allow-empty -n -m "Initial commit."
 ```
 
 ```bash
-git submodule add git@git.rent-a-ninja.org:aherzog/hubjutsu.git packages/aherzog/hubjutsu
+git submodule add git@github.com:DI-Alexander-Herzog/hubjutsu.git packages/aherzog/hubjutsu
 ```
 this will fetch into the packages directory which is used most of the time for local Laravel Package Development.
 
