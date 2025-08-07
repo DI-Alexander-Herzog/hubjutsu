@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { AxiosInstance } from 'axios';
 import classNames from 'classnames';
-import HubjutsuStyle from '@hubjutsu/hubjutsu-style';
 
 declare global {
     interface Window {
@@ -29,13 +28,3 @@ localStorage.theme = 'dark'
 // Whenever the user explicitly chooses to respect the OS preference
 localStorage.removeItem('theme')
 */
-
-
-export function hubjutsuDesignSystem():any {
-    return HubjutsuStyle;
-}
-
-
-
-export default { hubjutsuDesignSystem };
-  
