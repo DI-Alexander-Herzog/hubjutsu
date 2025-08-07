@@ -31,6 +31,12 @@ class Hub extends Base
         'has_darkmode',
         'enable_registration',
         'enable_guestmode',
+        'font_sans',
+        'font_serif',
+        'font_mono',
+        'font_header',
+        'font_text',
+        'font_import',
     ];
 
     protected $casts = [
@@ -227,7 +233,21 @@ class Hub extends Base
 
     public function cssVars(): string
     {
-        $out = ":root{\n";
+
+        $out = '';
+
+        if ($this->font_import) {
+            $out .= "@import url('" . $this->font_import . "');\n\n";
+        }
+
+        $out .= ":root{\n";
+
+        $out .= '--font-sans: "'.$this->font_sans.'";' . "\n";
+        $out .= '--font-serif: "'.$this->font_serif.'";' . "\n";
+        $out .= '--font-mono: "'.$this->font_mono.'";' . "\n";
+        $out .= '--font-header: "'.$this->font_header.'";' . "\n";
+        $out .= '--font-text: "'.$this->font_text.'";' . "\n";
+
         $out .= $this->shadeVars('text', $this->color_text) . "\n";
         $out .= $this->shadeVars('primary', $this->color_primary) . "\n";
         $out .= $this->shadeVars('onprimary', $this->color_primary_text) . "\n";

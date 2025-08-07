@@ -35,17 +35,39 @@ module.exports = {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['var(--font-sans)', 'Figtree', ...defaultTheme.fontFamily.sans],
+                serif: ['var(--font-serif)', ...defaultTheme.fontFamily.serif],
+                mono: ['var(--font-mono)', ...defaultTheme.fontFamily.mono],
+                header: ['var(--font-header)', 'sans-serif'],
+                text: ['var(--font-text)', 'sans-serif'],
             },
             boxShadow: {
                 'outline-primary': '0 0 0 0.2rem rgba(var(--color-primary) / 0.5)'
             },
             colors: {
                 text: shadeVariables('text'),
+                background: shadeVariables('background'),
+
                 primary: shadeVariables('primary'),
-                secondary: shadeVariables('secondary'),
                 onprimary: shadeVariables('onprimary'),
+
+                secondary: shadeVariables('secondary'),
                 onsecondary: shadeVariables('onsecondary'),
+
+                tertiary: shadeVariables('tertiary'),
+                ontertiary: shadeVariables('ontertiary'),
+
+                error: shadeVariables('error'),
+                onerror: shadeVariables('onerror'),
+
+                warning: shadeVariables('warning'),
+                onwarning: shadeVariables('onwarning'),
+
+                success: shadeVariables('success'),
+                onsuccess: shadeVariables('onsuccess'),
+                
+                info: shadeVariables('info'),
+                oninfo: shadeVariables('oninfo'),
             }
         },
     },

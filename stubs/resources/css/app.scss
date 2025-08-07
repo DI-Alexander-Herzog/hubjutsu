@@ -1,6 +1,6 @@
-@layer tailwind-base, primereact, tailwind-utilities;
+@use '../../vendor/aherzog/hubjutsu/resources/css/hubjutsu';
 
-@import 'vendor/aherzog/hubjutsu/resources/css/hubjutsu';
+@layer tailwind-base, primereact, tailwind-utilities;
 
 @layer tailwind-base {
   @tailwind base;

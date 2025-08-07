@@ -1,48 +1,7 @@
-@use "sass:color";
-
-$text-color: #242424 !default;
-
-$primary-color: #FF9800 !default;
-$onprimary-color: #ffffff !default;
-
-$secondary-color: #0067FF !default;
-$onsecondary-color: #ffffff !default;
-
-
-@function adjust-color($color, $amount) {
-    @if $amount > 0% {
-        @return color.mix(white, $color, $amount);
-    } @else {
-        @return color.mix(black, $color, -$amount);
-    }
-}
-@mixin createShadeVariables( $name, $color ) {
-
-    --color-#{$name}: #{color.channel(adjust-color($color, 0%), "red", $space: rgb)}   #{color.channel(adjust-color($color, 0%), "green", $space: rgb)}   #{color.channel(adjust-color($color, 0%), "blue", $space: rgb)};
-    --color-#{$name}-50: #{color.channel(adjust-color($color, 90%), "red", $space: rgb)}   #{color.channel(adjust-color($color, 90%), "green", $space: rgb)}  #{color.channel(adjust-color($color, 90%), "blue", $space: rgb)};
-    --color-#{$name}-100: #{color.channel(adjust-color($color, 80%), "red", $space: rgb)}  #{color.channel(adjust-color($color, 80%), "green", $space: rgb)}  #{color.channel(adjust-color($color, 80%), "blue", $space: rgb)};
-    --color-#{$name}-200: #{color.channel(adjust-color($color, 60%), "red", $space: rgb)}  #{color.channel(adjust-color($color, 60%), "green", $space: rgb)}  #{color.channel(adjust-color($color, 60%), "blue", $space: rgb)};
-    --color-#{$name}-300: #{color.channel(adjust-color($color, 40%), "red", $space: rgb)}  #{color.channel(adjust-color($color, 40%), "green", $space: rgb)}  #{color.channel(adjust-color($color, 40%), "blue", $space: rgb)};
-    --color-#{$name}-400: #{color.channel(adjust-color($color, 20%), "red", $space: rgb)}  #{color.channel(adjust-color($color, 20%), "green", $space: rgb)}  #{color.channel(adjust-color($color, 20%), "blue", $space: rgb)};
-    --color-#{$name}-500: #{color.channel(adjust-color($color, 0%), "red", $space: rgb)}   #{color.channel(adjust-color($color, 0%), "green", $space: rgb)}   #{color.channel(adjust-color($color, 0%), "blue", $space: rgb)};
-    --color-#{$name}-600: #{color.channel(adjust-color($color, -10%), "red", $space: rgb)} #{color.channel(adjust-color($color, -10%), "green", $space: rgb)} #{color.channel(adjust-color($color, -10%), "blue", $space: rgb)};
-    --color-#{$name}-700: #{color.channel(adjust-color($color, -20%), "red", $space: rgb)} #{color.channel(adjust-color($color, -20%), "green", $space: rgb)} #{color.channel(adjust-color($color, -20%), "blue", $space: rgb)};
-    --color-#{$name}-800: #{color.channel(adjust-color($color, -30%), "red", $space: rgb)} #{color.channel(adjust-color($color, -30%), "green", $space: rgb)} #{color.channel(adjust-color($color, -30%), "blue", $space: rgb)};
-    --color-#{$name}-900: #{color.channel(adjust-color($color, -40%), "red", $space: rgb)} #{color.channel(adjust-color($color, -40%), "green", $space: rgb)} #{color.channel(adjust-color($color, -40%), "blue", $space: rgb)};
-    --color-#{$name}-950: #{color.channel(adjust-color($color, -50%), "red", $space: rgb)} #{color.channel(adjust-color($color, -50%), "green", $space: rgb)} #{color.channel(adjust-color($color, -50%), "blue", $space: rgb)};
-       
- }
-
-
-
-:root {
-    @include createShadeVariables('text', $text-color);
-    @include createShadeVariables('primary', $primary-color);
-    @include createShadeVariables('onprimary', $onprimary-color);
-    @include createShadeVariables('secondary', $secondary-color);
-    @include createShadeVariables('onsecondary', $onsecondary-color);    
-}
-
-#app {
+@layer components {
+  #app {
     @apply h-full;
+  }
+
+  // weitere Styles kommen hier rein
 }
