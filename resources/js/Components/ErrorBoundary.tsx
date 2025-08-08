@@ -8,29 +8,41 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
+  reloaded: boolean;
 }
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, reloaded: false };
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
+    return { hasError: true, error, reloaded: false };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Uncaught error:", error, errorInfo);
+    console.error('Uncaught error:', error, errorInfo);
+
+    // Prüfen, ob es der Inertia-scrollRegions-Fehler ist
+    if (
+      !this.state.reloaded &&
+      error.message?.includes('scrollRegions')
+    ) {
+      this.setState({ reloaded: true }, () => {
+        window.location.reload();
+      });
+    }
   }
 
   render() {
-    if (this.state.hasError) {
+    if (this.state.hasError && !this.state.reloaded) {
       return (
         <div>
           <h1>Something went wrong.</h1>
           <p>{this.state.error?.message}</p>
           <pre>{this.state.error?.stack}</pre>
+          <button onClick={() => window.location.reload()}>Reload</button>
         </div>
       );
     }
