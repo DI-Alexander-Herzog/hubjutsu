@@ -240,7 +240,12 @@ class Hub extends Base
             $out .= "@import url('" . $this->font_import . "');\n\n";
         }
 
+
         $out .= ":root{\n";
+
+        if ($this->font_size_root) {
+            $out .= "font-size: " . $this->font_size_root . ";\n\n";
+        }
 
         $out .= '--font-sans: "'.$this->font_sans.'";' . "\n";
         $out .= '--font-serif: "'.$this->font_serif.'";' . "\n";

@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('font_header')->nullable();
             $table->string('font_text')->nullable();
             $table->string('font_import')->nullable();
+            $table->string('font_size_root')->nullable();
         });
 
         
@@ -31,7 +32,8 @@ return new class extends Migration
             'font_mono'   => 'ui-monospace',
             'font_header' => 'Philosopher',
             'font_text'   => 'Barlow Condensed',
-            'font_import' => "https://fonts.googleapis.com/css2?family=Philosopher&family=Barlow+Condensed:wght@400;700&display=swap"
+            'font_import' => "https://fonts.googleapis.com/css2?family=Philosopher&family=Barlow+Condensed:wght@400;700&display=swap",
+            'font_size_root' => '1.15em',
         ]);
     }
 
@@ -47,6 +49,7 @@ return new class extends Migration
             $table->dropColumn('font_header');
             $table->dropColumn('font_text');
             $table->dropColumn('font_import');
+            $table->dropColumn('font_size_root');
         });
     }
 };
