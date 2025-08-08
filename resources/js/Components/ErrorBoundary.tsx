@@ -30,7 +30,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
         <div>
           <h1>Something went wrong.</h1>
           <p>{this.state.error?.message}</p>
-          <pre>{JSON.stringify(this.state.error, null, 2)}</pre>
+          <pre>{this.state.error?.stack}</pre>
         </div>
       );
     }
