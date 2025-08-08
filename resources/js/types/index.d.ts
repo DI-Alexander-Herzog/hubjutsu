@@ -41,12 +41,40 @@ export interface HubjutsuMenus {
     target: string;
     parent?: null;
   }
-  
+
+export interface HubUIData {
+    id: number;
+    name: string;
+    slug: string;
+    url: string;
+    has_darkmode: boolean;
+    enable_registration: boolean;
+    enable_guestmode: boolean;
+    cssVars: Record<string, string>;
+    colors: {
+        primary: string;
+        primary_text: string;
+        secondary: string;
+        secondary_text: string;
+        tertiary: string;
+        tertiary_text: string;
+        text: string;
+        background: string;
+    };
+    fonts: {
+        sans: string;
+        serif: string;
+        mono: string;
+        header: string;
+        text: string;
+        import?: string | null; // Optional import field
+    };
+} 
 
 export type PageProps<T extends Record<string, unknown> = Record<string, unknown>> = T & {
     auth: {
         user: User;
     };
     menus: HubjutsuMenus;
-    hub: any;
+    hub: HubUIData;
 };
