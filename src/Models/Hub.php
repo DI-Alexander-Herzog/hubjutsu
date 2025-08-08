@@ -268,6 +268,37 @@ class Hub extends Base
         return $out;
     }
 
+    public function uiData() {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'slug' => $this->slug,
+            'url' => $this->url,
+            'has_darkmode' => $this->has_darkmode,
+            'enable_registration' => $this->enable_registration,
+            'enable_guestmode' => $this->enable_guestmode,
+            'cssVars' => $this->cssVars(),
+            'colors' => [
+                'primary' => $this->color_primary,
+                'primary_text' => $this->color_primary_text,
+                'secondary' => $this->color_secondary,
+                'secondary_text' => $this->color_secondary_text,
+                'tertiary' => $this->color_tertiary,
+                'tertiary_text' => $this->color_tertiary_text,
+                'text' => $this->color_text,
+                'background' => $this->color_background,
+            ],
+            'fonts' => [
+                'sans' => $this->font_sans,
+                'serif' => $this->font_serif,
+                'mono' => $this->font_mono,
+                'header' => $this->font_header,
+                'text' => $this->font_text,
+                'import' => $this->font_import,
+            ]
+        ];
+    }
+
     protected function adjust(string $hex, float $amount): array
     {
         [$r,$g,$b] = sscanf($hex, "#%02x%02x%02x");

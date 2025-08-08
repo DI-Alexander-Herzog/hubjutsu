@@ -38,17 +38,7 @@ class HandleInertiaRequests extends Middleware
             ],
 
             'hub' => function() {
-                $hub = Hub::first();
-                return [
-                    'id' => $hub->id,
-                    'name' => $hub->name,
-                    'slug' => $hub->slug,
-                    'url' => $hub->url,
-                    'has_darkmode' => $hub->has_darkmode,
-                    'enable_registration' => $hub->enable_registration,
-                    'enable_guestmode' => $hub->enable_guestmode,
-                    'cssVars' => $hub->cssVars()
-                ];
+                return Hub::first()->uiData();
             },  
             'menus' => function() {
                 $menuMenager = app('menuManager');
