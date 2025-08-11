@@ -364,6 +364,7 @@ const DataTable: React.FC<DataTableProps> = ({
                                       { ...col.editor_properties }
                                       onChange={(e) => setRowValue(row[datakey], col.field, e.target.value)}
                                   >
+                                      <option value="">-- Select --</option>
                                       {col.editor_properties?.options?.map((option:any, index:number) => (
                                       <option key={index} value={option.value}>
                                           {option.label}
