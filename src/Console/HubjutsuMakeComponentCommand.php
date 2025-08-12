@@ -46,8 +46,8 @@ class HubjutsuMakeComponentCommand extends Command
 
         $root = realpath(__DIR__ . '/../..');
         $parts = explode('/', $name);
-        $componentDir = $root . '/resources/js/components';
-        $stubsDir = $root . '/stubs/resources/js/components';
+        $componentDir = $root . '/resources/js/Components';
+        $stubsDir = $root . '/stubs/resources/js/Components';
         
         $nameSpace = '';
         $componentName = array_pop($parts);
