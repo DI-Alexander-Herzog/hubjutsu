@@ -63,6 +63,7 @@ class HubjutsuMakeComponentCommand extends Command
 
         file_put_contents($componentDir . $nameSpace .'/'.$componentName.'.tsx', join("\n", [
             'import classNames from "classnames";',
+            'import { ReactNode } from "react";',
             '',
             "type {$componentName}Type = {",
             "    children?: ReactNode,",
