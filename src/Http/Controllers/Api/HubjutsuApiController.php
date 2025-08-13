@@ -57,8 +57,8 @@ class HubjutsuApiController
         
         foreach($request->get('filters', []) as $filter) {
             if (!isset($filter['value'])) continue;
-
-            if ($modelObj->searchInApi($queryBuilder, $filter['field'], $filter['value'], $filter['matchMode'])) {
+            
+            if ($modelObj->searchInApi($queryBuilder, $filter['field'], $filter['value'], $filter['matchMode'] ?? null)) {
                 // handled by model
                 continue;
             } elseif ($filter['matchMode'] == "NOT IN") {
