@@ -344,9 +344,9 @@ const DataTable: React.FC<DataTableProps> = ({
 										"border dark:border-gray-700 text-center px-4 py-2 cursor-pointer",
 										col.frozen && "sticky bg-white dark:bg-gray-900"
 									)}
-									onClick={() => handleSort(col.field)}
+									onClick={( !col.sortable ? undefined : () => handleSort(col.field) )}
 								>
-									{col.label} ⬍
+									{col.label} {col.sortable ? <span>⬍</span> : null}
 								</th>
 							))}
 						</tr>
