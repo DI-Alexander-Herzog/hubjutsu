@@ -289,6 +289,7 @@ class Hub extends Base
                 'background' => $this->color_background,
             ],
             'fonts' => [
+                'size' => $this->font_size_root,
                 'sans' => $this->font_sans,
                 'serif' => $this->font_serif,
                 'mono' => $this->font_mono,
