@@ -99,9 +99,11 @@ class HubjutsuSetupCommand extends Command
     protected function installStatefulApi() {
         $bootstrapApp = file_get_contents(base_path('bootstrap/app.php'));
         if (!Str::contains($bootstrapApp, '->statefulApi()')) {
+            $useVoid = Str::contains($bootstrapApp, '->withMiddleware(function (Middleware $middleware): void {');
+
             $bootstrapApp = str_replace(
-                '->withMiddleware(function (Middleware $middleware) {',
-                '->withMiddleware(function (Middleware $middleware) {'
+                '->withMiddleware(function (Middleware $middleware)'.($useVoid ? ': void' : '').' {',
+                '->withMiddleware(function (Middleware $middleware)'.($useVoid ? ': void' : '').' {'
                         .PHP_EOL."        \$middleware->statefulApi();",
                 $bootstrapApp,
             );
@@ -127,9 +129,11 @@ class HubjutsuSetupCommand extends Command
             ->whenNotEmpty(function ($names) use ($bootstrapApp, $group, $modifier) {
                 $names = $names->map(fn ($name) => "$name")->implode(','.PHP_EOL.'            ');
 
+                $useVoid = Str::contains($bootstrapApp, '->withMiddleware(function (Middleware $middleware): void {');
+
                 $bootstrapApp = str_replace(
-                    '->withMiddleware(function (Middleware $middleware) {',
-                    '->withMiddleware(function (Middleware $middleware) {'
+                    '->withMiddleware(function (Middleware $middleware)'.($useVoid ? ': void' : '').' {',
+                    '->withMiddleware(function (Middleware $middleware)'.($useVoid ? ': void' : '').' {'
                         .PHP_EOL."        \$middleware->$group($modifier: ["
                         .PHP_EOL."            $names,"
                         .PHP_EOL.'        ]);'
@@ -190,8 +194,9 @@ class HubjutsuSetupCommand extends Command
             $this->components->info('Installing NPM - might take a while...');
             $this->runCommands([
                 'npm install '.
-                '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss@3 react react-dom '.
-                '@types/node @types/react @types/react-dom @types/ziggy-js typescript laravel-react-i18n ' . 
+                '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss@3 ' .
+                'react@18 react-dom@18 @types/react@18 @types/react-dom@18 ' .
+                '@types/node @types/ziggy-js typescript laravel-react-i18n ' .
                 '@heroicons/react classnames react-dropzone uuid luxon'
             ]);
 
