@@ -62,6 +62,7 @@ export interface HubUIData {
         background: string;
     };
     fonts: {
+        size: string; // Root font size
         sans: string;
         serif: string;
         mono: string;
