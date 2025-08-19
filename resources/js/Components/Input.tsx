@@ -4,7 +4,7 @@ import InputError from "@/Components/InputError";
 import { UseForm } from "@/types";
 
 
-export default function Input({ className = '', label='', inputId = '', inputName = '', useForm = {} as UseForm, type = "text", ...props }) {
+export default function Input({ className = '', label='', inputId = '', inputName = '', useForm = {} as UseForm, type = "text", isFirst=false ,...props }) {
 
     const id = inputId || inputName;
     
@@ -32,14 +32,14 @@ export default function Input({ className = '', label='', inputId = '', inputNam
 
     return (
         <div className="space-y-1">
-            <InputLabel htmlFor={id} value={label || inputName.charAt(0).toUpperCase() + inputName.slice(1) } />
+            <InputLabel className={isFirst ? "mt-0": "mt-4"} htmlFor={id} value={label || inputName.charAt(0).toUpperCase() + inputName.slice(1) } />
 
             <InputText
                 id={id}
                 type={type}
                 name={inputName}
                 value={useForm.data ? useForm.data[inputName] : '' }
-                className={`mt-0 block w-full ${className}`}
+                className={`mt-1 block w-full ${className}`}
                 {...props}
                 onChange={(e) => useForm.setData((data: { [key: string]: any }) => ({
                     ...data,
