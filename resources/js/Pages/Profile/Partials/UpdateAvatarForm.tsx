@@ -1,72 +1,63 @@
-import { useRef, FormEventHandler } from 'react';
-import InputError from '@hubjutsu/Components/InputError';
-import InputLabel from '@hubjutsu/Components/InputLabel';
-import PrimaryButton from '@hubjutsu/Components/PrimaryButton';
-import TextInput from '@hubjutsu/Components/InputText';
-import { useForm, usePage } from '@inertiajs/react';
-import { Transition } from '@headlessui/react';
-import MediaUpload from '../../../Components/MediaUpload';
-import { PageProps } from '@hubjutsu/types';
+import { useForm, usePage } from "@inertiajs/react";
+import { useState } from "react";
+import FormSection from "@hubjutsu/Components/FormSection";
+import MediaUpload from "../../../Components/MediaUpload";
+import { PageProps } from "@hubjutsu/types";
+import { validateAvatar } from "@hubjutsu/Helper/validation";
 
-export default function UpdateAvatarForm({ className = '' }: { className?: string }) {
-    const passwordInput = useRef<HTMLInputElement>(null);
-    const currentPasswordInput = useRef<HTMLInputElement>(null);
+export default function UpdateAvatarForm({
+	className = "",
+}: {
+	className?: string;
+}) {
+	const user = usePage<PageProps>().props.auth.user;
+	const { data, setData, errors, post, processing } = useForm({
+		avatar: user.avatar,
+	});
 
-    const user = usePage<PageProps>().props.auth.user;
-    const { data, setData, errors, post, reset, processing, recentlySuccessful } = useForm({
-        avatar: user.avatar,
-    });
-    const formInput = {data, setData, errors};
+	const [clientErrors, setClientErrors] = useState<{ [key: string]: string }>(
+		{}
+	);
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
+	const updateAvatar = () => {
+		setClientErrors({});
 
-        post(route('profile.avatar'), {
-            preserveScroll: true,
-            onError: (error) => {
-                console.log(error);
-                alert('Error updating password');
-            },
-            onSuccess: () => {
-                window.location.reload();
-            }
-        });
-    };
+		const avatarValidation = validateAvatar(data.avatar);
+		if (!avatarValidation.isValid) {
+			setClientErrors({
+				avatar: avatarValidation.error || "Invalid avatar file.",
+			});
+			return;
+		}
 
-    return (
-        <section className={className}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Update Avatar</h2>
+		post(route("profile.avatar"), {
+			preserveScroll: true,
+			onError: (error) => {
+				console.log(error);
+				alert("Error updating avatar");
+			},
+			onSuccess: () => {
+				window.location.reload();
+			},
+		});
+	};
 
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Ensure your account is using a long, random password to stay secure.
-                </p>
-            </header>
+	const allErrors = { ...errors, ...clientErrors };
 
-            <form onSubmit={submit} className="mt-6 space-y-6">
-            <div>
-            <MediaUpload 
-                useForm={formInput}
-                accept='image/*'
-                name='avatar'
-
-            />
-            </div>
-            <div className="flex items-center gap-4">
-                                <PrimaryButton disabled={processing}>Save</PrimaryButton>
-            
-                                <Transition
-                                    show={recentlySuccessful}
-                                    enter="transition ease-in-out"
-                                    enterFrom="opacity-0"
-                                    leave="transition ease-in-out"
-                                    leaveTo="opacity-0"
-                                >
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">Saved.</p>
-                                </Transition>
-                            </div>
-                        </form>
-            
-        </section>
-    );
+	return (
+		<FormSection
+			title="Update Avatar"
+			subtitle="Update your profile picture to personalize your account."
+			onSave={updateAvatar}
+			className={className}
+		>
+			<div>
+				<MediaUpload
+					useForm={{ data, setData, errors: allErrors }}
+					accept="image/*"
+					name="avatar"
+				/>
+			</div>
+		</FormSection>
+	);
 }

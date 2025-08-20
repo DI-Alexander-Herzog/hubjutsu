@@ -166,7 +166,7 @@ export default function FormSection({
 			</div>
 
 			<div className="mt-5 md:mt-0 md:col-span-2 w-full">
-				<div className="w-full p-6 bg-white dark:bg-gray-800 sm:rounded-lg">
+				<div className="w-full p-2 bg-white dark:bg-gray-800 sm:rounded-lg md:p-6">
 					{children}
 					{renderSaveButton()}
 				</div>
