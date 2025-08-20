@@ -1,113 +1,91 @@
-import { useRef, FormEventHandler } from 'react';
-import InputError from '@hubjutsu/Components/InputError';
-import InputLabel from '@hubjutsu/Components/InputLabel';
-import PrimaryButton from '@hubjutsu/Components/PrimaryButton';
-import TextInput from '@hubjutsu/Components/InputText';
-import { useForm } from '@inertiajs/react';
-import { Transition } from '@headlessui/react';
+import { useForm } from "@inertiajs/react";
+import { useState } from "react";
+import FormSection from "@hubjutsu/Components/FormSection";
+import Input from "@hubjutsu/Components/Input";
+import {
+	passwordUpdateSchema,
+	validateWithZod,
+	type PasswordUpdateData,
+} from "@hubjutsu/Helper/validation";
 
-export default function UpdatePasswordForm({ className = '' }: { className?: string }) {
-    const passwordInput = useRef<HTMLInputElement>(null);
-    const currentPasswordInput = useRef<HTMLInputElement>(null);
+export default function UpdatePasswordForm({
+	className = "",
+}: {
+	className?: string;
+}) {
+	const { data, setData, errors, put, reset, processing } =
+		useForm<PasswordUpdateData>({
+			current_password: "",
+			password: "",
+			password_confirmation: "",
+		});
 
-    const { data, setData, errors, put, reset, processing, recentlySuccessful } = useForm({
-        current_password: '',
-        password: '',
-        password_confirmation: '',
-    });
+	const [clientErrors, setClientErrors] = useState<{ [key: string]: string }>(
+		{}
+	);
 
-    const updatePassword: FormEventHandler = (e) => {
-        e.preventDefault();
+	const updatePassword = () => {
+		setClientErrors({});
 
-        put(route('password.update'), {
-            preserveScroll: true,
-            onSuccess: () => reset(),
-            onError: (errors) => {
-                if (errors.password) {
-                    reset('password', 'password_confirmation');
-                    passwordInput.current?.focus();
-                }
+		const validationResult = validateWithZod(passwordUpdateSchema, data);
 
-                if (errors.current_password) {
-                    reset('current_password');
-                    currentPasswordInput.current?.focus();
-                }
-            },
-        });
-    };
+		if (!validationResult.success) {
+			setClientErrors(validationResult.errors);
+			return;
+		}
 
-    return (
-        <section className={className}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Update Password</h2>
+		put(route("password.update"), {
+			preserveScroll: true,
+			onSuccess: () => {
+				reset();
+				setClientErrors({});
+			},
+			onError: (errors) => {
+				if (errors.password) {
+					reset("password", "password_confirmation");
+				}
 
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Ensure your account is using a long, random password to stay secure.
-                </p>
-            </header>
+				if (errors.current_password) {
+					reset("current_password");
+				}
+			},
+		});
+	};
 
-            <form onSubmit={updatePassword} className="mt-6 space-y-6">
-                <div>
-                    <InputLabel htmlFor="current_password" value="Current Password" />
+	const allErrors = { ...errors, ...clientErrors };
 
-                    <TextInput
-                        id="current_password"
-                        ref={currentPasswordInput}
-                        value={data.current_password}
-                        onChange={(e) => setData('current_password', e.target.value)}
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="current-password"
-                    />
+	return (
+		<FormSection
+			title="Update Password"
+			subtitle="Ensure your account is using a long, random password to stay secure."
+			onSave={updatePassword}
+			className={className}
+		>
+			<Input
+				inputName="current_password"
+				type="password"
+				useForm={{ data, setData, errors: allErrors }}
+				required
+				isFocused
+				autoComplete="current-password"
+				isFirst={true}
+			/>
 
-                    <InputError message={errors.current_password} className="mt-2" />
-                </div>
+			<Input
+				inputName="password"
+				type="password"
+				useForm={{ data, setData, errors: allErrors }}
+				required
+				autoComplete="new-password"
+			/>
 
-                <div>
-                    <InputLabel htmlFor="password" value="New Password" />
-
-                    <TextInput
-                        id="password"
-                        ref={passwordInput}
-                        value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                    />
-
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div>
-                    <InputLabel htmlFor="password_confirmation" value="Confirm Password" />
-
-                    <TextInput
-                        id="password_confirmation"
-                        value={data.password_confirmation}
-                        onChange={(e) => setData('password_confirmation', e.target.value)}
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                    />
-
-                    <InputError message={errors.password_confirmation} className="mt-2" />
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
-
-                    <Transition
-                        show={recentlySuccessful}
-                        enter="transition ease-in-out"
-                        enterFrom="opacity-0"
-                        leave="transition ease-in-out"
-                        leaveTo="opacity-0"
-                    >
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Saved.</p>
-                    </Transition>
-                </div>
-            </form>
-        </section>
-    );
+			<Input
+				inputName="password_confirmation"
+				type="password"
+				useForm={{ data, setData, errors: allErrors }}
+				required
+				autoComplete="new-password"
+			/>
+		</FormSection>
+	);
 }

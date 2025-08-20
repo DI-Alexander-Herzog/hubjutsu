@@ -2,7 +2,6 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import DeleteUserForm from "@/Pages/Profile/Partials/DeleteUserForm";
 import UpdatePasswordForm from "@/Pages/Profile/Partials/UpdatePasswordForm";
 import UpdateProfileInformationForm from "@/Pages/Profile/Partials/UpdateProfileInformationForm";
-import { Head } from "@inertiajs/react";
 import { PageProps } from "@/types";
 import UpdateAvatarForm from "./Partials/UpdateAvatarForm";
 
@@ -21,15 +20,15 @@ export default function Edit({
 						/>
 					</div>
 					<div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-						<UpdateAvatarForm className="max-w-xl" />
+						<UpdateAvatarForm />
 					</div>
 
 					<div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-						<UpdatePasswordForm className="max-w-xl" />
+						<UpdatePasswordForm />
 					</div>
 
 					<div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-						<DeleteUserForm className="max-w-xl" />
+						<DeleteUserForm />
 					</div>
 				</div>
 			</div>
