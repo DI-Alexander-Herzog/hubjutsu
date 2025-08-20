@@ -21,7 +21,7 @@ type FormSectionType = {
 		disableSaveButton?: boolean;
 	};
 	formData?: Record<string, any>;
-	onSave?: () => void;
+	onSave?: () => boolean | void | Promise<boolean | void>;
 };
 
 export default function FormSection({
@@ -44,9 +44,11 @@ export default function FormSection({
 			if (loading) return;
 			setLoading(true);
 			try {
-				await onSave();
-				setRecentlySuccessful(true);
-				setTimeout(() => setRecentlySuccessful(false), 2000);
+				const result = await onSave();
+				if (result !== false) {
+					setRecentlySuccessful(true);
+					setTimeout(() => setRecentlySuccessful(false), 2000);
+				}
 			} catch (err: any) {
 				setError(err);
 			} finally {
