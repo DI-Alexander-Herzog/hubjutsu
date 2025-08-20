@@ -1,44 +1,23 @@
 import { useForm } from "@inertiajs/react";
-import { useState } from "react";
 import FormSection from "@hubjutsu/Components/FormSection";
 import Input from "@hubjutsu/Components/Input";
-import {
-	passwordUpdateSchema,
-	validateWithZod,
-	type PasswordUpdateData,
-} from "@hubjutsu/Helper/validation";
 
 export default function UpdatePasswordForm({
 	className = "",
 }: {
 	className?: string;
 }) {
-	const { data, setData, errors, put, reset, processing } =
-		useForm<PasswordUpdateData>({
-			current_password: "",
-			password: "",
-			password_confirmation: "",
-		});
-
-	const [clientErrors, setClientErrors] = useState<{ [key: string]: string }>(
-		{}
-	);
+	const { data, setData, errors, put, reset, processing } = useForm({
+		current_password: "",
+		password: "",
+		password_confirmation: "",
+	});
 
 	const updatePassword = () => {
-		setClientErrors({});
-
-		const validationResult = validateWithZod(passwordUpdateSchema, data);
-
-		if (!validationResult.success) {
-			setClientErrors(validationResult.errors);
-			return false;
-		}
-
 		put(route("password.update"), {
 			preserveScroll: true,
 			onSuccess: () => {
 				reset();
-				setClientErrors({});
 			},
 			onError: (errors) => {
 				if (errors.password) {
@@ -52,8 +31,6 @@ export default function UpdatePasswordForm({
 		});
 	};
 
-	const allErrors = { ...errors, ...clientErrors };
-
 	return (
 		<FormSection
 			title="Update Password"
@@ -65,7 +42,7 @@ export default function UpdatePasswordForm({
 				inputName="current_password"
 				label="Current Password"
 				type="password"
-				useForm={{ data, setData, errors: allErrors }}
+				useForm={{ data, setData, errors }}
 				required
 				isFocused
 				autoComplete="current-password"
@@ -76,7 +53,7 @@ export default function UpdatePasswordForm({
 				inputName="password"
 				label="New Password"
 				type="password"
-				useForm={{ data, setData, errors: allErrors }}
+				useForm={{ data, setData, errors }}
 				required
 				autoComplete="new-password"
 			/>
@@ -85,7 +62,7 @@ export default function UpdatePasswordForm({
 				inputName="password_confirmation"
 				label="Confirm Password"
 				type="password"
-				useForm={{ data, setData, errors: allErrors }}
+				useForm={{ data, setData, errors }}
 				required
 				autoComplete="new-password"
 			/>
