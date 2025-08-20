@@ -1,9 +1,7 @@
 import { useForm, usePage } from "@inertiajs/react";
-import { useState } from "react";
 import FormSection from "@hubjutsu/Components/FormSection";
 import MediaUpload from "../../../Components/MediaUpload";
 import { PageProps } from "@hubjutsu/types";
-import { validateAvatar } from "@hubjutsu/Helper/validation";
 
 export default function UpdateAvatarForm({
 	className = "",
@@ -15,21 +13,9 @@ export default function UpdateAvatarForm({
 		avatar: user.avatar,
 	});
 
-	const [clientErrors, setClientErrors] = useState<{ [key: string]: string }>(
-		{}
-	);
+	console.log(user, { data });
 
 	const updateAvatar = () => {
-		setClientErrors({});
-
-		const avatarValidation = validateAvatar(data.avatar);
-		if (!avatarValidation.isValid) {
-			setClientErrors({
-				avatar: avatarValidation.error || "Invalid avatar file.",
-			});
-			return false;
-		}
-
 		post(route("profile.avatar"), {
 			preserveScroll: true,
 			onError: (error) => {
@@ -42,8 +28,6 @@ export default function UpdateAvatarForm({
 		});
 	};
 
-	const allErrors = { ...errors, ...clientErrors };
-
 	return (
 		<FormSection
 			title="Update Avatar"
@@ -53,7 +37,7 @@ export default function UpdateAvatarForm({
 		>
 			<div>
 				<MediaUpload
-					useForm={{ data, setData, errors: allErrors }}
+					useForm={{ data, setData, errors }}
 					accept="image/*"
 					name="avatar"
 				/>
