@@ -36,7 +36,7 @@ export default function UpdateProfileInformation({
 
 		if (!validationResult.success) {
 			setClientErrors(validationResult.errors);
-			return;
+			return false;
 		}
 
 		patch(route("profile.update"));

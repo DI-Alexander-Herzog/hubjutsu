@@ -31,7 +31,7 @@ export default function UpdatePasswordForm({
 
 		if (!validationResult.success) {
 			setClientErrors(validationResult.errors);
-			return;
+			return false;
 		}
 
 		put(route("password.update"), {
@@ -63,6 +63,7 @@ export default function UpdatePasswordForm({
 		>
 			<Input
 				inputName="current_password"
+				label="Current Password"
 				type="password"
 				useForm={{ data, setData, errors: allErrors }}
 				required
@@ -73,6 +74,7 @@ export default function UpdatePasswordForm({
 
 			<Input
 				inputName="password"
+				label="New Password"
 				type="password"
 				useForm={{ data, setData, errors: allErrors }}
 				required
@@ -81,6 +83,7 @@ export default function UpdatePasswordForm({
 
 			<Input
 				inputName="password_confirmation"
+				label="Confirm Password"
 				type="password"
 				useForm={{ data, setData, errors: allErrors }}
 				required

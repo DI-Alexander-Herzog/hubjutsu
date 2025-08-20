@@ -27,7 +27,7 @@ export default function UpdateAvatarForm({
 			setClientErrors({
 				avatar: avatarValidation.error || "Invalid avatar file.",
 			});
-			return;
+			return false;
 		}
 
 		post(route("profile.avatar"), {
