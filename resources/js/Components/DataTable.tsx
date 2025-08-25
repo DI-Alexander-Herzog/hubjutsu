@@ -13,6 +13,7 @@ import { DateTime } from "luxon";
 import { Transition } from "@headlessui/react";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { XMarkIcon } from "@heroicons/react/20/solid";
+import { flushSync } from "react-dom";
 
 // 📌 Spalten-Typen definieren
 interface Column {
@@ -165,7 +166,11 @@ const DataTable: React.FC<DataTableProps> = ({
 	// 📌 Inline-Editing aktivieren
 	const enableEditing = (row: Row) => {
 		toggleRowSelection(row, true);
-		setEditingRecord((prev) => ({ ...prev, [row[datakey]]: row }));
+		const id = row[datakey];
+		setEditingRecord(prev => {
+			if (prev[id]) return prev;              // bereits im Edit → nicht resetten
+			return { ...prev, [id]: { ...row } };   // klonen, kein Ref-Sharing
+		});
 	};
 
 	const disableEditing = (id: string) => {
@@ -180,6 +185,8 @@ const DataTable: React.FC<DataTableProps> = ({
 	const handleKeyDown = (e: any, field: string, row: Row, row_ofs: number) => {
 		if ((e.ctrlKey || e.metaKey) && e.key === "s") {
 			e.preventDefault();
+			
+			flushSync(() => {});
 
 			setRecords((prev) => {
 				const newRecords = [...prev];
@@ -217,8 +224,10 @@ const DataTable: React.FC<DataTableProps> = ({
 
 	const setRowValue = (id: string, field: string, value: any) => {
 		setEditingRecord((prev) => {
-			const row = prev[id];
-			return { ...prev, [id]: { ...row, [field]: value } };
+			const base = prev[id] ?? {};
+			const nextRow = { ...base, [field]: value };
+			if (base[field] === value) return prev;
+			return { ...prev, [id]: nextRow };
 		});
 	};
 
@@ -372,6 +381,9 @@ const DataTable: React.FC<DataTableProps> = ({
 											col.editor_properties.autoFocus = true;
 											firstEditor = false;
 										}
+
+										const controlledValue = editingRecord[row[datakey]]?.[col.field] ?? '';
+
 										return (
 											<td
 												key={col.field}
@@ -403,7 +415,7 @@ const DataTable: React.FC<DataTableProps> = ({
 														{col.editor === "number" && (
 															<input
 																type="number"
-																defaultValue={row[col.field]}
+																defaultValue={controlledValue}
 																onKeyDown={(e) =>
 																	handleKeyDown(e, col.field, row, row_ofs)
 																}
@@ -423,12 +435,8 @@ const DataTable: React.FC<DataTableProps> = ({
 															<input
 																type="datetime-local"
 																defaultValue={
-																	row[col.field]
-																		? DateTime.fromISO(row[col.field], {
-																				zone: "utc",
-																		  })
-																				.setZone("Europe/Vienna")
-																				.toFormat("yyyy-MM-dd'T'HH:mm")
+																	controlledValue
+																		? DateTime.fromISO(controlledValue, {zone: "utc" }).setZone("Europe/Vienna").toFormat("yyyy-MM-dd'T'HH:mm")
 																		: ""
 																}
 																onKeyDown={(e) =>
@@ -448,7 +456,7 @@ const DataTable: React.FC<DataTableProps> = ({
 
 														{col.editor === "select" && (
 															<select
-																defaultValue={row[col.field]}
+																defaultValue={controlledValue}
 																onKeyDown={(e) =>
 																	handleKeyDown(e, col.field, row, row_ofs)
 																}
@@ -478,7 +486,7 @@ const DataTable: React.FC<DataTableProps> = ({
 														) && (
 															<input
 																type={col.editor}
-																defaultValue={row[col.field]}
+																defaultValue={controlledValue}
 																onKeyDown={(e) =>
 																	handleKeyDown(e, col.field, row, row_ofs)
 																}
