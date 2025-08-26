@@ -3,12 +3,21 @@ import axios from "axios";
 import {
 	ChevronLeftIcon,
 	ChevronRightIcon,
+	ChevronDoubleLeftIcon,
+	ChevronDoubleRightIcon,
 	ArrowPathIcon,
+	TrashIcon,
+	CheckIcon,
+	PlusIcon,
 } from "@heroicons/react/20/solid";
 import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
 import classNames from "classnames";
 import Checkbox from "./Checkbox";
 import { DateTime } from "luxon";
+import PrimaryButton from "./PrimaryButton";
+import SecondaryButton from "./SecondaryButton";
+import DangerButton from "./DangerButton";
+import DataTableLink from "./DataTableLink";
 
 import { Transition } from "@headlessui/react";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
@@ -43,6 +52,7 @@ interface DataTableProps {
 	with?: string[];
 	perPage?: number;
 	newRecord?: false | Record<string, any> | string | (() => void) | null;
+	isDeleteAllow?: boolean;
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -51,16 +61,17 @@ const DataTable: React.FC<DataTableProps> = ({
 	filters = {},
 	datakey = "id",
 	height = null,
-	perPage = 10,
+	perPage = 20,
 	newRecord = null,
 	with: withRelations = [],
+	isDeleteAllow = true,
 }) => {
 	const tableRef = useRef<HTMLTableElement>(null);
 
 	const stickyLeft = (idx: number) => {
-		const widths = ["2em"];
+		const widths = ["3rem"];
 		for (let i = 0; i < idx; i++)
-			if (columns[i].frozen) widths.push(columns[i].width ?? "150px");
+			if (columns[i].frozen) widths.push(columns[i].width ?? "180px");
 		return `calc(${widths.join(" + ")})`;
 	};
 
@@ -99,11 +110,11 @@ const DataTable: React.FC<DataTableProps> = ({
 			}
 			return { field: key, matchMode: "=", value: value };
 		}),
-		multiSortMeta: { [datakey]: 1 } as Record<string, 1 | -1>,
+		multiSortMeta: { [datakey]: 1 } as Record<string, number>,
 		with: withRelations,
 	});
 
-	const perPageList = [2, 10, 50, 100, 1000];
+	const perPageList = [2, 10, 15, 20, 50, 100, 1000];
 	if (perPageList.indexOf(perPage) === -1) {
 		perPageList.push(perPage);
 		perPageList.sort((a, b) => a - b);
@@ -120,9 +131,15 @@ const DataTable: React.FC<DataTableProps> = ({
 		setEditingRecord({});
 
 		setLoading(true);
+
+		const apiParams = {
+			...searchState,
+			multiSortMeta: getApiSortData(),
+		};
+
 		axios
 			.get(route("api.model.search", { model: routemodel }), {
-				params: searchState,
+				params: apiParams,
 			})
 			.then((response) => {
 				setLoading(false);
@@ -136,22 +153,68 @@ const DataTable: React.FC<DataTableProps> = ({
 	};
 
 	// 📌 Sortierung
-	const handleSort = (field: string) => {
+	const handleSort = (field: string, event?: React.MouseEvent) => {
 		setSearchState((prev) => {
-			let ms = prev.multiSortMeta;
-			if (!ms[field]) {
+			let ms = { ...prev.multiSortMeta };
+
+			const isCtrlClick = event?.ctrlKey || event?.metaKey;
+			const isShiftClick = event?.shiftKey;
+
+			if (isShiftClick) {
 				ms = { [field]: 1 };
-			} else if (ms[field] === 1) {
-				ms = { [field]: -1 };
+			} else if (!ms[field]) {
+				const userSortPriorities = Object.entries(ms)
+					.filter(([key]) => key !== datakey)
+					.map(([, priority]) => Math.abs(priority));
+				const nextPriority =
+					userSortPriorities.length > 0
+						? Math.max(...userSortPriorities) + 1
+						: 1;
+				ms[field] = nextPriority;
+			} else if (ms[field] > 0) {
+				ms[field] = -ms[field];
 			} else {
 				const { [field]: _, ...rest } = ms;
-				ms = rest as any;
+				ms = rest;
+
+				const sortedFields = Object.entries(ms)
+					.filter(([key]) => key !== datakey)
+					.sort(([, a], [, b]) => Math.abs(a) - Math.abs(b))
+					.map(([fieldName, direction]) => ({ field: fieldName, direction }));
+
+				sortedFields.forEach((item, index) => {
+					ms[item.field] = (index + 1) * (item.direction > 0 ? 1 : -1);
+				});
 			}
+
 			return {
 				...prev,
 				multiSortMeta: ms,
 			};
 		});
+	};
+
+	const getApiSortData = () => {
+		const apiSort: Record<string, 1 | -1> = {};
+
+		Object.entries(searchState.multiSortMeta).forEach(([field, priority]) => {
+			apiSort[field] = priority > 0 ? 1 : -1;
+		});
+
+		return apiSort;
+	};
+
+	const clearAllSorting = () => {
+		setSearchState((prev) => ({
+			...prev,
+			multiSortMeta: {},
+		}));
+	};
+
+	const getSortOrderText = (order: number) => {
+		const suffixes = ["th", "st", "nd", "rd"];
+		const v = order % 100;
+		return order + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
 	};
 
 	// 📌 Paginierung
@@ -163,13 +226,12 @@ const DataTable: React.FC<DataTableProps> = ({
 		}));
 	};
 
-	// 📌 Inline-Editing aktivieren
 	const enableEditing = (row: Row) => {
 		toggleRowSelection(row, true);
 		const id = row[datakey];
-		setEditingRecord(prev => {
-			if (prev[id]) return prev;              // bereits im Edit → nicht resetten
-			return { ...prev, [id]: { ...row } };   // klonen, kein Ref-Sharing
+		setEditingRecord((prev) => {
+			if (prev[id]) return prev; // bereits im Edit → nicht resetten
+			return { ...prev, [id]: { ...row } }; // klonen, kein Ref-Sharing
 		});
 	};
 
@@ -181,11 +243,10 @@ const DataTable: React.FC<DataTableProps> = ({
 		});
 	};
 
-	// 📌 Inline-Editing speichern / abbrechen
 	const handleKeyDown = (e: any, field: string, row: Row, row_ofs: number) => {
 		if ((e.ctrlKey || e.metaKey) && e.key === "s") {
 			e.preventDefault();
-			
+
 			flushSync(() => {});
 
 			setRecords((prev) => {
@@ -231,7 +292,6 @@ const DataTable: React.FC<DataTableProps> = ({
 		});
 	};
 
-	// 📌 Zeile auswählen
 	const toggleRowSelection = (row: Row, state?: boolean) => {
 		if (editingRecord[row[datakey]]) state = true;
 
@@ -246,14 +306,12 @@ const DataTable: React.FC<DataTableProps> = ({
 		}
 	};
 
-	// 📌 Alle Zeilen auswählen
 	const toggleSelectAll = () => {
 		setSelectedRecords(
 			records.length === selectedRecords.length ? [] : [...records]
 		);
 	};
 
-	// 📌 Neue Zeile hinzufügen oder Aktion ausführen
 	const handleNewRecord = () => {
 		if (newRecord === false) return;
 
@@ -273,31 +331,34 @@ const DataTable: React.FC<DataTableProps> = ({
 
 	return (
 		<div
-			className={classNames(
-				"w-full flex flex-col",
-				{ "h-full": !height },
-				"bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-			)}
+			className={classNames("w-full h-full flex flex-col", {
+				"min-h-screen": !height,
+			})}
+			style={{
+				...(height ? { height } : { height: "100vh" }),
+			}}
 		>
 			<div
-				className="relative flex-grow overflow-auto"
-				{...(height ? { style: { height } } : {})}
+				className="relative flex-grow overflow-auto w-full"
+				{...(height
+					? { style: { height } }
+					: { style: { height: "calc(100vh - 120px)" } })}
 			>
 				<Transition show={!!error}>
-					<div className="absolute right-2 top-2 z-50 pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black/5 transition">
-						<div className="p-4">
+					<div className="absolute right-2 top-2 z-50 pointer-events-auto w-full max-w-sm overflow-hidden bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-lg">
+						<div className="p-3">
 							<div className="flex items-start">
 								<div className="shrink-0">
 									<ExclamationCircleIcon
 										aria-hidden="true"
-										className="size-6 text-red-400"
+										className="size-5 text-red-500"
 									/>
 								</div>
-								<div className="ml-3 w-0 flex-1 pt-0.5">
+								<div className="ml-2 w-0 flex-1 pt-0.5">
 									<p className="text-sm font-medium text-gray-900 dark:text-gray-100">
 										Fehler beim Laden!
 									</p>
-									<p className="mt-1 text-sm text-gray-500 dark:text-gray-300">
+									<p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
 										{typeof error === "string"
 											? error
 											: error
@@ -305,14 +366,14 @@ const DataTable: React.FC<DataTableProps> = ({
 											: ""}
 									</p>
 								</div>
-								<div className="ml-4 flex shrink-0">
+								<div className="ml-2 flex shrink-0">
 									<button
 										type="button"
 										onClick={() => setError(null)}
-										className="inline-flex rounded-md bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+										className="inline-flex bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-1 focus:ring-red-500"
 									>
 										<span className="sr-only">Close</span>
-										<XMarkIcon aria-hidden="true" className="size-5" />
+										<XMarkIcon aria-hidden="true" className="size-4" />
 									</button>
 								</div>
 							</div>
@@ -321,336 +382,272 @@ const DataTable: React.FC<DataTableProps> = ({
 				</Transition>
 
 				{/* 📌 Tabelle */}
-				<table
-					ref={tableRef}
-					className="table-fixed border-separate border-spacing-0 min-w-full w-min"
-				>
-					{/* 📌 Tabellenkopf */}
-					<thead className="bg-gray-200 dark:bg-gray-800 sticky top-0 z-20">
-						<tr>
-							<th
-								className="border dark:border-gray-700 px-2 py-1 sticky left-0 bg-white dark:bg-gray-900 z-30"
-								style={{ width: "2em" }}
-							>
-								<Checkbox
-									checked={
-										records.length === selectedRecords.length &&
-										records.length > 0
-									}
-									onChange={toggleSelectAll}
-								/>
-							</th>
-							{columns.map((col, idx) => (
-								<th
-									key={col.field}
-									style={{
-										width: col.width || "150px",
-										...(col.frozen
-											? { left: stickyLeft(idx), zIndex: stickyZHead() }
-											: {}),
-									}}
-									className={classNames(
-										"border dark:border-gray-700 text-center px-4 py-2 cursor-pointer",
-										col.frozen && "sticky bg-white dark:bg-gray-900"
-									)}
-									onClick={( !col.sortable ? undefined : () => handleSort(col.field) )}
-								>
-									{col.label} {col.sortable ? <span>⬍</span> : null}
-								</th>
-							))}
-						</tr>
-					</thead>
-
-					<tbody>
-						{records.map((row, row_ofs) => {
-							let firstEditor = true;
-							return (
-								<tr
-									key={row[datakey]}
-									className="hover:bg-gray-100 dark:hover:bg-gray-800"
-								>
-									<td className="border dark:border-gray-700 text-center px-2 py-1 sticky left-0 bg-white dark:bg-gray-900 z-10">
+				<div className="bg-white dark:bg-gray-900  border border-gray-200 dark:border-gray-700 overflow-hidden w-full h-full flex-1">
+					<div className="overflow-x-auto w-full h-full">
+						<table ref={tableRef} className="w-full min-w-full table-fixed">
+							{/* 📌 Tabellenkopf */}
+							<thead className="bg-gray-50 dark:bg-gray-800">
+								<tr>
+									<th
+										className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700"
+										style={{ width: "3rem" }}
+									>
 										<Checkbox
-											checked={selectedRecords.includes(row)}
-											onChange={() => toggleRowSelection(row)}
+											checked={
+												records.length === selectedRecords.length &&
+												records.length > 0
+											}
+											onChange={toggleSelectAll}
 										/>
-									</td>
-									{columns.map((col, idx) => {
-										if (col.editor && firstEditor) {
-											col.editor_properties = col.editor_properties || {};
-											col.editor_properties.autoFocus = true;
-											firstEditor = false;
-										}
-
-										const controlledValue = editingRecord[row[datakey]]?.[col.field] ?? '';
-
-										return (
-											<td
-												key={col.field}
-												style={{
-													width: col.width || "150px",
-													...(col.frozen
-														? {
-																left: stickyLeft(idx),
-																zIndex: stickyZBody(),
-														  }
-														: {}),
-												}}
-												className={classNames(
-													"border dark:border-gray-700",
-													{
-														"px-2 py-1": !(
-															editingRecord[row[datakey]] && col.editor
-														),
-													},
-													col.frozen && "sticky bg-white dark:bg-gray-900"
-												)}
-												onClick={handleDoubleClick(
-													() => toggleRowSelection(row),
-													() => enableEditing(row)
-												)}
-											>
-												{editingRecord[row[datakey]] && col.editor ? (
-													<>
-														{col.editor === "number" && (
-															<input
-																type="number"
-																defaultValue={controlledValue}
-																onKeyDown={(e) =>
-																	handleKeyDown(e, col.field, row, row_ofs)
-																}
-																className="w-full px-2 py-1 border rounded dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
-																{...col.editor_properties}
-																onChange={(e) =>
-																	setRowValue(
-																		row[datakey],
-																		col.field,
-																		e.target.value
-																	)
-																}
-															/>
-														)}
-
-														{col.editor === "datetime" && (
-															<input
-																type="datetime-local"
-																defaultValue={
-																	controlledValue
-																		? DateTime.fromISO(controlledValue, {zone: "utc" }).setZone("Europe/Vienna").toFormat("yyyy-MM-dd'T'HH:mm")
-																		: ""
-																}
-																onKeyDown={(e) =>
-																	handleKeyDown(e, col.field, row, row_ofs)
-																}
-																className="w-full px-2 py-1 border rounded dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
-																{...col.editor_properties}
-																onChange={(e) =>
-																	setRowValue(
-																		row[datakey],
-																		col.field,
-																		e.target.value
-																	)
-																}
-															/>
-														)}
-
-														{col.editor === "select" && (
-															<select
-																defaultValue={controlledValue}
-																onKeyDown={(e) =>
-																	handleKeyDown(e, col.field, row, row_ofs)
-																}
-																className="w-full px-2 py-1 border rounded dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
-																{...col.editor_properties}
-																onChange={(e) =>
-																	setRowValue(
-																		row[datakey],
-																		col.field,
-																		e.target.value
-																	)
-																}
-															>
-																<option value="">-- Select --</option>
-																{col.editor_properties?.options?.map(
-																	(option: any, index: number) => (
-																		<option key={index} value={option.value}>
-																			{option.label}
-																		</option>
-																	)
-																)}
-															</select>
-														)}
-
-														{["checkbox"].includes(col.editor) && (
-															<input
-																type={col.editor}
-																checked={controlledValue ? true : false}
-																onKeyDown={(e) =>
-																	handleKeyDown(e, col.field, row, row_ofs)
-																}
-																onChange={(e) => {
-																		setRowValue(
-																			row[datakey],
-																			col.field,
-																			e.target.checked ? 1 : 0
+									</th>
+									{columns.map((col, idx) => (
+										<th
+											key={col.field}
+											style={{
+												width: col.width || "auto",
+												...(col.frozen
+													? { left: stickyLeft(idx), zIndex: stickyZHead() }
+													: {}),
+											}}
+											className={classNames(
+												"px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0",
+												col.frozen && "sticky bg-gray-50 dark:bg-gray-800",
+												col.sortable &&
+													"cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+											)}
+											onClick={
+												!col.sortable
+													? undefined
+													: (e) => handleSort(col.field, e)
+											}
+										>
+											<div className="flex items-center">
+												<span>{col.label}</span>
+												{col.sortable && (
+													<div className="ml-2 flex items-center gap-1">
+														{searchState.multiSortMeta[col.field] ? (
+															<>
+																<span className="text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+																	{getSortOrderText(
+																		Math.abs(
+																			searchState.multiSortMeta[col.field]
 																		)
-																	}
-																}
-																className="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-primary-500 shadow-sm focus:ring-primary-500 dark:focus:ring-primary-500 dark:focus:ring-offset-gray-800"
-																{...col.editor_properties}
-															/>
-														)}
-
-														{!["checkbox", "select", "number", "datetime"].includes(col.editor) && (
-															<input
-																type={col.editor}
-																defaultValue={controlledValue}
-																onKeyDown={(e) =>
-																	handleKeyDown(e, col.field, row, row_ofs)
-																}
-																onChange={(e) =>
-																	setRowValue(
-																		row[datakey],
-																		col.field,
-																		e.target.value
-																	)
-																}
-																className="w-full px-2 py-1 border rounded dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
-																{...col.editor_properties}
-															/>
-														)}
-													</>
-												) : (
-													<div className="whitespace-nowrap overflow-hidden overflow-ellipsis w-full block">
-														{col.formatter
-															? col.formatter(row, col.field)
-															: DataTableFormatter.default(row, col.field)}
+																	)}
+																</span>
+																<span className="text-primary text-sm">
+																	{searchState.multiSortMeta[col.field] > 0
+																		? "↑"
+																		: "↓"}
+																</span>
+															</>
+														) : null}
 													</div>
 												)}
-											</td>
-										);
-									})}
+											</div>
+										</th>
+									))}
 								</tr>
-							);
-						})}
-					</tbody>
-				</table>
+							</thead>
+
+							<tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+								{records.map((row, row_ofs) => {
+									let firstEditor = true;
+									const isSelected = selectedRecords.includes(row);
+
+									return (
+										<tr
+											key={row[datakey]}
+											className={classNames(
+												"group hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150",
+												isSelected && "bg-blue-50 dark:bg-blue-900/20",
+												row_ofs % 2 === 0
+													? "bg-white dark:bg-gray-900"
+													: "bg-gray-50 dark:bg-gray-800"
+											)}
+										>
+											<td
+												className={classNames(
+													"px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700",
+													isSelected
+														? "bg-blue-50 dark:bg-blue-900/20 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30"
+														: row_ofs % 2 === 0
+														? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800"
+														: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-700"
+												)}
+											>
+												<Checkbox
+													checked={isSelected}
+													onChange={() => toggleRowSelection(row)}
+												/>
+											</td>
+											{columns.map((col, idx) => {
+												if (col.editor && firstEditor) {
+													col.editor_properties = col.editor_properties || {};
+													col.editor_properties.autoFocus = true;
+													firstEditor = false;
+												}
+
+												const isFrozen = col.frozen;
+												const stickyStyle = isFrozen
+													? {
+															left: stickyLeft(idx),
+															zIndex: stickyZBody(),
+													  }
+													: {};
+
+												return (
+													<td
+														key={col.field}
+														style={{
+															width: col.width || "auto",
+															...stickyStyle,
+														}}
+														className={classNames(
+															"px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 last:border-r-0",
+															isFrozen && isSelected
+																? "sticky bg-blue-50 dark:bg-blue-900/20 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30"
+																: isFrozen
+																? `sticky ${
+																		row_ofs % 2 === 0
+																			? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800"
+																			: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-700"
+																  }`
+																: isSelected
+																? "bg-blue-50 dark:bg-blue-900/20 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30"
+																: row_ofs % 2 === 0
+																? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800"
+																: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-700"
+														)}
+														onClick={handleDoubleClick(
+															() => toggleRowSelection(row),
+															() => enableEditing(row)
+														)}
+													>
+														{editingRecord[row[datakey]] && col.editor ? (
+															<>
+																{col.editor === "number" && (
+																	<input
+																		type="number"
+																		defaultValue={row[col.field]}
+																		onKeyDown={(e) =>
+																			handleKeyDown(e, col.field, row, row_ofs)
+																		}
+																		className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																		{...col.editor_properties}
+																		onChange={(e) =>
+																			setRowValue(
+																				row[datakey],
+																				col.field,
+																				e.target.value
+																			)
+																		}
+																	/>
+																)}
+
+																{col.editor === "datetime" && (
+																	<input
+																		type="datetime-local"
+																		defaultValue={
+																			row[col.field]
+																				? DateTime.fromISO(row[col.field], {
+																						zone: "utc",
+																				  })
+																						.setZone("Europe/Vienna")
+																						.toFormat("yyyy-MM-dd'T'HH:mm")
+																				: ""
+																		}
+																		onKeyDown={(e) =>
+																			handleKeyDown(e, col.field, row, row_ofs)
+																		}
+																		className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																		{...col.editor_properties}
+																		onChange={(e) =>
+																			setRowValue(
+																				row[datakey],
+																				col.field,
+																				e.target.value
+																			)
+																		}
+																	/>
+																)}
+
+																{col.editor === "select" && (
+																	<select
+																		defaultValue={row[col.field]}
+																		onKeyDown={(e) =>
+																			handleKeyDown(e, col.field, row, row_ofs)
+																		}
+																		className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																		{...col.editor_properties}
+																		onChange={(e) =>
+																			setRowValue(
+																				row[datakey],
+																				col.field,
+																				e.target.value
+																			)
+																		}
+																	>
+																		<option value="">-- Select --</option>
+																		{col.editor_properties?.options?.map(
+																			(option: any, index: number) => (
+																				<option
+																					key={index}
+																					value={option.value}
+																				>
+																					{option.label}
+																				</option>
+																			)
+																		)}
+																	</select>
+																)}
+
+																{!["select", "number", "datetime"].includes(
+																	col.editor
+																) && (
+																	<input
+																		type={col.editor}
+																		defaultValue={row[col.field]}
+																		onKeyDown={(e) =>
+																			handleKeyDown(e, col.field, row, row_ofs)
+																		}
+																		onChange={(e) =>
+																			setRowValue(
+																				row[datakey],
+																				col.field,
+																				e.target.value
+																			)
+																		}
+																		className="w-full px-2 py-1 border border-gray-1 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																		{...col.editor_properties}
+																	/>
+																)}
+															</>
+														) : (
+															<div className="text-gray-900 dark:text-gray-100">
+																{col.formatter
+																	? col.formatter(row, col.field)
+																	: DataTableFormatter.default(row, col.field)}
+															</div>
+														)}
+													</td>
+												);
+											})}
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
+				</div>
 			</div>
 
 			{/* 📌 Paginierung */}
-			<div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 sm:px-6">
-				<div className="flex flex-1 justify-between sm:hidden">
-					<button
-						onClick={() => onPageChange(Math.max(searchState.page - 1, 1))}
-						disabled={searchState.page === 1}
-						className="relative inline-flex items-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
-					>
-						Previous
-					</button>
-					<button
-						onClick={() => onPageChange(searchState.page + 1)}
-						disabled={
-							searchState.page >= Math.ceil(totalRecords / searchState.rows)
-						}
-						className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
-					>
-						Next
-					</button>
-				</div>
-				<div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-					<div className="flex flex-row items-center gap-4">
-						<p className="text-sm text-gray-700 dark:text-gray-200">
-							Showing{" "}
-							<span className="font-medium">{1 + searchState.first}</span> to{" "}
-							<span className="font-medium">
-								{searchState.first + searchState.rows < totalRecords
-									? searchState.first + searchState.rows
-									: totalRecords}
-							</span>{" "}
-							of <span className="font-medium">{totalRecords}</span> results
-						</p>
-
-						<nav
-							aria-label="Pagination"
-							className="isolate inline-flex -space-x-px rounded-md shadow-sm"
-						>
-							<button
-								onClick={() => onPageChange(Math.max(searchState.page - 1, 1))}
-								className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 focus:z-20 focus:outline-offset-0"
-							>
-								<span className="sr-only">Previous</span>
-								<ChevronLeftIcon aria-hidden="true" className="size-5" />
-							</button>
-							{(() => {
-								const totalPages = Math.ceil(totalRecords / searchState.rows);
-								const maxVisiblePages = 7;
-								const pages: (number | "...")[] = [];
-
-								if (totalPages <= maxVisiblePages) {
-									for (let i = 1; i <= totalPages; i++) pages.push(i);
-								} else {
-									pages.push(1);
-									if (searchState.page <= 4) {
-										for (let i = 2; i <= Math.min(5, totalPages); i++)
-											pages.push(i);
-										pages.push("...");
-										pages.push(totalPages);
-									} else if (searchState.page >= totalPages - 4) {
-										pages.push("...");
-										for (let i = totalPages - 4; i <= totalPages; i++)
-											pages.push(i);
-									} else {
-										pages.push("...");
-										pages.push(searchState.page - 1);
-										pages.push(searchState.page);
-										pages.push(searchState.page + 1);
-										pages.push("...");
-										pages.push(totalPages);
-									}
-								}
-
-								return pages.map((page, index) => {
-									if (page === "...") {
-										return (
-											<span
-												key={`ellipsis-${index}`}
-												className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 ring-1 ring-inset ring-gray-300 dark:ring-gray-700 focus:outline-offset-0"
-											>
-												...
-											</span>
-										);
-									}
-
-									const isCurrent = page === searchState.page;
-									return (
-										<button
-											key={page}
-											onClick={() =>
-												typeof page === "number" && onPageChange(page)
-											}
-											className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-												isCurrent
-													? "z-10 bg-primary text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-													: "text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-offset-0"
-											} focus:z-20 focus:outline-offset-0`}
-										>
-											{page}
-										</button>
-									);
-								});
-							})()}
-							<button
-								onClick={() => onPageChange(searchState.page + 1)}
-								disabled={
-									searchState.page >= Math.ceil(totalRecords / searchState.rows)
-								}
-								className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 focus:z-20 focus:outline-offset-0"
-							>
-								<span className="sr-only">Next</span>
-								<ChevronRightIcon aria-hidden="true" className="size-5" />
-							</button>
-						</nav>
-
+			<div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 px-6 py-2 dark:border-gray-700">
+				<div className="flex items-center gap-6">
+					<div className="flex items-center gap-2">
+						<span className="text-sm text-gray-600 dark:text-gray-400">
+							Show:
+						</span>
 						<select
 							defaultValue={searchState.rows}
 							onChange={(e) =>
@@ -659,34 +656,167 @@ const DataTable: React.FC<DataTableProps> = ({
 									rows: parseInt(e.target.value),
 								}))
 							}
-							className="appearance-none rounded-md bg-white dark:bg-gray-900 px-auto py-1 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 dark:outline-gray-700 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
+							className="appearance-none rounded-lg bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
 						>
 							{perPageList.map((lines) => (
 								<option key={lines}>{lines}</option>
 							))}
 						</select>
+					</div>
 
-						<button
-							onClick={() => loadLazyData()}
-							className="relative inline-flex items-center rounded-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 focus:z-20 focus:outline-offset-0"
+					<nav aria-label="Pagination" className="flex items-center gap-2">
+						<SecondaryButton
+							onClick={() => onPageChange(1)}
+							disabled={searchState.page === 1}
+							className="p-2"
 						>
-							<span className="sr-only">Reload</span>
+							<ChevronDoubleLeftIcon className="size-4" />
+						</SecondaryButton>
+
+						<SecondaryButton
+							onClick={() => onPageChange(Math.max(searchState.page - 1, 1))}
+							disabled={searchState.page === 1}
+							className="p-2"
+						>
+							<ChevronLeftIcon className="size-4" />
+						</SecondaryButton>
+
+						{(() => {
+							const totalPages = Math.ceil(totalRecords / searchState.rows);
+							const currentPage = searchState.page;
+							const pages = [];
+
+							pages.push(1);
+
+							let start = Math.max(2, currentPage - 1);
+							let end = Math.min(totalPages - 1, currentPage + 1);
+
+							// Adjust range for edge cases
+							if (currentPage <= 3) {
+								end = Math.min(totalPages - 1, 4);
+							} else if (currentPage >= totalPages - 2) {
+								start = Math.max(2, totalPages - 3);
+							}
+
+							if (start > 2) {
+								pages.push("...");
+							}
+
+							for (let i = start; i <= end; i++) {
+								if (i > 1 && i < totalPages) {
+									pages.push(i);
+								}
+							}
+
+							if (end < totalPages - 1) {
+								pages.push("...");
+							}
+
+							if (totalPages > 1) {
+								pages.push(totalPages);
+							}
+
+							return pages.map((page, index) => (
+								<React.Fragment key={index}>
+									{page === "..." ? (
+										<span className="px-3 py-1 text-sm text-gray-400 dark:text-gray-500">
+											...
+										</span>
+									) : (
+										<button
+											onClick={() => onPageChange(page as number)}
+											className={classNames(
+												"px-3 py-1 text-sm rounded border transition-all duration-200",
+												currentPage === page
+													? "bg-primary text-white border-primary"
+													: "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:text-gray-900 dark:hover:text-gray-100"
+											)}
+										>
+											{page}
+										</button>
+									)}
+								</React.Fragment>
+							));
+						})()}
+
+						<SecondaryButton
+							onClick={() => onPageChange(searchState.page + 1)}
+							disabled={
+								searchState.page >= Math.ceil(totalRecords / searchState.rows)
+							}
+							className="p-2"
+						>
+							<ChevronRightIcon className="size-4" />
+						</SecondaryButton>
+
+						<SecondaryButton
+							onClick={() =>
+								onPageChange(Math.ceil(totalRecords / searchState.rows))
+							}
+							disabled={
+								searchState.page >= Math.ceil(totalRecords / searchState.rows)
+							}
+							className="p-2"
+						>
+							<ChevronDoubleRightIcon className="size-4" />
+						</SecondaryButton>
+					</nav>
+
+					<div className="flex items-center gap-4">
+						<SecondaryButton
+							onClick={() => loadLazyData()}
+							className="flex items-center gap-2"
+						>
 							<ArrowPathIcon
 								aria-hidden="true"
-								className={classNames("size-5 ", { "animate-spin": loading })}
+								className={classNames("size-4", { "animate-spin": loading })}
 							/>
-						</button>
+						</SecondaryButton>
+
+						{isDeleteAllow &&
+							selectedRecords.length > 0 &&
+							Object.keys(editingRecord).length === 0 && (
+								<DangerButton
+									onClick={() => {
+										console.log("Delete selected records:", selectedRecords);
+									}}
+									className="flex items-center gap-2"
+								>
+									<TrashIcon aria-hidden="true" className="size-4" />
+									<span>Delete</span>
+								</DangerButton>
+							)}
+
+						{Object.keys(editingRecord).length > 0 && (
+							<PrimaryButton
+								onClick={() => {
+									console.log("Save all open rows");
+								}}
+								className="flex items-center gap-2"
+							>
+								<CheckIcon aria-hidden="true" className="size-4" />
+								<span>Save</span>
+							</PrimaryButton>
+						)}
 
 						{newRecord !== false && (
-							<button
+							<PrimaryButton
 								onClick={handleNewRecord}
-								className="relative inline-flex items-center rounded-md border border-gray-300 dark:border-gray-700 bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+								className="flex items-center gap-2"
 							>
-								New
-							</button>
+								<PlusIcon aria-hidden="true" className="size-4" />
+								<span>New</span>
+							</PrimaryButton>
 						)}
 					</div>
-					<div></div>
+				</div>
+
+				<div className="text-sm text-gray-600 dark:text-gray-400">
+					Displaying {1 + searchState.first} to{" "}
+					{searchState.first + searchState.rows < totalRecords
+						? searchState.first + searchState.rows
+						: totalRecords}{" "}
+					of {totalRecords} item{totalRecords !== 1 ? "s" : ""}
 				</div>
 			</div>
 		</div>
@@ -717,6 +847,36 @@ const DataTableFormatter = {
 		return date.isValid
 			? date.toLocaleString(DateTime.DATETIME_MED)
 			: row[field];
+	},
+
+	actions: (
+		row: Row,
+		field: string,
+		actions: Array<{
+			label: string;
+			href: string;
+			variant?: "default" | "button";
+		}>
+	) => {
+		return (
+			<div className="flex gap-2">
+				{actions.map((action, index) => (
+					<DataTableLink
+						key={index}
+						href={action.href}
+						variant={action.variant || "default"}
+					>
+						{action.label}
+					</DataTableLink>
+				))}
+			</div>
+		);
+	},
+
+	link: (row: Row, field: string, href: string, label?: string) => {
+		return (
+			<DataTableLink href={href}>{label || row[field] || "View"}</DataTableLink>
+		);
 	},
 };
 
