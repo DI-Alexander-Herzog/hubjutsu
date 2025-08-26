@@ -481,9 +481,27 @@ const DataTable: React.FC<DataTableProps> = ({
 															</select>
 														)}
 
-														{!["select", "number", "datetime"].includes(
-															col.editor
-														) && (
+														{["checkbox"].includes(col.editor) && (
+															<input
+																type={col.editor}
+																checked={controlledValue ? true : false}
+																onKeyDown={(e) =>
+																	handleKeyDown(e, col.field, row, row_ofs)
+																}
+																onChange={(e) => {
+																		setRowValue(
+																			row[datakey],
+																			col.field,
+																			e.target.checked ? 1 : 0
+																		)
+																	}
+																}
+																className="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-primary-500 shadow-sm focus:ring-primary-500 dark:focus:ring-primary-500 dark:focus:ring-offset-gray-800"
+																{...col.editor_properties}
+															/>
+														)}
+
+														{!["checkbox", "select", "number", "datetime"].includes(col.editor) && (
 															<input
 																type={col.editor}
 																defaultValue={controlledValue}
