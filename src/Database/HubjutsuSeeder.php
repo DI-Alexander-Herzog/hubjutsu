@@ -42,12 +42,8 @@ class HubjutsuSeeder extends Seeder
         ]);
     }
 
-    public function seedUsers(): void
-    {
-        $password = env('ADMIN_PASSWORD', base64_encode(random_bytes(16)));
-        $this->command->info('Seeding Users with default password: ' . $password);
-
-        $users = [
+    public function initialUsers() {
+        return [
             [
                 'name' => 'Alexander Herzog',
                 'email' => 'alexander@alexander-herzog.at',
@@ -61,6 +57,14 @@ class HubjutsuSeeder extends Seeder
                 'email' => 'anja@alexander-herzog.at'
             ]
         ];
+    }
+
+    public function seedUsers(): void
+    {
+        $password = env('ADMIN_PASSWORD', base64_encode(random_bytes(16)));
+        $this->command->info('Seeding Users with default password: ' . $password);
+
+        $users = $this->initialUsers();
 
         foreach($users as $user) {
             $this->command->line('- ' . $user['name'] . ' (' . $user['email'] . ')');
