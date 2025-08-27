@@ -65,9 +65,10 @@ git submodule foreach "git add . && git commit -m 'update' && git push"
 
 ## Usage
 
-```php
-// Usage description here
-```
+
+   * Klassen aus `app/` überschreiben gleichnamige Klassen in `lib/`.
+   * In der PHP-Lib immer `App\Models\…` importieren, nicht `Hubjutsu\…`.
+   * In React/TypeScript nur Komponenten via `@/Components/...` importieren.
 
 ## Testing
 
