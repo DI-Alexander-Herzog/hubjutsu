@@ -78,6 +78,11 @@ const DataTable: React.FC<DataTableProps> = ({
 	const stickyZBody = () => 10;
 	const stickyZHead = () => 20;
 
+	const getOpaqueBaseBg = (row_ofs: number) =>
+		row_ofs % 2 === 0
+			? "bg-white dark:bg-gray-900"
+			: "bg-gray-50 dark:bg-gray-800";
+
 	// 📌 State-Variablen
 	const [loading, setLoading] = useState(false);
 	const [totalRecords, setTotalRecords] = useState(0);
@@ -196,11 +201,9 @@ const DataTable: React.FC<DataTableProps> = ({
 
 	const getApiSortData = () => {
 		const apiSort: Record<string, 1 | -1> = {};
-
 		Object.entries(searchState.multiSortMeta).forEach(([field, priority]) => {
 			apiSort[field] = priority > 0 ? 1 : -1;
 		});
-
 		return apiSort;
 	};
 
@@ -389,7 +392,7 @@ const DataTable: React.FC<DataTableProps> = ({
 							<thead className="bg-gray-50 dark:bg-gray-800">
 								<tr>
 									<th
-										className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700"
+										className="px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 sticky left-0 z-20 bg-gray-50 dark:bg-gray-800"
 										style={{ width: "3rem" }}
 									>
 										<Checkbox
@@ -410,10 +413,10 @@ const DataTable: React.FC<DataTableProps> = ({
 													: {}),
 											}}
 											className={classNames(
-												"px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0",
+												"px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0",
 												col.frozen && "sticky bg-gray-50 dark:bg-gray-800",
 												col.sortable &&
-													"cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+													"cursor-pointer hover:bg-gray-100 dark:hover:bg-primary-800/10"
 											)}
 											onClick={
 												!col.sortable
@@ -458,28 +461,42 @@ const DataTable: React.FC<DataTableProps> = ({
 										<tr
 											key={row[datakey]}
 											className={classNames(
-												"group hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150",
-												isSelected && "bg-blue-50 dark:bg-blue-900/20",
+												"group transition-colors duration-150",
+
 												row_ofs % 2 === 0
 													? "bg-white dark:bg-gray-900"
-													: "bg-gray-50 dark:bg-gray-800"
+													: "bg-gray-50 dark:bg-gray-800",
+												"hover:bg-gray-50 dark:hover:bg-primary-800/10",
+												isSelected && "bg-primary-50 dark:bg-primary-800/10"
 											)}
 										>
+											{/* Checkbox cell (sticky) */}
 											<td
 												className={classNames(
-													"px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700",
-													isSelected
-														? "bg-blue-50 dark:bg-blue-900/20 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30"
-														: row_ofs % 2 === 0
-														? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800"
-														: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-700"
+													"whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 sticky left-0 z-10 p-0"
 												)}
+												style={{}}
 											>
-												<Checkbox
-													checked={isSelected}
-													onChange={() => toggleRowSelection(row)}
-												/>
+												<div
+													className={classNames(
+														"px-3 py-2",
+														getOpaqueBaseBg(row_ofs),
+
+														isSelected
+															? "bg-primary-50 dark:bg-primary-800/10"
+															: row_ofs % 2 === 0
+															? "hover:bg-gray-50 dark:hover:bg-primary-800/10"
+															: "hover:bg-gray-100 dark:hover:bg-primary-800/10"
+													)}
+												>
+													<Checkbox
+														checked={isSelected}
+														onChange={() => toggleRowSelection(row)}
+													/>
+												</div>
 											</td>
+
+											{/* Data cells */}
 											{columns.map((col, idx) => {
 												if (col.editor && firstEditor) {
 													col.editor_properties = col.editor_properties || {};
@@ -489,11 +506,20 @@ const DataTable: React.FC<DataTableProps> = ({
 
 												const isFrozen = col.frozen;
 												const stickyStyle = isFrozen
-													? {
-															left: stickyLeft(idx),
-															zIndex: stickyZBody(),
-													  }
+													? { left: stickyLeft(idx), zIndex: stickyZBody() }
 													: {};
+
+												const overlayBgClasses = isFrozen
+													? isSelected
+														? "bg-primary-50 dark:bg-primary-800/10 group-hover:bg-primary-100 dark:group-hover:bg-primary-800/10"
+														: row_ofs % 2 === 0
+														? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-primary-800/10"
+														: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-primary-800/10"
+													: isSelected
+													? "bg-primary-50 dark:bg-primary-800/10 group-hover:bg-primary-100 dark:group-hover:bg-primary-800/10"
+													: row_ofs % 2 === 0
+													? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-primary-800/10"
+													: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-primary-800/10";
 
 												return (
 													<td
@@ -503,132 +529,154 @@ const DataTable: React.FC<DataTableProps> = ({
 															...stickyStyle,
 														}}
 														className={classNames(
-															"px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 last:border-r-0",
-															isFrozen && isSelected
-																? "sticky bg-blue-50 dark:bg-blue-900/20 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30"
-																: isFrozen
-																? `sticky ${
-																		row_ofs % 2 === 0
-																			? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800"
-																			: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-700"
-																  }`
-																: isSelected
-																? "bg-blue-50 dark:bg-blue-900/20 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30"
-																: row_ofs % 2 === 0
-																? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800"
-																: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-700"
+															"relative whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 last:border-r-0 p-0",
+
+															isFrozen && getOpaqueBaseBg(row_ofs),
+
+															!isFrozen && getOpaqueBaseBg(row_ofs),
+															isFrozen && "sticky"
 														)}
 														onClick={handleDoubleClick(
 															() => toggleRowSelection(row),
 															() => enableEditing(row)
 														)}
 													>
-														{editingRecord[row[datakey]] && col.editor ? (
-															<>
-																{col.editor === "number" && (
-																	<input
-																		type="number"
-																		defaultValue={row[col.field]}
-																		onKeyDown={(e) =>
-																			handleKeyDown(e, col.field, row, row_ofs)
-																		}
-																		className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
-																		{...col.editor_properties}
-																		onChange={(e) =>
-																			setRowValue(
-																				row[datakey],
-																				col.field,
-																				e.target.value
-																			)
-																		}
-																	/>
-																)}
+														<div
+															className={classNames(
+																"px-3 py-2",
+																overlayBgClasses
+															)}
+														>
+															{editingRecord[row[datakey]] && col.editor ? (
+																<>
+																	{col.editor === "number" && (
+																		<input
+																			type="number"
+																			defaultValue={row[col.field]}
+																			onKeyDown={(e) =>
+																				handleKeyDown(
+																					e,
+																					col.field,
+																					row,
+																					row_ofs
+																				)
+																			}
+																			className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																			{...col.editor_properties}
+																			onChange={(e) =>
+																				setRowValue(
+																					row[datakey],
+																					col.field,
+																					e.target.value
+																				)
+																			}
+																		/>
+																	)}
 
-																{col.editor === "datetime" && (
-																	<input
-																		type="datetime-local"
-																		defaultValue={
-																			row[col.field]
-																				? DateTime.fromISO(row[col.field], {
-																						zone: "utc",
-																				  })
-																						.setZone("Europe/Vienna")
-																						.toFormat("yyyy-MM-dd'T'HH:mm")
-																				: ""
-																		}
-																		onKeyDown={(e) =>
-																			handleKeyDown(e, col.field, row, row_ofs)
-																		}
-																		className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
-																		{...col.editor_properties}
-																		onChange={(e) =>
-																			setRowValue(
-																				row[datakey],
-																				col.field,
-																				e.target.value
-																			)
-																		}
-																	/>
-																)}
+																	{col.editor === "datetime" && (
+																		<input
+																			type="datetime-local"
+																			defaultValue={
+																				row[col.field]
+																					? DateTime.fromISO(row[col.field], {
+																							zone: "utc",
+																					  })
+																							.setZone("Europe/Vienna")
+																							.toFormat("yyyy-MM-dd'T'HH:mm")
+																					: ""
+																			}
+																			onKeyDown={(e) =>
+																				handleKeyDown(
+																					e,
+																					col.field,
+																					row,
+																					row_ofs
+																				)
+																			}
+																			className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																			{...col.editor_properties}
+																			onChange={(e) =>
+																				setRowValue(
+																					row[datakey],
+																					col.field,
+																					e.target.value
+																				)
+																			}
+																		/>
+																	)}
 
-																{col.editor === "select" && (
-																	<select
-																		defaultValue={row[col.field]}
-																		onKeyDown={(e) =>
-																			handleKeyDown(e, col.field, row, row_ofs)
-																		}
-																		className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
-																		{...col.editor_properties}
-																		onChange={(e) =>
-																			setRowValue(
-																				row[datakey],
-																				col.field,
-																				e.target.value
-																			)
-																		}
-																	>
-																		<option value="">-- Select --</option>
-																		{col.editor_properties?.options?.map(
-																			(option: any, index: number) => (
-																				<option
-																					key={index}
-																					value={option.value}
-																				>
-																					{option.label}
-																				</option>
-																			)
-																		)}
-																	</select>
-																)}
+																	{col.editor === "select" && (
+																		<select
+																			defaultValue={row[col.field]}
+																			onKeyDown={(e) =>
+																				handleKeyDown(
+																					e,
+																					col.field,
+																					row,
+																					row_ofs
+																				)
+																			}
+																			className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																			{...col.editor_properties}
+																			onChange={(e) =>
+																				setRowValue(
+																					row[datakey],
+																					col.field,
+																					e.target.value
+																				)
+																			}
+																		>
+																			<option value="">-- Select --</option>
+																			{col.editor_properties?.options?.map(
+																				(option: any, index: number) => (
+																					<option
+																						key={index}
+																						value={option.value}
+																					>
+																						{option.label}
+																					</option>
+																				)
+																			)}
+																		</select>
+																	)}
 
-																{!["select", "number", "datetime"].includes(
-																	col.editor
-																) && (
-																	<input
-																		type={col.editor}
-																		defaultValue={row[col.field]}
-																		onKeyDown={(e) =>
-																			handleKeyDown(e, col.field, row, row_ofs)
-																		}
-																		onChange={(e) =>
-																			setRowValue(
-																				row[datakey],
-																				col.field,
-																				e.target.value
-																			)
-																		}
-																		className="w-full px-2 py-1 border border-gray-1 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
-																		{...col.editor_properties}
-																	/>
-																)}
-															</>
-														) : (
-															<div className="text-gray-900 dark:text-gray-100">
-																{col.formatter
-																	? col.formatter(row, col.field)
-																	: DataTableFormatter.default(row, col.field)}
-															</div>
-														)}
+																	{!["select", "number", "datetime"].includes(
+																		col.editor
+																	) && (
+																		<input
+																			type={col.editor}
+																			defaultValue={row[col.field]}
+																			onKeyDown={(e) =>
+																				handleKeyDown(
+																					e,
+																					col.field,
+																					row,
+																					row_ofs
+																				)
+																			}
+																			onChange={(e) =>
+																				setRowValue(
+																					row[datakey],
+																					col.field,
+																					e.target.value
+																				)
+																			}
+																			className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																			{...col.editor_properties}
+																		/>
+																	)}
+																</>
+															) : (
+																<div className="text-gray-900 dark:text-gray-100">
+																	{col.formatter
+																		? col.formatter(row, col.field)
+																		: DataTableFormatter.default(
+																				row,
+																				col.field
+																		  )}
+																</div>
+															)}
+														</div>
 													</td>
 												);
 											})}
