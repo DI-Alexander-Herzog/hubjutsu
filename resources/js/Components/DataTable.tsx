@@ -83,6 +83,12 @@ const DataTable: React.FC<DataTableProps> = ({
 			? "bg-white dark:bg-gray-900"
 			: "bg-gray-50 dark:bg-gray-800";
 
+	const StickyRightDivider = () => (
+		<span
+			aria-hidden
+			className="pointer-events-none absolute right-0 top-0 h-full w-px bg-gray-200 dark:bg-gray-700"
+		/>
+	);
 	// 📌 State-Variablen
 	const [loading, setLoading] = useState(false);
 	const [totalRecords, setTotalRecords] = useState(0);
@@ -392,7 +398,7 @@ const DataTable: React.FC<DataTableProps> = ({
 							<thead className="bg-gray-50 dark:bg-gray-800">
 								<tr>
 									<th
-										className="px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 sticky left-0 z-20 bg-gray-50 dark:bg-gray-800"
+										className="relative px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider  border-gray-200 dark:border-gray-700 sticky left-0 z-20 bg-gray-50 dark:bg-gray-800"
 										style={{ width: "3rem" }}
 									>
 										<Checkbox
@@ -402,6 +408,7 @@ const DataTable: React.FC<DataTableProps> = ({
 											}
 											onChange={toggleSelectAll}
 										/>
+										<StickyRightDivider />
 									</th>
 									{columns.map((col, idx) => (
 										<th
@@ -413,8 +420,9 @@ const DataTable: React.FC<DataTableProps> = ({
 													: {}),
 											}}
 											className={classNames(
-												"px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0",
-												col.frozen && "sticky bg-gray-50 dark:bg-gray-800",
+												"px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider  border-gray-200 dark:border-gray-700 last:border-r-0",
+												col.frozen &&
+													"sticky bg-gray-50 dark:bg-gray-800 relative",
 												col.sortable &&
 													"cursor-pointer hover:bg-gray-100 dark:hover:bg-primary-800/10"
 											)}
@@ -447,6 +455,8 @@ const DataTable: React.FC<DataTableProps> = ({
 													</div>
 												)}
 											</div>
+											{/* fixed right divider for any frozen header cell */}
+											{col.frozen ? <StickyRightDivider /> : null}
 										</th>
 									))}
 								</tr>
@@ -456,37 +466,35 @@ const DataTable: React.FC<DataTableProps> = ({
 								{records.map((row, row_ofs) => {
 									let firstEditor = true;
 									const isSelected = selectedRecords.includes(row);
+									const isEditing = !!editingRecord[row[datakey]];
 
 									return (
 										<tr
 											key={row[datakey]}
 											className={classNames(
 												"group transition-colors duration-150",
-
 												row_ofs % 2 === 0
 													? "bg-white dark:bg-gray-900"
 													: "bg-gray-50 dark:bg-gray-800",
 												"hover:bg-gray-50 dark:hover:bg-primary-800/10",
-												isSelected && "bg-primary-50 dark:bg-primary-800/10"
+												(isSelected || isEditing) &&
+													"bg-primary-50 dark:bg-primary-800/10",
+												(isSelected || isEditing) && "border-b-0"
 											)}
 										>
-											{/* Checkbox cell (sticky) */}
 											<td
 												className={classNames(
-													"whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 sticky left-0 z-10 p-0"
+													"relative whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 sticky left-0 z-10 p-0"
 												)}
-												style={{}}
 											>
 												<div
 													className={classNames(
 														"px-3 py-2",
-														getOpaqueBaseBg(row_ofs),
-
 														isSelected
-															? "bg-primary-50 dark:bg-primary-800/10"
+															? "bg-primary-50 dark:bg-primary-800/10 group-hover:bg-primary-100 dark:group-hover:bg-primary-800/10"
 															: row_ofs % 2 === 0
-															? "hover:bg-gray-50 dark:hover:bg-primary-800/10"
-															: "hover:bg-gray-100 dark:hover:bg-primary-800/10"
+															? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-primary-800/10"
+															: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-primary-800/10"
 													)}
 												>
 													<Checkbox
@@ -494,9 +502,13 @@ const DataTable: React.FC<DataTableProps> = ({
 														onChange={() => toggleRowSelection(row)}
 													/>
 												</div>
+
+												<span
+													aria-hidden
+													className="pointer-events-none absolute right-0 top-0 h-full w-px bg-gray-200 dark:bg-gray-700"
+												/>
 											</td>
 
-											{/* Data cells */}
 											{columns.map((col, idx) => {
 												if (col.editor && firstEditor) {
 													col.editor_properties = col.editor_properties || {};
@@ -529,7 +541,7 @@ const DataTable: React.FC<DataTableProps> = ({
 															...stickyStyle,
 														}}
 														className={classNames(
-															"relative whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 last:border-r-0 p-0",
+															"relative whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 last:border-r-0 p-0",
 
 															isFrozen && getOpaqueBaseBg(row_ofs),
 
@@ -677,6 +689,7 @@ const DataTable: React.FC<DataTableProps> = ({
 																</div>
 															)}
 														</div>
+														{isFrozen ? <StickyRightDivider /> : null}
 													</td>
 												);
 											})}
