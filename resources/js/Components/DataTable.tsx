@@ -402,7 +402,7 @@ const DataTable: React.FC<DataTableProps> = ({
 							>
 								<tr>
 									<th
-										className="relative px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 sticky left-0 z-20 bg-gray-50 dark:bg-gray-800"
+										className=" px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider  border-gray-200 dark:border-gray-700 sticky left-0 z-20 bg-gray-50 dark:bg-gray-800"
 										style={{ width: "3rem" }}
 									>
 										<Checkbox
@@ -426,7 +426,7 @@ const DataTable: React.FC<DataTableProps> = ({
 											}}
 											className={classNames(
 												"relative px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0",
-												col.frozen && "sticky bg-gray-50 dark:bg-gray-800",
+												col.frozen && "border-r-0 sticky bg-gray-50 dark:bg-gray-800",
 												col.sortable &&
 													"cursor-pointer hover:bg-gray-100 dark:hover:bg-primary-800/10"
 											)}
@@ -460,7 +460,7 @@ const DataTable: React.FC<DataTableProps> = ({
 												)}
 											</div>
 
-											{col.frozen && idx === lastFrozenIndex && (
+											{col.frozen && (
 												<StickyRightDivider z={stickyZHead(idx) + 5} />
 											)}
 										</th>
@@ -487,7 +487,7 @@ const DataTable: React.FC<DataTableProps> = ({
 											{/* Sticky checkbox TD (solid backgrounds in dark mode) */}
 											<td
 												className={classNames(
-													"relative px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 sticky left-0 z-10",
+													" px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100  border-gray-200 dark:border-gray-700 sticky left-0 z-10",
 													isSelected
 														? "bg-primary-50 dark:bg-primary-900 group-hover:bg-primary-100 dark:group-hover:bg-primary-900"
 														: row_ofs % 2 === 0
@@ -529,20 +529,20 @@ const DataTable: React.FC<DataTableProps> = ({
 															...stickyStyle,
 														}}
 														className={classNames(
-															"relative px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 last:border-r-0",
-															isFrozen
-																? isSelected
-																	? "sticky bg-primary-50 dark:bg-primary-900 group-hover:bg-primary-100 dark:group-hover:bg-primary-900"
-																	: `sticky ${
-																			row_ofs % 2 === 0
-																				? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-700"
-																				: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-600"
-																	  }`
-																: isSelected
-																? "bg-primary-50 dark:bg-primary-900 group-hover:bg-primary-100 dark:group-hover:bg-primary-900"
-																: row_ofs % 2 === 0
-																? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-700"
-																: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-600"
+															"relative whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 last:border-r-0",
+															{
+																"px-3 py-2": !(editingRecord[row[datakey]] && col.editor),
+																// Sticky/frozen columns
+																['sticky border-r-0' ]: isFrozen,
+																// Selected row
+																["bg-primary-50 dark:bg-primary-900 group-hover:bg-primary-100 dark:group-hover:bg-primary-900"]: isSelected,
+																// Unselected, even row
+																["bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-700"]: !isSelected && row_ofs % 2 === 0,
+																// Unselected, odd row
+																["bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-600"]: !isSelected && row_ofs % 2 !== 0,
+																// Sticky/frozen column backgrounds
+																["bg-gray-50 dark:bg-gray-800"]: isFrozen && !isSelected,
+															}
 														)}
 														onClick={handleDoubleClick(
 															() => toggleRowSelection(row),
@@ -558,7 +558,7 @@ const DataTable: React.FC<DataTableProps> = ({
 																		onKeyDown={(e) =>
 																			handleKeyDown(e, col.field, row, row_ofs)
 																		}
-																		className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																		className="text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
 																		{...col.editor_properties}
 																		onChange={(e) =>
 																			setRowValue(
@@ -585,7 +585,7 @@ const DataTable: React.FC<DataTableProps> = ({
 																		onKeyDown={(e) =>
 																			handleKeyDown(e, col.field, row, row_ofs)
 																		}
-																		className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																		className="text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
 																		{...col.editor_properties}
 																		onChange={(e) =>
 																			setRowValue(
@@ -603,7 +603,7 @@ const DataTable: React.FC<DataTableProps> = ({
 																		onKeyDown={(e) =>
 																			handleKeyDown(e, col.field, row, row_ofs)
 																		}
-																		className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																		className="text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
 																		{...col.editor_properties}
 																		onChange={(e) =>
 																			setRowValue(
@@ -643,7 +643,7 @@ const DataTable: React.FC<DataTableProps> = ({
 																				e.target.value
 																			)
 																		}
-																		className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
+																		className="text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
 																		{...col.editor_properties}
 																	/>
 																)}
@@ -656,7 +656,7 @@ const DataTable: React.FC<DataTableProps> = ({
 															</div>
 														)}
 
-														{isLastFrozen && (
+														{isFrozen && (
 															<StickyRightDivider z={stickyZBody(idx) + 5} />
 														)}
 													</td>
