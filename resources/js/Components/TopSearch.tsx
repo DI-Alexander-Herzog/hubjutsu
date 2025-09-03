@@ -17,7 +17,7 @@ export default function TopSearch() {
         placeholder="Search..."
         value={raw}
         onChange={(e) => setRaw(e.target.value)}
-        className="block h-full w-full border-0 py-0 pl-8 pr-0 focus:ring-0 sm:text-sm text-gray-300 bg-transparent dark:text-gray-300"
+        className="block h-full w-full border-0 py-0 pl-8 pr-0 focus:ring-0 sm:text-sm bg-transparent dark:text-background"
       />
     </div>
   );
