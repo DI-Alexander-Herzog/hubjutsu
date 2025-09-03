@@ -3,10 +3,10 @@
 
 namespace AHerzog\Hubjutsu\Models;
 
+use Cache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
-use Nette\Utils\Arrays;
+use Illuminate\Database\Eloquent\Builder;
 
 class Base extends Model {    
 
@@ -26,8 +26,32 @@ class Base extends Model {
         return $this;
     }
 
-    public function searchInApi(\Illuminate\Database\Eloquent\Builder $builder, string $field, $value, string $matchMode = 'contains') {
+    public function searchInApi(Builder $builder, string $field, $value, string $matchMode = 'contains') {
         return false;
     }
+
+    protected function getSearchableFields() {
+        return Cache::remember(get_class($this).'::searchable_fields', 60, function() {
+            $reflection = new \ReflectionClass($this);
+            $docComment = $reflection->getDocComment();
+
+            preg_match_all('/@property\s+string([^\s]+)\s+\$([^\s]+)/', $docComment, $matches, PREG_PATTERN_ORDER);
+            return $matches[2] ?: [];
+        });
+    }
+
+    public function scopeSearch(Builder $query, $term)
+    {
+        if ($term) {
+            $likeTerm = '%' . str_replace('%', '\\%', $term) . '%';
+            $query->where(function($q) use ($likeTerm) {
+                foreach($this->getSearchableFields() as $field) {
+                    $q->orWhere($field, 'like', $likeTerm);
+                }
+            });
+        }
+        return $query;
+    }
+
 
 }

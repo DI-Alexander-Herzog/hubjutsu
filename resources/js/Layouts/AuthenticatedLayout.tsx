@@ -1,8 +1,6 @@
 import { useState, PropsWithChildren, ReactNode } from 'react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
-import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import classNames from 'classnames';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
@@ -19,32 +17,23 @@ import {
   import {
     Bars3Icon,
     BellIcon,
-    CalendarIcon,
-    ChartPieIcon,
     Cog6ToothIcon,
-    DocumentDuplicateIcon,
-    FolderIcon,
-    HomeIcon,
-    UsersIcon,
     XMarkIcon,
   } from '@heroicons/react/24/outline'
-  import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/20/solid'
+  import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import ThemeMode from '../../../stubs/resources/js/Components/ThemeMode';
-import InputText from '@hubjutsu/Components/InputText';
 import Avatar from '@hubjutsu/Components/Avatar';
+import { SearchProvider } from '@hubjutsu/Components/SearchContext';
+import TopSearch from '@hubjutsu/Components/TopSearch';
 
 export default function Authenticated({ title, children }: PropsWithChildren<{ title?: string }>) {
 
-  const page = usePage<PageProps>();
-
-
+    const page = usePage<PageProps>();
     const user = page.props.auth.user;
-
     const [sidebarOpen, setSidebarOpen] = useState(false)
 
-
     return (
-        <>
+      <SearchProvider>
         <Dialog open={sidebarOpen} onClose={setSidebarOpen} className="relative z-50 lg:hidden">
           <DialogBackdrop
             transition
@@ -110,7 +99,7 @@ export default function Authenticated({ title, children }: PropsWithChildren<{ t
         </Dialog>
 
         {/* Static sidebar for desktop */}
-        <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col  bg-gray-100 dark:bg-gray-900 text-black  dark:text-gray-100">
+        <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col  bg-gray-100 dark:bg-gray-900 text-black  dark:text-gray-100">
           {/* Sidebar component, swap this element with another sidebar if you like */}
           <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white dark:bg-slate-950 dark:text-gray-100  px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center">
@@ -155,7 +144,7 @@ export default function Authenticated({ title, children }: PropsWithChildren<{ t
           </div>
         </div>
 
-        <div className="lg:pl-72 flex flex-col h-full">
+        <div className="lg:pl-64 flex flex-col h-full">
           <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
             <button type="button" onClick={() => setSidebarOpen(true)} className="-m-2.5 p-2.5 lg:hidden">
               <span className="sr-only">Open sidebar</span>
@@ -166,22 +155,7 @@ export default function Authenticated({ title, children }: PropsWithChildren<{ t
             <div aria-hidden="true" className="h-6 w-px lg:hidden" />
 
             <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-              <form action="#" method="GET" className="relative flex flex-1">
-                <label htmlFor="search-field" className="sr-only">
-                  Search
-                </label>
-                <MagnifyingGlassIcon
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 left-0 h-full w-5 fill-text dark:fill-white"
-                />
-                <input
-                  id="search-field"
-                  name="search"
-                  type="search"
-                  placeholder="Search..."
-                  className="block h-full w-full border-0 py-0 pl-8 pr-0 focus:ring-0 sm:text-sm text-gray-300 bg-transparent dark:text-gray-300"
-                />
-              </form>
+              <TopSearch  />
 
               <div className="flex items-center gap-x-4 lg:gap-x-6">
                 <button type="button" className="-m-2.5 p-2.5 ">
@@ -235,6 +209,6 @@ export default function Authenticated({ title, children }: PropsWithChildren<{ t
             {children}
           </main>
         </div>
-    </>
+      </SearchProvider>
     );
 }

@@ -23,6 +23,7 @@ import { Transition } from "@headlessui/react";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { XMarkIcon } from "@heroicons/react/20/solid";
 import { flushSync } from "react-dom";
+import { useSearch } from "./SearchContext";
 
 // 📌 Spalten-Typen definieren
 interface Column {
@@ -52,7 +53,8 @@ interface DataTableProps {
 	with?: string[];
 	perPage?: number;
 	newRecord?: false | Record<string, any> | string | (() => void) | null;
-	isDeleteAllow?: boolean;
+	disableDelete?: boolean;
+	useGlobalSearch?: boolean;
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -64,9 +66,12 @@ const DataTable: React.FC<DataTableProps> = ({
 	perPage = 20,
 	newRecord = null,
 	with: withRelations = [],
-	isDeleteAllow = true,
+	disableDelete = false,
+	useGlobalSearch = true,
 }) => {
 	const tableRef = useRef<HTMLTableElement>(null);
+
+	const { query } = useSearch();
 
 	const stickyLeft = (idx: number) => {
 		const widths = ["3rem"]; // checkbox column is always sticky
@@ -107,6 +112,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		first: 0,
 		rows: perPage,
 		page: 1,
+		search: query,
 		filters: Object.keys(filters).map((key) => {
 			const value = filters[key];
 			if (Array.isArray(value) && value.length > 0) {
@@ -130,6 +136,12 @@ const DataTable: React.FC<DataTableProps> = ({
 		with: withRelations,
 	});
 
+	useEffect(() => {
+		setSearchState((prev) => {
+			return { ...prev, search: query, first: 0, page: 1 };
+		});
+	}, [query]);
+
 	const perPageList = [2, 10, 15, 20, 50, 100, 1000];
 	if (perPageList.indexOf(perPage) === -1) {
 		perPageList.push(perPage);
@@ -137,6 +149,7 @@ const DataTable: React.FC<DataTableProps> = ({
 	}
 
 	useEffect(() => {
+		console.log(searchState);
 		loadLazyData();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [searchState]);
@@ -338,11 +351,9 @@ const DataTable: React.FC<DataTableProps> = ({
 
 	return (
 		<div
-			className={classNames("w-full h-full flex flex-col", {
-				"min-h-screen": !height,
-			})}
+			className={classNames("w-full h-full flex flex-col")}
 			style={{
-				...(height ? { height } : { height: "100vh" }),
+				...(height ? { height } : {}),
 			}}
 		>
 			<div
@@ -803,7 +814,7 @@ const DataTable: React.FC<DataTableProps> = ({
 							/>
 						</SecondaryButton>
 
-						{isDeleteAllow &&
+						{!disableDelete &&
 							selectedRecords.length > 0 &&
 							Object.keys(editingRecord).length === 0 && (
 								<DangerButton
