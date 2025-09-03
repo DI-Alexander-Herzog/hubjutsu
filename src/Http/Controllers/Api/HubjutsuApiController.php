@@ -45,6 +45,8 @@ class HubjutsuApiController
     {
         $modelObj = $this->getModelIfAllowed($model, null, 'viewAny');
         
+        $search = $request->get('search');
+
         $paginatePerPage = intval($request->get('rows'));
         $offset = intval($request->get('first'));
         $page =  floor($offset / $paginatePerPage) + 1;
@@ -73,6 +75,11 @@ class HubjutsuApiController
         foreach($request->get('with', []) as $with) {
             $queryBuilder->with($with);
         };
+
+
+        if ($search) {
+            $queryBuilder->search($search);
+        }
         
         $result = $queryBuilder->paginate($paginatePerPage, ['*'], 'page', $page);
         foreach($result->items() as $item) {
