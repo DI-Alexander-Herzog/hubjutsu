@@ -35,7 +35,7 @@ class Base extends Model {
             $reflection = new \ReflectionClass($this);
             $docComment = $reflection->getDocComment();
 
-            preg_match_all('/@property\s+string([^\s]+)\s+\$([^\s]+)/', $docComment, $matches, PREG_PATTERN_ORDER);
+            preg_match_all('/@property\s+string([^\s]*)\s+\$([^\s]+)/', $docComment, $matches, PREG_PATTERN_ORDER);
             return $matches[2] ?: [];
         });
     }

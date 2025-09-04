@@ -24,6 +24,7 @@ import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { XMarkIcon } from "@heroicons/react/20/solid";
 import { flushSync } from "react-dom";
 import { useSearch } from "./SearchContext";
+import { useLaravelReactI18n } from "laravel-react-i18n";
 
 // 📌 Spalten-Typen definieren
 interface Column {
@@ -70,6 +71,8 @@ const DataTable: React.FC<DataTableProps> = ({
 	useGlobalSearch = true,
 }) => {
 	const tableRef = useRef<HTMLTableElement>(null);
+
+	const { t } = useLaravelReactI18n();
 
 	const { query } = useSearch();
 
@@ -263,42 +266,46 @@ const DataTable: React.FC<DataTableProps> = ({
 		});
 	};
 
+	const saveRow = (editingRecordId: string, row_ofs: number) => {
+		setRecords((prev) => {
+			const newRecords = [...prev];
+			newRecords[row_ofs] = editingRecord[editingRecordId];
+			return newRecords;
+		});
+
+		setLoading(true);
+		const updateOrCreateRoute = editingRecordId
+			? route("api.model.update", {
+					model: routemodel,
+					id: editingRecordId,
+					with: withRelations,
+				})
+			: route("api.model.create", { model: routemodel, with: withRelations });
+
+		axios
+			.post(updateOrCreateRoute, editingRecord[editingRecordId])
+			.then((response) => {
+				setLoading(false);
+				disableEditing(editingRecordId);
+				setRecords((prev) => {
+					const newRecords = [...prev];
+					newRecords[row_ofs] = response.data;
+					return newRecords;
+				});
+			})
+			.catch((error) => {
+				setError(error);
+				setLoading(false);
+			});
+	};
+
 	const handleKeyDown = (e: any, field: string, row: Row, row_ofs: number) => {
 		if ((e.ctrlKey || e.metaKey) && e.key === "s") {
 			e.preventDefault();
 
 			flushSync(() => {});
 
-			setRecords((prev) => {
-				const newRecords = [...prev];
-				newRecords[row_ofs] = editingRecord[row[datakey]];
-				return newRecords;
-			});
-
-			setLoading(true);
-			const updateOrCreateRoute = row[datakey]
-				? route("api.model.update", {
-						model: routemodel,
-						id: row[datakey],
-						with: withRelations,
-				  })
-				: route("api.model.create", { model: routemodel, with: withRelations });
-
-			axios
-				.post(updateOrCreateRoute, editingRecord[row[datakey]])
-				.then((response) => {
-					setLoading(false);
-					disableEditing(row[datakey]);
-					setRecords((prev) => {
-						const newRecords = [...prev];
-						newRecords[row_ofs] = response.data;
-						return newRecords;
-					});
-				})
-				.catch((error) => {
-					setError(error);
-					setLoading(false);
-				});
+			saveRow(row[datakey], row_ofs);
 		}
 		if (e.key === "Escape") disableEditing(row[datakey]);
 	};
@@ -555,10 +562,14 @@ const DataTable: React.FC<DataTableProps> = ({
 																["bg-gray-50 dark:bg-gray-800"]: isFrozen && !isSelected,
 															}
 														)}
-														onClick={handleDoubleClick(
-															() => toggleRowSelection(row),
-															() => enableEditing(row)
-														)}
+														onClick={
+															Object.keys(editingRecord).length > 0
+																? (event) => enableEditing(row)
+																: handleDoubleClick(
+																		(event) => toggleRowSelection(row),
+																		(event) => enableEditing(row)
+																	)
+														}
 													>
 														{editingRecord[row[datakey]] && col.editor ? (
 															<>
@@ -831,12 +842,18 @@ const DataTable: React.FC<DataTableProps> = ({
 						{Object.keys(editingRecord).length > 0 && (
 							<PrimaryButton
 								onClick={() => {
-									console.log("Save all open rows");
+									// itearte through rouws, check if editing is enabled ans save row
+									Object.keys(editingRecord).forEach((id) => {
+										const row_ofs = records.findIndex(
+											(r) => r[datakey] === editingRecord[id][datakey]
+										);
+										if (row_ofs !== -1) saveRow(id, row_ofs);
+									});
 								}}
 								className="flex items-center gap-2"
 							>
 								<CheckIcon aria-hidden="true" className="size-4" />
-								<span>Save</span>
+								<span>{ t('Save') }</span>
 							</PrimaryButton>
 						)}
 
