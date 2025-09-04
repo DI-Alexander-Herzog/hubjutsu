@@ -360,7 +360,7 @@ const DataTable: React.FC<DataTableProps> = ({
 				className="relative flex-grow overflow-auto w-full"
 				{...(height
 					? { style: { height } }
-					: { style: { height: "calc(100vh - 120px)" } })}
+					: { })}
 			>
 				<Transition show={!!error}>
 					<div className="absolute right-2 top-2 z-[9999] pointer-events-auto w-full max-w-sm overflow-hidden bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-lg">
