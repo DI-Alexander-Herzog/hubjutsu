@@ -53,8 +53,8 @@ class HubjutsuApiController
 
         $queryBuilder = $modelObj->newModelQuery();
 
-        foreach($request->get('multiSortMeta', []) as $field => $order){
-            $queryBuilder->orderBy($field, $order > 0 ? 'asc' : 'desc');
+        foreach($request->get('multiSortMeta', []) as $sort) {
+            $queryBuilder->orderBy($sort[0], $sort[1] > 0 ? 'asc' : 'desc');
         };
         
         foreach($request->get('filters', []) as $filter) {

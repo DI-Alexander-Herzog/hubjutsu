@@ -56,6 +56,7 @@ interface DataTableProps {
 	newRecord?: false | Record<string, any> | string | (() => void) | null;
 	disableDelete?: boolean;
 	useGlobalSearch?: boolean;
+	defaultSortField?: string | Array<[string, number]>;
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -69,6 +70,7 @@ const DataTable: React.FC<DataTableProps> = ({
 	with: withRelations = [],
 	disableDelete = false,
 	useGlobalSearch = true,
+	defaultSortField = undefined,
 }) => {
 	const tableRef = useRef<HTMLTableElement>(null);
 
@@ -111,32 +113,43 @@ const DataTable: React.FC<DataTableProps> = ({
 	const [editingRecord, setEditingRecord] = useState<{ [key: string]: Row }>(
 		{}
 	);
-	const [searchState, setSearchState] = useState({
-		first: 0,
-		rows: perPage,
-		page: 1,
-		search: query,
-		filters: Object.keys(filters).map((key) => {
-			const value = filters[key];
-			if (Array.isArray(value) && value.length > 0) {
-				return { field: key, matchMode: "IN", value: value };
-			}
-			if (
-				typeof value === "object" &&
-				value !== null &&
-				"matchMode" in value &&
-				"value" in value
-			) {
-				return {
-					field: key,
-					matchMode: (value as any).matchMode,
-					value: (value as any).value,
-				};
-			}
-			return { field: key, matchMode: "=", value: value };
-		}),
-		multiSortMeta: { [datakey]: 1 } as Record<string, number>,
-		with: withRelations,
+	const [searchState, setSearchState] = useState(() => {
+		const initialSort: Array<[string, number]> = [];
+		if (typeof defaultSortField === "string") {
+			initialSort.push([defaultSortField, 1]);
+		} else if (Array.isArray(defaultSortField)) {
+			initialSort.push(...defaultSortField);
+		} else {
+			initialSort.push([datakey, 1]);
+		}
+
+		return {
+			first: 0,
+			rows: perPage,
+			page: 1,
+			search: useGlobalSearch ? query : undefined,
+			filters: Object.keys(filters).map((key) => {
+				const value = filters[key];
+				if (Array.isArray(value) && value.length > 0) {
+					return { field: key, matchMode: "IN", value: value };
+				}
+				if (
+					typeof value === "object" &&
+					value !== null &&
+					"matchMode" in value &&
+					"value" in value
+				) {
+					return {
+						field: key,
+						matchMode: (value as any).matchMode,
+						value: (value as any).value,
+					};
+				}
+				return { field: key, matchMode: "=", value: value };
+			}),
+			multiSortMeta: initialSort,
+			with: withRelations,
+		};
 	});
 
 	useEffect(() => {
@@ -151,8 +164,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		perPageList.sort((a, b) => a - b);
 	}
 
-	useEffect(() => {
-		console.log(searchState);
+	useEffect(() => {		
 		loadLazyData();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [searchState]);
@@ -164,14 +176,9 @@ const DataTable: React.FC<DataTableProps> = ({
 
 		setLoading(true);
 
-		const apiParams = {
-			...searchState,
-			multiSortMeta: getApiSortData(),
-		};
-
 		axios
 			.get(route("api.model.search", { model: routemodel }), {
-				params: apiParams,
+				params: searchState,
 			})
 			.then((response) => {
 				setLoading(false);
@@ -187,28 +194,22 @@ const DataTable: React.FC<DataTableProps> = ({
 	// 📌 Sortierung
 	const handleSort = (field: string, event?: React.MouseEvent) => {
 		setSearchState((prev) => {
-			let ms = { ...prev.multiSortMeta };
-
+			let ms = [ ...prev.multiSortMeta ];
 			const isShiftClick = event?.shiftKey;
-
+			
+			const existingIndex = ms.findIndex(([f]) => f === field);
 			if (isShiftClick) {
-				if (!ms[field]) {
-					const userSortPriorities = Object.entries(ms)
-						.filter(([key]) => key !== datakey)
-						.map(([, priority]) => Math.abs(priority));
-					const nextPriority =
-						userSortPriorities.length > 0
-							? Math.max(...userSortPriorities) + 1
-							: 1;
-					ms[field] = nextPriority;
+				if (existingIndex === -1) {
+					ms.push([field, 1]);
 				} else {
-					ms[field] = -ms[field];
+					ms[existingIndex][1] *= -1;
 				}
+
 			} else {
-				if (ms[field]) {
-					ms = { [field]: -ms[field] };
+				if (existingIndex !== -1) {
+					ms = [[field, -ms[existingIndex][1] ]];
 				} else {
-					ms = { [field]: 1 };
+					ms = [[field, 1]];
 				}
 			}
 
@@ -219,20 +220,6 @@ const DataTable: React.FC<DataTableProps> = ({
 		});
 	};
 
-	const getApiSortData = () => {
-		const apiSort: Record<string, 1 | -1> = {};
-		Object.entries(searchState.multiSortMeta).forEach(([field, priority]) => {
-			apiSort[field] = priority > 0 ? 1 : -1;
-		});
-		return apiSort;
-	};
-
-	const clearAllSorting = () => {
-		setSearchState((prev) => ({
-			...prev,
-			multiSortMeta: {},
-		}));
-	};
 
 	const getSortOrderText = (order: number) => {
 		const suffixes = ["th", "st", "nd", "rd"];
@@ -277,7 +264,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		const updateOrCreateRoute = editingRecordId
 			? route("api.model.update", {
 					model: routemodel,
-					id: editingRecordId,
+					[datakey]: editingRecordId,
 					with: withRelations,
 				})
 			: route("api.model.create", { model: routemodel, with: withRelations });
@@ -287,6 +274,7 @@ const DataTable: React.FC<DataTableProps> = ({
 			.then((response) => {
 				setLoading(false);
 				disableEditing(editingRecordId);
+				toggleRowSelection(response.data, true);
 				setRecords((prev) => {
 					const newRecords = [...prev];
 					newRecords[row_ofs] = response.data;
@@ -302,12 +290,15 @@ const DataTable: React.FC<DataTableProps> = ({
 	const handleKeyDown = (e: any, field: string, row: Row, row_ofs: number) => {
 		if ((e.ctrlKey || e.metaKey) && e.key === "s") {
 			e.preventDefault();
-
 			flushSync(() => {});
-
 			saveRow(row[datakey], row_ofs);
 		}
-		if (e.key === "Escape") disableEditing(row[datakey]);
+		if (e.key === "Escape") {
+			if (row[datakey] === 0) {
+				setRecords((prev) => prev.filter((r) => r !== row));
+			}
+			disableEditing(row[datakey]);
+		}
 	};
 
 	const setRowValue = (id: string, field: string, value: any) => {
@@ -324,12 +315,12 @@ const DataTable: React.FC<DataTableProps> = ({
 
 		if (state === undefined) {
 			setSelectedRecords((prev) =>
-				prev.includes(row) ? prev.filter((r) => r !== row) : [...prev, row]
+				prev.findIndex((r) => r[datakey] === row[datakey]) !== -1 ? prev.filter((r) => r[datakey] !== row[datakey]) : [...prev, row]
 			);
 		} else if (state) {
-			setSelectedRecords((prev) => [...prev, row]);
+			setSelectedRecords((prev) => [...(prev.filter((r) => r[datakey] !== row[datakey])), row]);
 		} else {
-			setSelectedRecords((prev) => prev.filter((r) => r !== row));
+			setSelectedRecords((prev) => prev.filter((r) => r[datakey] !== row[datakey]));
 		}
 	};
 
@@ -458,17 +449,17 @@ const DataTable: React.FC<DataTableProps> = ({
 												<span className="truncate">{col.label}</span>
 												{col.sortable && (
 													<div className="ml-2 flex items-center gap-1 flex-shrink-0">
-														{searchState.multiSortMeta[col.field] ? (
+														{searchState.multiSortMeta.findIndex(([field]) => field === col.field) !== -1 ? (
 															<>
-																<span className="text-xs font-medium text-white bg-primary px-1.5 py-0.5 rounded-full">
+																<span className="text-[0.5rem] font-medium text-white bg-primary px-1 py-0.25 rounded-full">
 																	{getSortOrderText(
 																		Math.abs(
-																			searchState.multiSortMeta[col.field]
+																			searchState.multiSortMeta.findIndex(([field]) => field === col.field) + 1
 																		)
 																	)}
 																</span>
 																<span className="text-primary text-sm">
-																	{searchState.multiSortMeta[col.field] > 0
+																	{(searchState.multiSortMeta.find(([field]) => field === col.field) || [col.field,1])[1] > 0
 																		? "↑"
 																		: "↓"}
 																</span>
@@ -672,9 +663,11 @@ const DataTable: React.FC<DataTableProps> = ({
 															</>
 														) : (
 															<div className="text-gray-900 dark:text-gray-100">
-																{col.formatter
-																	? col.formatter(row, col.field)
-																	: DataTableFormatter.default(row, col.field)}
+																{ col.formatter ? (
+																	col.formatter(row, col.field)
+																) : (
+																	DataTableFormatter.default(row, col.field)
+																)}
 															</div>
 														)}
 
@@ -830,7 +823,37 @@ const DataTable: React.FC<DataTableProps> = ({
 							Object.keys(editingRecord).length === 0 && (
 								<DangerButton
 									onClick={() => {
-										console.log("Delete selected records:", selectedRecords);
+										if (!confirm("Are you sure you want to delete the selected records?")) return;
+										// iterate through selected records and delete them
+										const deletedRecordIndex: number[] = [];
+										selectedRecords.forEach((record, idx) => {
+											const index = records.findIndex((r) => r[datakey] === record[datakey]);
+											if (index !== -1) {
+												axios
+													.delete(
+														route("api.model.delete", {
+															model: routemodel,
+															id: record[datakey],
+														})
+													)
+													.then(() => {
+														// on success, remove record from records
+														setRecords((records) => {
+															const index = records.findIndex((r) => r[datakey] === record[datakey]);
+															if (index !== -1) {
+																records.splice(index, 1);
+															}
+															return [ ...records ];
+														});
+														toggleRowSelection(record, false);
+														setTotalRecords((prev) => prev - 1);
+													})
+													.catch((error) => {
+														setError(error);
+													});
+											}
+										});
+										
 									}}
 									className="flex items-center gap-2"
 								>
@@ -842,7 +865,7 @@ const DataTable: React.FC<DataTableProps> = ({
 						{Object.keys(editingRecord).length > 0 && (
 							<PrimaryButton
 								onClick={() => {
-									// itearte through rouws, check if editing is enabled ans save row
+									// iterate through rows, check if editing is enabled and save row
 									Object.keys(editingRecord).forEach((id) => {
 										const row_ofs = records.findIndex(
 											(r) => r[datakey] === editingRecord[id][datakey]
@@ -881,8 +904,22 @@ const DataTable: React.FC<DataTableProps> = ({
 	);
 };
 
+const DataTableDynamicFormatter = {
+	link: (linkroute: string | ((row: Row) => string)) => {
+		return (row: Row, field: string) => {
+			const href = typeof linkroute === "function" ? linkroute(row) : route(linkroute as any, [row]);
+			return (
+				<DataTableLink href={href}>{row[field] || "View"}</DataTableLink>
+			);
+		}
+	}
+};
+
 const DataTableFormatter = {
-	default(row: Row, field: string) {
+
+	dynamic: DataTableDynamicFormatter,
+
+	default: (row: Row, field: string) => {
 		if (field.includes(".")) {
 			const parts = field.split(".");
 			return (
@@ -939,4 +976,4 @@ const DataTableFormatter = {
 };
 
 export default DataTable;
-export { DataTableFormatter };
+export { DataTableFormatter, DataTableDynamicFormatter };
