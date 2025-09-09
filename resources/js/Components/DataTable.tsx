@@ -236,6 +236,17 @@ const DataTable: React.FC<DataTableProps> = ({
 		}));
 	};
 
+	const focusEditor = (target: any, field: string) => {
+		
+		if (['select', 'input', 'textarea'].includes(target.tagName.toLowerCase())) {
+			return;
+		}
+		const td = target.closest('td');		
+		setTimeout(() => {
+			td?.querySelector('input,textarea,select')?.focus();
+		}, 100);
+	};
+
 	const enableEditing = (row: Row) => {
 		toggleRowSelection(row, true);
 		const id = row[datakey];
@@ -532,6 +543,7 @@ const DataTable: React.FC<DataTableProps> = ({
 
 												return (
 													<td
+														data-col={col.field}
 														key={col.field}
 														style={{
 															width: col.width || "auto",
@@ -555,10 +567,10 @@ const DataTable: React.FC<DataTableProps> = ({
 														)}
 														onClick={
 															Object.keys(editingRecord).length > 0
-																? (event) => enableEditing(row)
+																? (event) => { enableEditing(row); focusEditor(event.target, col.field); }
 																: handleDoubleClick(
 																		(event) => toggleRowSelection(row),
-																		(event) => enableEditing(row)
+																		(event) => { enableEditing(row); focusEditor(event.target, col.field); }
 																	)
 														}
 													>
@@ -687,10 +699,10 @@ const DataTable: React.FC<DataTableProps> = ({
 			</div>
 
 			{/* 📌 Paginierung */}
-			<div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 px-6 py-2 dark:border-gray-700">
-				<div className="flex items-center gap-6">
+			<div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 px-4 py-2 dark:border-gray-700 text-xs">
+				<div className="flex items-center gap-4">
 					<div className="flex items-center gap-2">
-						<span className="text-sm text-gray-600 dark:text-gray-400">
+						<span className="text-gray-600 dark:text-gray-400">
 							Show:
 						</span>
 						<select
@@ -701,7 +713,7 @@ const DataTable: React.FC<DataTableProps> = ({
 									rows: parseInt(e.target.value),
 								}))
 							}
-							className="appearance-none rounded-lg bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+							className="text-xs appearance-none rounded-lg bg-white dark:bg-gray-700 px-2 py-1 pr-5 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
 						>
 							{perPageList.map((lines) => (
 								<option key={lines}>{lines}</option>
@@ -709,21 +721,21 @@ const DataTable: React.FC<DataTableProps> = ({
 						</select>
 					</div>
 
-					<nav aria-label="Pagination" className="flex items-center gap-2">
+					<nav aria-label="Pagination" className="flex items-center gap-2 ">
 						<SecondaryButton
 							onClick={() => onPageChange(1)}
 							disabled={searchState.page === 1}
-							className="p-2"
+							className="text-xs px-2 py-2"
 						>
-							<ChevronDoubleLeftIcon className="size-4" />
+							<ChevronDoubleLeftIcon className="size-2" />
 						</SecondaryButton>
 
 						<SecondaryButton
 							onClick={() => onPageChange(Math.max(searchState.page - 1, 1))}
 							disabled={searchState.page === 1}
-							className="p-2"
+							className="text-xs px-2 py-2"
 						>
-							<ChevronLeftIcon className="size-4" />
+							<ChevronLeftIcon className="size-2" />
 						</SecondaryButton>
 
 						{(() => {
@@ -764,14 +776,14 @@ const DataTable: React.FC<DataTableProps> = ({
 							return pages.map((page, index) => (
 								<React.Fragment key={index}>
 									{page === "..." ? (
-										<span className="px-3 py-1 text-sm text-gray-400 dark:text-gray-500">
+										<span className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">
 											...
 										</span>
 									) : (
 										<button
 											onClick={() => onPageChange(page as number)}
 											className={classNames(
-												"px-3 py-1 text-sm rounded border transition-all duration-200",
+												"px-2 py-1 text-xs rounded border transition-all duration-200",
 												currentPage === page
 													? "bg-primary text-white border-primary"
 													: "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:text-gray-900 dark:hover:text-gray-100"
@@ -789,9 +801,9 @@ const DataTable: React.FC<DataTableProps> = ({
 							disabled={
 								searchState.page >= Math.ceil(totalRecords / searchState.rows)
 							}
-							className="p-2"
+							className="text-xs px-2 py-2"
 						>
-							<ChevronRightIcon className="size-4" />
+							<ChevronRightIcon className="size-2" />
 						</SecondaryButton>
 
 						<SecondaryButton
@@ -801,20 +813,20 @@ const DataTable: React.FC<DataTableProps> = ({
 							disabled={
 								searchState.page >= Math.ceil(totalRecords / searchState.rows)
 							}
-							className="p-2"
+							className="text-xs px-2 py-2"
 						>
-							<ChevronDoubleRightIcon className="size-4" />
+							<ChevronDoubleRightIcon className="size-2" />
 						</SecondaryButton>
 					</nav>
 
 					<div className="flex items-center gap-4">
 						<SecondaryButton
 							onClick={() => loadLazyData()}
-							className="flex items-center gap-2"
+							className="flex items-center gap-2 text-xs px-2 py-2"
 						>
 							<ArrowPathIcon
 								aria-hidden="true"
-								className={classNames("size-4", { "animate-spin": loading })}
+								className={classNames("size-2", { "animate-spin": loading })}
 							/>
 						</SecondaryButton>
 
@@ -855,7 +867,7 @@ const DataTable: React.FC<DataTableProps> = ({
 										});
 										
 									}}
-									className="flex items-center gap-2"
+									className="text-xs flex items-center gap-2 px-2 py-1 "
 								>
 									<TrashIcon aria-hidden="true" className="size-4" />
 									<span>Delete</span>
@@ -873,7 +885,7 @@ const DataTable: React.FC<DataTableProps> = ({
 										if (row_ofs !== -1) saveRow(id, row_ofs);
 									});
 								}}
-								className="flex items-center gap-2"
+								className="flex items-center gap-2 text-xs px-2 py-1"
 							>
 								<CheckIcon aria-hidden="true" className="size-4" />
 								<span>{ t('Save') }</span>
@@ -883,7 +895,7 @@ const DataTable: React.FC<DataTableProps> = ({
 						{newRecord !== false && (
 							<PrimaryButton
 								onClick={handleNewRecord}
-								className="flex items-center gap-2"
+								className="text-xs flex items-center gap-2 px-2 py-1"
 							>
 								<PlusIcon aria-hidden="true" className="size-4" />
 								<span>New</span>
@@ -892,7 +904,7 @@ const DataTable: React.FC<DataTableProps> = ({
 					</div>
 				</div>
 
-				<div className="text-sm text-gray-600 dark:text-gray-400">
+				<div className=" text-gray-600 dark:text-gray-400">
 					Displaying {1 + searchState.first} to{" "}
 					{searchState.first + searchState.rows < totalRecords
 						? searchState.first + searchState.rows
@@ -968,11 +980,6 @@ const DataTableFormatter = {
 		);
 	},
 
-	link: (row: Row, field: string, href: string, label?: string) => {
-		return (
-			<DataTableLink href={href}>{label || row[field] || "View"}</DataTableLink>
-		);
-	},
 };
 
 export default DataTable;
