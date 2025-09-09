@@ -7,9 +7,9 @@ export default function PrimaryButton({ className = '', disabled, children, ...p
             {...props}
             className={
                 classNames(
-                    'inline-flex items-center px-4 py-2 ',
+                    'inline-flex items-center ',
                     'transition ease-in-out duration-150',
-                    'border border-transparent rounded-md font-semibold text-xs uppercase tracking-widest ',
+                    'border border-transparent rounded-md font-semibold uppercase tracking-widest ',
 
                     'bg-primary text-onprimary dark:bg-onprimary dark:text-primary',
                     'hover:bg-primary-300 hover:text-onprimary-300 dark:hover:bg-onprimary-300 dark:hover:text-primary-300',
@@ -21,8 +21,11 @@ export default function PrimaryButton({ className = '', disabled, children, ...p
                     'focus:bg-gray-700 dark:focus:bg-primary-300',
                     'dark:focus:text-onprimary',
                     'focus:ring-primary dark:focus:ring-offset-onprimary',
+                    
                     {
-                        'opacity-25': disabled
+                        'opacity-25': disabled,
+                        'px-4': className.indexOf('px-') === -1,
+                        'py-2': className.indexOf('py-') === -1
                     },
                     className
                 )
