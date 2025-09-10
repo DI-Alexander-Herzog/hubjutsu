@@ -37,6 +37,7 @@ interface Column {
 	editor_properties?: Record<string, any>;
 	sortable?: boolean;
 	filter?: boolean | string | any;
+
 	frozen?: boolean;
 	width?: string;
 	align?: string;
