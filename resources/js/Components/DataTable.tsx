@@ -9,6 +9,8 @@ import {
 	TrashIcon,
 	CheckIcon,
 	PlusIcon,
+	FunnelIcon,
+	XMarkIcon,
 } from "@heroicons/react/20/solid";
 import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
 import classNames from "classnames";
@@ -18,10 +20,11 @@ import PrimaryButton from "./PrimaryButton";
 import SecondaryButton from "./SecondaryButton";
 import DangerButton from "./DangerButton";
 import DataTableLink from "./DataTableLink";
+import DataTableFilter from "./DataTableFilter";
 
 import { Transition } from "@headlessui/react";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
-import { XMarkIcon } from "@heroicons/react/20/solid";
+
 import { flushSync } from "react-dom";
 import { useSearch } from "./SearchContext";
 import { useLaravelReactI18n } from "laravel-react-i18n";
@@ -33,7 +36,6 @@ interface Column {
 	editor?: "text" | "number" | "select" | any;
 	editor_properties?: Record<string, any>;
 	sortable?: boolean;
-	filter?: boolean | string | any;
 	frozen?: boolean;
 	width?: string;
 	align?: string;
@@ -57,6 +59,16 @@ interface DataTableProps {
 	disableDelete?: boolean;
 	useGlobalSearch?: boolean;
 	defaultSortField?: string | Array<[string, number]>;
+}
+
+interface SearchState {
+	first: number;
+	rows: number;
+	page: number;
+	search?: string;
+	filters: Array<{ field: string; matchMode: string; value: any }>;
+	multiSortMeta: { [key: string]: number };
+	with: string[];
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -113,14 +125,20 @@ const DataTable: React.FC<DataTableProps> = ({
 	const [editingRecord, setEditingRecord] = useState<{ [key: string]: Row }>(
 		{}
 	);
-	const [searchState, setSearchState] = useState(() => {
-		const initialSort: Array<[string, number]> = [];
+	const [showFilterPanel, setShowFilterPanel] = useState(false);
+	const [activeFilters, setActiveFilters] = useState<{ [field: string]: any }>(
+		{}
+	);
+	const [searchState, setSearchState] = useState<SearchState>(() => {
+		const initialSort: { [key: string]: number } = {};
 		if (typeof defaultSortField === "string") {
-			initialSort.push([defaultSortField, 1]);
+			initialSort[defaultSortField] = 1;
 		} else if (Array.isArray(defaultSortField)) {
-			initialSort.push(...defaultSortField);
+			defaultSortField.forEach(([field, order]) => {
+				initialSort[field] = order;
+			});
 		} else {
-			initialSort.push([datakey, 1]);
+			initialSort[datakey] = 1;
 		}
 
 		return {
@@ -164,7 +182,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		perPageList.sort((a, b) => a - b);
 	}
 
-	useEffect(() => {		
+	useEffect(() => {
 		loadLazyData();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [searchState]);
@@ -194,23 +212,26 @@ const DataTable: React.FC<DataTableProps> = ({
 	// 📌 Sortierung
 	const handleSort = (field: string, event?: React.MouseEvent) => {
 		setSearchState((prev) => {
-			let ms = [ ...prev.multiSortMeta ];
+			const ms = { ...prev.multiSortMeta };
 			const isShiftClick = event?.shiftKey;
-			
-			const existingIndex = ms.findIndex(([f]) => f === field);
-			if (isShiftClick) {
-				if (existingIndex === -1) {
-					ms.push([field, 1]);
-				} else {
-					ms[existingIndex][1] *= -1;
-				}
 
-			} else {
-				if (existingIndex !== -1) {
-					ms = [[field, -ms[existingIndex][1] ]];
+			if (isShiftClick) {
+				if (ms[field] !== undefined) {
+					ms[field] *= -1;
 				} else {
-					ms = [[field, 1]];
+					ms[field] = 1;
 				}
+			} else {
+				const newMs: { [key: string]: number } = {};
+				if (ms[field] !== undefined) {
+					newMs[field] = ms[field] * -1;
+				} else {
+					newMs[field] = 1;
+				}
+				return {
+					...prev,
+					multiSortMeta: newMs,
+				};
 			}
 
 			return {
@@ -220,11 +241,68 @@ const DataTable: React.FC<DataTableProps> = ({
 		});
 	};
 
-
-	const getSortOrderText = (order: number) => {
+	const getSortOrderText = (index: number) => {
 		const suffixes = ["th", "st", "nd", "rd"];
-		const v = order % 100;
-		return order + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
+		const v = index % 100;
+		return index + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
+	};
+
+	const applyFilter = (field: string, value: any, matchMode?: string) => {
+		const newFilters = { ...activeFilters };
+
+		if (
+			value === null ||
+			value === undefined ||
+			value === "" ||
+			(Array.isArray(value) && value.length === 0)
+		) {
+			delete newFilters[field];
+		} else {
+			if (matchMode === "dateRange" && typeof value === "object") {
+				const filterValue = [];
+				if (value.start) filterValue.push(value.start);
+				if (value.end) filterValue.push(value.end);
+
+				newFilters[field] = {
+					value: filterValue.length > 1 ? filterValue : filterValue[0],
+					matchMode: filterValue.length > 1 ? "BETWEEN" : "=",
+				};
+			} else {
+				newFilters[field] = {
+					value,
+					matchMode: matchMode || "contains",
+				};
+			}
+		}
+
+		setActiveFilters(newFilters);
+
+		setSearchState((prev) => ({
+			...prev,
+			first: 0,
+			page: 1,
+			filters: Object.entries(newFilters).map(([field, filter]) => ({
+				field,
+				matchMode: filter.matchMode,
+				value: filter.value,
+			})),
+		}));
+	};
+
+	const clearFilter = (field: string) => {
+		applyFilter(field, null);
+	};
+
+	const clearAllFilters = () => {
+		setActiveFilters({});
+		setSearchState((prev) => ({
+			...prev,
+			first: 0,
+			page: 1,
+			filters: prev.filters.filter((f) =>
+				Object.keys(filters).includes(f.field)
+			),
+		}));
 	};
 
 	// 📌 Paginierung
@@ -237,13 +315,14 @@ const DataTable: React.FC<DataTableProps> = ({
 	};
 
 	const focusEditor = (target: any, field: string) => {
-		
-		if (['select', 'input', 'textarea'].includes(target.tagName.toLowerCase())) {
+		if (
+			["select", "input", "textarea"].includes(target.tagName.toLowerCase())
+		) {
 			return;
 		}
-		const td = target.closest('td');		
+		const td = target.closest("td");
 		setTimeout(() => {
-			td?.querySelector('input,textarea,select')?.focus();
+			td?.querySelector("input,textarea,select")?.focus();
 		}, 100);
 	};
 
@@ -251,7 +330,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		toggleRowSelection(row, true);
 		const id = row[datakey];
 		setEditingRecord((prev) => {
-			if (prev[id]) return prev; // bereits im Edit → nicht resetten
+			if (prev[id]) return prev;
 			return { ...prev, [id]: { ...row } }; // klonen, kein Ref-Sharing
 		});
 	};
@@ -277,7 +356,7 @@ const DataTable: React.FC<DataTableProps> = ({
 					model: routemodel,
 					[datakey]: editingRecordId,
 					with: withRelations,
-				})
+			  })
 			: route("api.model.create", { model: routemodel, with: withRelations });
 
 		axios
@@ -326,12 +405,19 @@ const DataTable: React.FC<DataTableProps> = ({
 
 		if (state === undefined) {
 			setSelectedRecords((prev) =>
-				prev.findIndex((r) => r[datakey] === row[datakey]) !== -1 ? prev.filter((r) => r[datakey] !== row[datakey]) : [...prev, row]
+				prev.findIndex((r) => r[datakey] === row[datakey]) !== -1
+					? prev.filter((r) => r[datakey] !== row[datakey])
+					: [...prev, row]
 			);
 		} else if (state) {
-			setSelectedRecords((prev) => [...(prev.filter((r) => r[datakey] !== row[datakey])), row]);
+			setSelectedRecords((prev) => [
+				...prev.filter((r) => r[datakey] !== row[datakey]),
+				row,
+			]);
 		} else {
-			setSelectedRecords((prev) => prev.filter((r) => r[datakey] !== row[datakey]));
+			setSelectedRecords((prev) =>
+				prev.filter((r) => r[datakey] !== row[datakey])
+			);
 		}
 	};
 
@@ -358,6 +444,8 @@ const DataTable: React.FC<DataTableProps> = ({
 		}
 	};
 
+	const hasActiveFilters = Object.keys(activeFilters).length > 0;
+
 	return (
 		<div
 			className={classNames("w-full h-full flex flex-col")}
@@ -367,9 +455,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		>
 			<div
 				className="relative flex-grow overflow-auto w-full"
-				{...(height
-					? { style: { height } }
-					: { })}
+				{...(height ? { style: { height } } : {})}
 			>
 				<Transition show={!!error}>
 					<div className="absolute right-2 top-2 z-[9999] pointer-events-auto w-full max-w-sm overflow-hidden bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-lg">
@@ -407,6 +493,17 @@ const DataTable: React.FC<DataTableProps> = ({
 						</div>
 					</div>
 				</Transition>
+
+				<DataTableFilter
+					columns={columns}
+					records={records}
+					activeFilters={activeFilters}
+					onApplyFilter={applyFilter}
+					onClearFilter={clearFilter}
+					onClearAllFilters={clearAllFilters}
+					isVisible={showFilterPanel}
+					onToggle={() => setShowFilterPanel(false)}
+				/>
 
 				{/* 📌 Tabelle */}
 				<div className="bg-white dark:bg-gray-900  border border-gray-200 dark:border-gray-700 overflow-hidden w-full h-full flex-1">
@@ -446,38 +543,46 @@ const DataTable: React.FC<DataTableProps> = ({
 											}}
 											className={classNames(
 												"relative px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0",
-												col.frozen && "border-r-0 sticky bg-gray-50 dark:bg-gray-800",
+												col.frozen &&
+													"border-r-0 sticky bg-gray-50 dark:bg-gray-800",
 												col.sortable &&
 													"cursor-pointer hover:bg-gray-100 dark:hover:bg-primary-800/10"
 											)}
 											onClick={
 												!col.sortable
 													? undefined
-													: (e) => handleSort(col.field, e)
+													: (e) => {
+															if (
+																(e.target as Element)?.closest(
+																	".filter-dropdown"
+																)
+															) {
+																return;
+															}
+															handleSort(col.field, e);
+													  }
 											}
 										>
 											<div className="flex items-center min-w-0">
 												<span className="truncate">{col.label}</span>
-												{col.sortable && (
-													<div className="ml-2 flex items-center gap-1 flex-shrink-0">
-														{searchState.multiSortMeta.findIndex(([field]) => field === col.field) !== -1 ? (
-															<>
-																<span className="text-[0.5rem] font-medium text-white bg-primary px-1 py-0.25 rounded-full">
-																	{getSortOrderText(
-																		Math.abs(
-																			searchState.multiSortMeta.findIndex(([field]) => field === col.field) + 1
-																		)
-																	)}
-																</span>
-																<span className="text-primary text-sm">
-																	{(searchState.multiSortMeta.find(([field]) => field === col.field) || [col.field,1])[1] > 0
-																		? "↑"
-																		: "↓"}
-																</span>
-															</>
-														) : null}
-													</div>
-												)}
+												<div className="ml-2 flex items-center gap-1 flex-shrink-0">
+													{col.sortable && (
+														<>
+															{Object.entries(searchState.multiSortMeta)
+																.filter(([field]) => field === col.field)
+																.map(([field, order], idx) => (
+																	<React.Fragment key={field}>
+																		<span className="text-[0.5rem] font-medium text-white bg-primary px-1 py-0.25 rounded-full">
+																			{getSortOrderText(idx + 1)}
+																		</span>
+																		<span className="text-primary text-sm">
+																			{order > 0 ? "↑" : "↓"}
+																		</span>
+																	</React.Fragment>
+																))}
+														</>
+													)}
+												</div>
 											</div>
 
 											{col.frozen && (
@@ -552,26 +657,38 @@ const DataTable: React.FC<DataTableProps> = ({
 														className={classNames(
 															"relative whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 last:border-r-0",
 															{
-																"px-3 py-2": !(editingRecord[row[datakey]] && col.editor),
+																"px-3 py-2": !(
+																	editingRecord[row[datakey]] && col.editor
+																),
 																// Sticky/frozen columns
-																['sticky border-r-0' ]: isFrozen,
+																["sticky border-r-0"]: isFrozen,
 																// Selected row
-																["bg-primary-50 dark:bg-primary-900 group-hover:bg-primary-100 dark:group-hover:bg-primary-900"]: isSelected,
+																["bg-primary-50 dark:bg-primary-900 group-hover:bg-primary-100 dark:group-hover:bg-primary-900"]:
+																	isSelected,
 																// Unselected, even row
-																["bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-700"]: !isSelected && row_ofs % 2 === 0,
+																["bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-700"]:
+																	!isSelected && row_ofs % 2 === 0,
 																// Unselected, odd row
-																["bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-600"]: !isSelected && row_ofs % 2 !== 0,
+																["bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-600"]:
+																	!isSelected && row_ofs % 2 !== 0,
 																// Sticky/frozen column backgrounds
-																["bg-gray-50 dark:bg-gray-800"]: isFrozen && !isSelected,
+																["bg-gray-50 dark:bg-gray-800"]:
+																	isFrozen && !isSelected,
 															}
 														)}
 														onClick={
 															Object.keys(editingRecord).length > 0
-																? (event) => { enableEditing(row); focusEditor(event.target, col.field); }
+																? (event) => {
+																		enableEditing(row);
+																		focusEditor(event.target, col.field);
+																  }
 																: handleDoubleClick(
 																		(event) => toggleRowSelection(row),
-																		(event) => { enableEditing(row); focusEditor(event.target, col.field); }
-																	)
+																		(event) => {
+																			enableEditing(row);
+																			focusEditor(event.target, col.field);
+																		}
+																  )
 														}
 													>
 														{editingRecord[row[datakey]] && col.editor ? (
@@ -675,11 +792,9 @@ const DataTable: React.FC<DataTableProps> = ({
 															</>
 														) : (
 															<div className="text-gray-900 dark:text-gray-100">
-																{ col.formatter ? (
-																	col.formatter(row, col.field)
-																) : (
-																	DataTableFormatter.default(row, col.field)
-																)}
+																{col.formatter
+																	? col.formatter(row, col.field)
+																	: DataTableFormatter.default(row, col.field)}
 															</div>
 														)}
 
@@ -702,9 +817,7 @@ const DataTable: React.FC<DataTableProps> = ({
 			<div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 px-4 py-2 dark:border-gray-700 text-xs">
 				<div className="flex items-center gap-4">
 					<div className="flex items-center gap-2">
-						<span className="text-gray-600 dark:text-gray-400">
-							Show:
-						</span>
+						<span className="text-gray-600 dark:text-gray-400">Show:</span>
 						<select
 							defaultValue={searchState.rows}
 							onChange={(e) =>
@@ -820,6 +933,29 @@ const DataTable: React.FC<DataTableProps> = ({
 					</nav>
 
 					<div className="flex items-center gap-4">
+						{columns.length > 0 && (
+							<SecondaryButton
+								onClick={() => setShowFilterPanel(!showFilterPanel)}
+								className={classNames(
+									"inline-flex items-center justify-center text-xs px-3 py-2 min-w-[100px]",
+									showFilterPanel
+										? "bg-primary "
+										: hasActiveFilters
+										? "bg-primary-50 dark:bg-primary-900 text-primary border-primary"
+										: "",
+									"gap-2 relative"
+								)}
+							>
+								<FunnelIcon aria-hidden="true" className="size-4 mr-1" />
+								Filter
+								{hasActiveFilters && (
+									<span className="ml-2 bg-red-500 text-white text-[10px] rounded-full px-1.5 min-w-[16px] h-4 flex items-center justify-center">
+										{Object.keys(activeFilters).length}
+									</span>
+								)}
+							</SecondaryButton>
+						)}
+
 						<SecondaryButton
 							onClick={() => loadLazyData()}
 							className="flex items-center gap-2 text-xs px-2 py-2"
@@ -835,11 +971,18 @@ const DataTable: React.FC<DataTableProps> = ({
 							Object.keys(editingRecord).length === 0 && (
 								<DangerButton
 									onClick={() => {
-										if (!confirm("Are you sure you want to delete the selected records?")) return;
+										if (
+											!confirm(
+												"Are you sure you want to delete the selected records?"
+											)
+										)
+											return;
 										// iterate through selected records and delete them
 										const deletedRecordIndex: number[] = [];
 										selectedRecords.forEach((record, idx) => {
-											const index = records.findIndex((r) => r[datakey] === record[datakey]);
+											const index = records.findIndex(
+												(r) => r[datakey] === record[datakey]
+											);
 											if (index !== -1) {
 												axios
 													.delete(
@@ -851,11 +994,13 @@ const DataTable: React.FC<DataTableProps> = ({
 													.then(() => {
 														// on success, remove record from records
 														setRecords((records) => {
-															const index = records.findIndex((r) => r[datakey] === record[datakey]);
+															const index = records.findIndex(
+																(r) => r[datakey] === record[datakey]
+															);
 															if (index !== -1) {
 																records.splice(index, 1);
 															}
-															return [ ...records ];
+															return [...records];
 														});
 														toggleRowSelection(record, false);
 														setTotalRecords((prev) => prev - 1);
@@ -865,7 +1010,6 @@ const DataTable: React.FC<DataTableProps> = ({
 													});
 											}
 										});
-										
 									}}
 									className="text-xs flex items-center gap-2 px-2 py-1 "
 								>
@@ -888,7 +1032,7 @@ const DataTable: React.FC<DataTableProps> = ({
 								className="flex items-center gap-2 text-xs px-2 py-1"
 							>
 								<CheckIcon aria-hidden="true" className="size-4" />
-								<span>{ t('Save') }</span>
+								<span>{t("Save")}</span>
 							</PrimaryButton>
 						)}
 
@@ -919,16 +1063,16 @@ const DataTable: React.FC<DataTableProps> = ({
 const DataTableDynamicFormatter = {
 	link: (linkroute: string | ((row: Row) => string)) => {
 		return (row: Row, field: string) => {
-			const href = typeof linkroute === "function" ? linkroute(row) : route(linkroute as any, [row]);
-			return (
-				<DataTableLink href={href}>{row[field] || "View"}</DataTableLink>
-			);
-		}
-	}
+			const href =
+				typeof linkroute === "function"
+					? linkroute(row)
+					: route(linkroute as any, [row]);
+			return <DataTableLink href={href}>{row[field] || "View"}</DataTableLink>;
+		};
+	},
 };
 
 const DataTableFormatter = {
-
 	dynamic: DataTableDynamicFormatter,
 
 	default: (row: Row, field: string) => {
@@ -979,7 +1123,6 @@ const DataTableFormatter = {
 			</div>
 		);
 	},
-
 };
 
 export default DataTable;
