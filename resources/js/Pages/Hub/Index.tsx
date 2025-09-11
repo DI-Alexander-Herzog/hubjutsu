@@ -1,5 +1,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import DataTable from "@/Components/DataTable";
+import DataTableLink from "@hubjutsu/Components/DataTableLink";
 import { Head, Link, router } from "@inertiajs/react";
 
 export default function HubIndex() {
@@ -19,7 +20,9 @@ export default function HubIndex() {
 								frozen: true,
 								width: "500px",
 								formatter: (row: any) => (
-									<Link href={route("admin.hubs.edit", row)}>{row.name}</Link>
+									<DataTableLink href={route("admin.hubs.edit", row)}>
+										{row.name}
+									</DataTableLink>
 								),
 							},
 							{
@@ -29,6 +32,11 @@ export default function HubIndex() {
 								filter: true,
 								editor: "text",
 								width: "300px",
+								formatter: (row: any) => (
+									<DataTableLink href={row.url} target="_blank">
+										{row.url}
+									</DataTableLink>
+								),
 							},
 							{
 								field: "primary",

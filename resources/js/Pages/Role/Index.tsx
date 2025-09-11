@@ -1,6 +1,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import DataTable from "@hubjutsu/Components/DataTable";
-import { Link } from "@inertiajs/react";
+import DataTableLink from "@hubjutsu/Components/DataTableLink";
 
 export default function RoleIndex() {
 	return (
@@ -17,9 +17,9 @@ export default function RoleIndex() {
 								filter: true,
 								formatter: (row: any) => {
 									return (
-										<Link href={route("admin.roles.show", row)}>
+										<DataTableLink href={route("admin.roles.show", row)}>
 											{row.name}
-										</Link>
+										</DataTableLink>
 									);
 								},
 							},
