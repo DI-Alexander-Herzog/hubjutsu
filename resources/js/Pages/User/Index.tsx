@@ -1,6 +1,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import DataTable, { DataTableFormatter } from "@/Components/DataTable";
-import { Head } from "@inertiajs/react";
+import DataTableLink from "@hubjutsu/Components/DataTableLink";
 import InputText from "@hubjutsu/Components/InputText";
 
 const textEditor = (options: any) => {
@@ -26,11 +26,11 @@ export default function RoleIndex() {
 						filter: true,
 						frozen: true,
 						width: "500px",
-						editor: 'text',
+						editor: "text",
 						formatter: (row: any) => (
-							<a className="text-primary" href={`mailto:${row.email}`}>
+							<DataTableLink href={`mailto:${row.email}`} target="_blank">
 								{row.email}
-							</a>
+							</DataTableLink>
 						),
 					},
 					{
@@ -49,7 +49,7 @@ export default function RoleIndex() {
 						formatter: DataTableFormatter.datetime,
 						editor: "datetime",
 						width: "300px",
-					}
+					},
 				]}
 			></DataTable>
 		</AuthenticatedLayout>

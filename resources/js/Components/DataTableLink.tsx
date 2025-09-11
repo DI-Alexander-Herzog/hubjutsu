@@ -2,16 +2,37 @@ import React from "react";
 import { Link, InertiaLinkProps } from "@inertiajs/react";
 import classNames from "classnames";
 
-interface DataTableLinkProps extends Omit<InertiaLinkProps, "className"> {
+interface DataTableLinkProps
+	extends Omit<InertiaLinkProps, "className" | "href"> {
 	children: React.ReactNode;
 	className?: string;
 	variant?: "default" | "button";
+	href?: string;
+	target?: string;
 }
+
+const ExternalLink: React.FC<{
+	href: string;
+	className: string;
+	target?: string;
+	children: React.ReactNode;
+}> = ({ href, className, target, children }) => (
+	<a
+		href={href}
+		target={target ?? "_blank"}
+		rel="noopener noreferrer"
+		className={className}
+	>
+		{children}
+	</a>
+);
 
 const DataTableLink: React.FC<DataTableLinkProps> = ({
 	children,
 	className = "",
 	variant = "default",
+	href,
+	target = "_self",
 	...props
 }) => {
 	const baseClasses =
@@ -29,8 +50,34 @@ const DataTableLink: React.FC<DataTableLinkProps> = ({
 		className
 	);
 
+	const isExternal = (url?: string) => {
+		if (!url) return false;
+
+		try {
+			const currentHost = window.location.origin;
+			const urlObj = new URL(url, currentHost);
+			return urlObj.origin !== currentHost;
+		} catch {
+			return url.startsWith("mailto:") || url.startsWith("tel:");
+		}
+	};
+
+	if (href && isExternal(href)) {
+		return (
+			<ExternalLink href={href} target={target} className={combinedClasses}>
+				{children}
+			</ExternalLink>
+		);
+	}
+
 	return (
-		<Link className={combinedClasses} {...props}>
+		<Link
+			href={href ?? "#"}
+			className={combinedClasses}
+			{...props}
+			preserveState={true}
+			preserveScroll={true}
+		>
 			{children}
 		</Link>
 	);
