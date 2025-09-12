@@ -1,16 +1,50 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { FormContext, FormContextSubmitButton } from '@/Components/FormContext';
+import Input from '@/Components/Input';
+import FormContainer from '@/Components/FormContainer';
+import FormSection from '@/Components/FormSection';
+import { Models } from '@/types/models';
+import Separator from '@/Components/Separator';
 
-export default function HubForm() {
+export default function HubForm({ disabled=false, hub }: { disabled?: boolean; hub: Models.Hub }) {
+
     return (
-        <>
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900 dark:text-gray-100">FORM</div>
+        <FormContext data={hub} model={'hub'} readonly={disabled}>
+            <FormContainer>
+                <FormSection title="Allgemein" subtitle='Allgemeine Angaben zum Hub'>
+                    <Input inputName="name" />
+                    <Input inputName="url" type="url" />
+                    <Input inputName="primary" type='checkbox' />
+                </FormSection>
+
+                <Separator />
+
+                <FormSection title="Farben" subtitle='Einstellungen zur Farbgestaltung am Hub'>
+                    <div className="flex gap-2">
+                        <Input inputName="color_primary" type="color" /> 
+                        <Input inputName="color_primary_text" type="color" />
                     </div>
-                </div>
-            </div>
-        </>
+                    <div className="flex gap-2">
+                        <Input inputName="color_secondary" type="color" />    
+                        <Input inputName="color_secondary_text" type="color" />
+                    </div>
+                    <div className="flex gap-2">
+                        <Input inputName="color_tertiary" type="color" />    
+                        <Input inputName="color_tertiary_text" type="color" />
+                    </div>
+                    <div className="flex gap-2">
+                        <Input inputName="color_background" type="color" />    
+                        <Input inputName="color_text" type="color" />
+                    </div>
+                </FormSection>
+               
+                
+            </FormContainer>
+
+            <FormSection boxed={true}>
+                    <FormContextSubmitButton>Speichern</FormContextSubmitButton>
+            </FormSection>
+        </FormContext>
+        
     );
 }

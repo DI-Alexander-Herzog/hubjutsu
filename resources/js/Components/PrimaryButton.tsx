@@ -9,7 +9,7 @@ export default function PrimaryButton({ className = '', disabled, children, ...p
                 classNames(
                     'inline-flex items-center ',
                     'transition ease-in-out duration-150',
-                    'border border-transparent rounded-md font-semibold uppercase tracking-widest ',
+                    'border border-transparent rounded-md font-semibold  tracking-widest ',
 
                     'bg-primary text-onprimary dark:bg-onprimary dark:text-primary',
                     'hover:bg-primary-300 hover:text-onprimary-300 dark:hover:bg-onprimary-300 dark:hover:text-primary-300',

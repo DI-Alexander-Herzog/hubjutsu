@@ -1,15 +1,14 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import HubForm from './Form';
 
 
-export default function HubEdit() {
+export default function HubEdit({ hubEntry }: { hubEntry?: any }) {
     return (
         <AuthenticatedLayout
             title="Hub"
         >
 
-            <div className="">
-                asdfsadf
-            </div>
+            <HubForm hub={hubEntry} />
         </AuthenticatedLayout>
     );
 }

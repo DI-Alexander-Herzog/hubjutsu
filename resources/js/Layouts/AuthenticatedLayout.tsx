@@ -205,8 +205,14 @@ export default function Authenticated({ title, children }: PropsWithChildren<{ t
           </div>
 
           <Head title={title} />
-          <main className="flex-grow overflow-y-auto">
-            {children}
+          <main className="flex-grow overflow-hidden">
+            <div className='h-full flex flex-col'>
+              <div className='flex-shrink'></div>
+
+              <div className="flex-grow overflow-hidden">
+                {children}
+              </div>
+            </div>
           </main>
         </div>
       </SearchProvider>

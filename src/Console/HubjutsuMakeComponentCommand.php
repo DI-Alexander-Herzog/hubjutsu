@@ -41,8 +41,8 @@ class HubjutsuMakeComponentCommand extends Command
      */
     public function handle()
     {
+
         $name = $this->argument('name');
-        $slug = Str::snake($name);
 
         $root = realpath(__DIR__ . '/../..');
         $parts = explode('/', $name);
@@ -83,8 +83,6 @@ class HubjutsuMakeComponentCommand extends Command
             "export default $componentName;"
         ]));
         
-        
-
-        $this->runCommand('hubjutsu:setup', ['--update'], $this->output);
+        $this->runCommand('hubjutsu:setup', ['--update' => true], $this->output);
     }
 }
