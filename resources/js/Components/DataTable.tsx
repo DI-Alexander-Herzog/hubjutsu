@@ -9,8 +9,7 @@ import {
 	TrashIcon,
 	CheckIcon,
 	PlusIcon,
-	FunnelIcon,
-	XMarkIcon,
+	FunnelIcon
 } from "@heroicons/react/20/solid";
 import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
 import classNames from "classnames";
@@ -22,12 +21,10 @@ import DangerButton from "./DangerButton";
 import DataTableLink from "./DataTableLink";
 import DataTableFilter from "./DataTableFilter";
 
-import { Transition } from "@headlessui/react";
-import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
-
 import { flushSync } from "react-dom";
 import { useSearch } from "./SearchContext";
 import { useLaravelReactI18n } from "laravel-react-i18n";
+import ErrorToast from "./ErrorToast";
 
 // 📌 Spalten-Typen definieren
 interface Column {
@@ -49,6 +46,14 @@ interface Row {
 	[key: string]: any;
 }
 
+interface DataTableAction {
+	label: string;
+	icon?: JSX.Element;
+	onClick: (selectedRecords: Row[]) => void;
+	variant?: "primary" | "secondary" | "danger" | "link";
+	disabled?: boolean | ((selectedRecords: Row[]) => boolean);
+}
+
 interface DataTableProps {
 	routemodel?: string;
 	columns: Column[];
@@ -61,6 +66,7 @@ interface DataTableProps {
 	disableDelete?: boolean;
 	useGlobalSearch?: boolean;
 	defaultSortField?: string | Array<[string, number]>;
+	actions?: DataTableAction[];
 }
 
 interface SearchState {
@@ -69,7 +75,7 @@ interface SearchState {
 	page: number;
 	search?: string;
 	filters: Array<{ field: string; matchMode: string; value: any }>;
-	multiSortMeta: { [key: string]: number };
+	multiSortMeta: Array<[string, number]>;
 	with: string[];
 }
 
@@ -85,6 +91,7 @@ const DataTable: React.FC<DataTableProps> = ({
 	disableDelete = false,
 	useGlobalSearch = true,
 	defaultSortField = undefined,
+	actions = [],
 }) => {
 	const tableRef = useRef<HTMLTableElement>(null);
 
@@ -99,10 +106,10 @@ const DataTable: React.FC<DataTableProps> = ({
 		return `calc(${widths.join(" + ")})`;
 	};
 
-	const stickyZBody = (idx = 0) => 100 + idx;
-	const stickyZHead = (idx = 0) => 200 + idx;
+	const stickyZBody = (idx = 0) => 10 + idx;
+	const stickyZHead = (idx = 0) => 20 + idx;
 
-	const headerZIndex = 300;
+	const headerZIndex = 20;
 
 	const lastFrozenIndex = useMemo(() => {
 		let last = -1;
@@ -131,16 +138,14 @@ const DataTable: React.FC<DataTableProps> = ({
 	const [activeFilters, setActiveFilters] = useState<{ [field: string]: any }>(
 		{}
 	);
-	const [searchState, setSearchState] = useState<SearchState>(() => {
-		const initialSort: { [key: string]: number } = {};
+	const [searchState, setSearchState] = useState(() => {
+		const initialSort: Array<[string, number]> = [];
 		if (typeof defaultSortField === "string") {
-			initialSort[defaultSortField] = 1;
+			initialSort.push([defaultSortField, 1]);
 		} else if (Array.isArray(defaultSortField)) {
-			defaultSortField.forEach(([field, order]) => {
-				initialSort[field] = order;
-			});
+			initialSort.push(...defaultSortField);
 		} else {
-			initialSort[datakey] = 1;
+			initialSort.push([datakey, 1]);
 		}
 
 		return {
@@ -206,34 +211,32 @@ const DataTable: React.FC<DataTableProps> = ({
 				setTotalRecords(response.data.total);
 			})
 			.catch((error) => {
+				console.log(error);
 				setLoading(false);
-				setError(error);
+				setError(error.response?.data || error.message || error.toString() || "Error");
 			});
 	};
 
 	// 📌 Sortierung
 	const handleSort = (field: string, event?: React.MouseEvent) => {
 		setSearchState((prev) => {
-			const ms = { ...prev.multiSortMeta };
+			let ms = [ ...prev.multiSortMeta ];
 			const isShiftClick = event?.shiftKey;
-
+			
+			const existingIndex = ms.findIndex(([f]) => f === field);
 			if (isShiftClick) {
-				if (ms[field] !== undefined) {
-					ms[field] *= -1;
+				if (existingIndex === -1) {
+					ms.push([field, 1]);
 				} else {
-					ms[field] = 1;
+					ms[existingIndex][1] *= -1;
 				}
+
 			} else {
-				const newMs: { [key: string]: number } = {};
-				if (ms[field] !== undefined) {
-					newMs[field] = ms[field] * -1;
+				if (existingIndex !== -1) {
+					ms = [[field, -ms[existingIndex][1] ]];
 				} else {
-					newMs[field] = 1;
+					ms = [[field, 1]];
 				}
-				return {
-					...prev,
-					multiSortMeta: newMs,
-				};
 			}
 
 			return {
@@ -242,6 +245,7 @@ const DataTable: React.FC<DataTableProps> = ({
 			};
 		});
 	};
+
 
 	const getSortOrderText = (index: number) => {
 		const suffixes = ["th", "st", "nd", "rd"];
@@ -459,42 +463,8 @@ const DataTable: React.FC<DataTableProps> = ({
 				className="relative flex-grow overflow-auto w-full"
 				{...(height ? { style: { height } } : {})}
 			>
-				<Transition show={!!error}>
-					<div className="absolute right-2 top-2 z-[9999] pointer-events-auto w-full max-w-sm overflow-hidden bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-lg">
-						<div className="p-3">
-							<div className="flex items-start">
-								<div className="shrink-0">
-									<ExclamationCircleIcon
-										aria-hidden="true"
-										className="size-5 text-red-500"
-									/>
-								</div>
-								<div className="ml-2 w-0 flex-1 pt-0.5">
-									<p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-										Fehler beim Laden!
-									</p>
-									<p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-										{typeof error === "string"
-											? error
-											: error
-											? error.message
-											: ""}
-									</p>
-								</div>
-								<div className="ml-2 flex shrink-0">
-									<button
-										type="button"
-										onClick={() => setError(null)}
-										className="inline-flex bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-1 focus:ring-red-500"
-									>
-										<span className="sr-only">Close</span>
-										<XMarkIcon aria-hidden="true" className="size-4" />
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-				</Transition>
+				
+				<ErrorToast error={error} onClose={() => setError(null)} />
 
 				<DataTableFilter
 					columns={columns}
@@ -569,21 +539,25 @@ const DataTable: React.FC<DataTableProps> = ({
 												<span className="truncate">{col.label}</span>
 												<div className="ml-2 flex items-center gap-1 flex-shrink-0">
 													{col.sortable && (
-														<>
-															{Object.entries(searchState.multiSortMeta)
-																.filter(([field]) => field === col.field)
-																.map(([field, order], idx) => (
-																	<React.Fragment key={field}>
-																		<span className="text-[0.5rem] font-medium text-white bg-primary px-1 py-0.25 rounded-full">
-																			{getSortOrderText(idx + 1)}
-																		</span>
-																		<span className="text-primary text-sm">
-																			{order > 0 ? "↑" : "↓"}
-																		</span>
-																	</React.Fragment>
-																))}
-														</>
-													)}
+													<div className="ml-2 flex items-center gap-1 flex-shrink-0">
+														{searchState.multiSortMeta.findIndex(([field]) => field === col.field) !== -1 ? (
+															<>
+																<span className="text-[0.5rem] font-medium text-white bg-primary px-1 py-0.25 rounded-full">
+																	{getSortOrderText(
+																		Math.abs(
+																			searchState.multiSortMeta.findIndex(([field]) => field === col.field) + 1
+																		)
+																	)}
+																</span>
+																<span className="text-primary text-sm">
+																	{(searchState.multiSortMeta.find(([field]) => field === col.field) || [col.field,1])[1] > 0
+																		? "↑"
+																		: "↓"}
+																</span>
+															</>
+														) : null}
+													</div>
+												)}
 												</div>
 											</div>
 
@@ -818,8 +792,11 @@ const DataTable: React.FC<DataTableProps> = ({
 			{/* 📌 Paginierung */}
 			<div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 px-4 py-2 dark:border-gray-700 text-xs">
 				<div className="flex items-center gap-4">
-					<div className="flex items-center gap-2">
-						<span className="text-gray-600 dark:text-gray-400">Show:</span>
+
+					<div className="flex items-center gap-1">
+						<span className="text-gray-600 dark:text-gray-400">
+							Show:
+						</span>
 						<select
 							defaultValue={searchState.rows}
 							onChange={(e) =>
@@ -836,7 +813,7 @@ const DataTable: React.FC<DataTableProps> = ({
 						</select>
 					</div>
 
-					<nav aria-label="Pagination" className="flex items-center gap-2 ">
+					<nav aria-label="Pagination" className="flex items-center gap-1">
 						<SecondaryButton
 							onClick={() => onPageChange(1)}
 							disabled={searchState.page === 1}
@@ -1047,6 +1024,29 @@ const DataTable: React.FC<DataTableProps> = ({
 								<span>New</span>
 							</PrimaryButton>
 						)}
+
+						{actions?.length > 0 && actions.map((action, idx) => {
+							const isDisabled = (typeof action.disabled === "function" ? action.disabled(selectedRecords) : action.disabled) ?? selectedRecords.length === 0;
+							const ButtonComponent =
+								action.variant === "danger"
+									? DangerButton
+									: action.variant === "link"
+									? "button"
+									: action.variant === "secondary"
+									? SecondaryButton
+									: PrimaryButton;
+							return (
+								<ButtonComponent
+									key={idx}
+									onClick={() => action.onClick(selectedRecords)}
+									disabled={isDisabled}
+									className={classNames("text-xs flex items-center gap-2 px-2 py-1", isDisabled && 'opacity-50 cursor-not-allowed')}
+								>
+									{action.icon && <span aria-hidden="true"  className="size-4">{action.icon}</span>}
+									{action.label}
+								</ButtonComponent>
+							);
+						})}
 					</div>
 				</div>
 
@@ -1102,29 +1102,6 @@ const DataTableFormatter = {
 			: row[field];
 	},
 
-	actions: (
-		row: Row,
-		field: string,
-		actions: Array<{
-			label: string;
-			href: string;
-			variant?: "default" | "button";
-		}>
-	) => {
-		return (
-			<div className="flex gap-2">
-				{actions.map((action, index) => (
-					<DataTableLink
-						key={index}
-						href={action.href}
-						variant={action.variant || "default"}
-					>
-						{action.label}
-					</DataTableLink>
-				))}
-			</div>
-		);
-	},
 };
 
 export default DataTable;

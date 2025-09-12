@@ -1,8 +1,11 @@
-import { useForm, usePage } from "@inertiajs/react";
+import { Link, useForm, usePage } from "@inertiajs/react";
 import { PageProps } from "@/types";
-import FormSection from "@hubjutsu/Components/FormSection";
-import Input from "@hubjutsu/Components/Input";
-import NavLink from "@hubjutsu/Components/NavLink";
+import Input from "@/Components/Input";
+import NavLink from "@/Components/NavLink";
+import FormSection from "@/Components/FormSection";
+import PrimaryButton from "@hubjutsu/Components/PrimaryButton";
+import { Transition } from "@headlessui/react";
+import { FormEventHandler } from "react";
 
 export default function UpdateProfileInformation({
 	mustVerifyEmail,
@@ -14,52 +17,78 @@ export default function UpdateProfileInformation({
 }) {
 	const user = usePage<PageProps>().props.auth.user;
 
-	const { data, setData, patch, errors } = useForm({
+	const { data, setData, patch, errors, processing, recentlySuccessful } = useForm({
 		name: user.name,
 		email: user.email,
 	});
+
+	const submit: FormEventHandler = (e) => {
+        e.preventDefault();
+
+        patch(route('profile.update'));
+    };
 
 	return (
 		<>
 			<FormSection
 				title="Profile Information"
 				subtitle="Update your account's profile information and email address."
-				onSave={() => patch(route("profile.update"))}
+				
 			>
-				<Input
-					inputName="name"
-					useForm={{ data, setData, errors }}
-					required
-					isFocused
-					autoComplete="name"
-					isFirst={true}
-				/>
+				<form onSubmit={submit}  className="flex flex-col gap-2">
+					<Input
+						inputName="name"
+						useForm={{ data, setData, errors }}
+						required
+						isFocused
+						autoComplete="name"
+						isFirst={true}
+					/>
 
-				<Input
-					inputName="email"
-					type="email"
-					useForm={{ data, setData, errors }}
-					required
-					autoComplete="username"
-				/>
+					<Input
+						inputName="email"
+						type="email"
+						useForm={{ data, setData, errors }}
+						required
+						autoComplete="username"
+					/>
 
-				{mustVerifyEmail && user.email_verified_at === null && (
-					<NavLink
-						href={route("verification.send")}
-						method="post"
-						active={false}
-						icon={null}
-						variant="inline"
-						preText="Your email address is unverified."
-						statusText={
-							status === "verification-link-sent"
-								? "A new verification link has been sent to your email address."
-								: undefined
-						}
-					>
-						Click here to re-send the verification email.
-					</NavLink>
-				)}
+					{mustVerifyEmail && user.email_verified_at === null && (
+						<div>
+							<p className="text-sm mt-2 text-gray-800 dark:text-gray-200">
+								Your email address is unverified.
+								<Link
+									href={route('verification.send')}
+									method="post"
+									as="button"
+									className="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+								>
+									Click here to re-send the verification email.
+								</Link>
+							</p>
+
+							{status === 'verification-link-sent' && (
+								<div className="mt-2 font-medium text-sm text-green-600 dark:text-green-400">
+									A new verification link has been sent to your email address.
+								</div>
+							)}
+						</div>
+					)}
+
+					<div className="flex items-center flex-row gap-4">
+						<PrimaryButton disabled={processing}>Save</PrimaryButton>
+
+						<Transition
+							show={recentlySuccessful}
+							enter="transition ease-in-out"
+							enterFrom="opacity-0"
+							leave="transition ease-in-out"
+							leaveTo="opacity-0"
+						>
+							<p className="text-sm text-gray-600 dark:text-gray-400">Saved.</p>
+						</Transition>
+					</div>
+				</form>
 			</FormSection>
 		</>
 	);

@@ -53,7 +53,7 @@ class HubController extends Controller
     public function show(Hub $hub)
     {
         return Inertia::render('Hub/View', [
-            'Hub' => $hub
+            'hubEntry' => $hub
         ]);
     }
 
@@ -63,7 +63,7 @@ class HubController extends Controller
     public function edit(Hub $hub)
     {
         return Inertia::render('Hub/Edit', [
-            'Hub' => $hub
+            'hubEntry' => $hub
         ]);
     }
 

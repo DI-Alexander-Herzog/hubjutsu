@@ -4,6 +4,7 @@ import UpdatePasswordForm from "@/Pages/Profile/Partials/UpdatePasswordForm";
 import UpdateProfileInformationForm from "@/Pages/Profile/Partials/UpdateProfileInformationForm";
 import { PageProps } from "@/types";
 import UpdateAvatarForm from "./Partials/UpdateAvatarForm";
+import FormContainer from "@/Components/FormContainer";
 
 export default function Edit({
 	mustVerifyEmail,
@@ -11,27 +12,24 @@ export default function Edit({
 }: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
 	return (
 		<AuthenticatedLayout title="Profile">
-			<div className="py-12">
-				<div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-					<div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-						<UpdateProfileInformationForm
-							mustVerifyEmail={mustVerifyEmail}
-							status={status}
-						/>
-					</div>
-					<div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-						<UpdateAvatarForm />
-					</div>
+			<FormContainer>
+				<UpdateProfileInformationForm
+					mustVerifyEmail={mustVerifyEmail}
+					status={status}
+				/>
+			</FormContainer>
 
-					<div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-						<UpdatePasswordForm />
-					</div>
+			<FormContainer>
+				<UpdateAvatarForm />
+			</FormContainer>
 
-					<div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-						<DeleteUserForm />
-					</div>
-				</div>
-			</div>
+			<FormContainer>
+				<UpdatePasswordForm />
+			</FormContainer>
+
+			<FormContainer>
+				<DeleteUserForm />
+			</FormContainer>
 		</AuthenticatedLayout>
 	);
 }

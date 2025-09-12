@@ -179,7 +179,8 @@ class HubjutsuSetupCommand extends Command
     {
 
         $setup = !$this->option('update');
-        
+
+
 
         if ($setup) {   
             // Install Inertia...

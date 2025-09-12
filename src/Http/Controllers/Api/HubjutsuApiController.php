@@ -23,6 +23,7 @@ class HubjutsuApiController
      */
     protected function getModelIfAllowed(string $model, $id, string $gate)
     {
+        
         $class = 'App\\Models\\' . Str::studly($model);
         if (!class_exists($class)) {
             throw new \Exception('Model not found');
