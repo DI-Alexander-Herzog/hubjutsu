@@ -1,6 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { Models } from '@/types/models';
+import FormContainer from '@/Components/FormContainer';
+import FormSection from '@/Components/FormSection';
+import Input from '@/Components/Input';
+import Separator from '@/Components/Separator';
 
 export default function {{ name }}Form( { {{ modelVariable }}, disabled=true } : { {{ modelVariable }}: Models.{{ name }}, disabled: boolean }) {
     return (
