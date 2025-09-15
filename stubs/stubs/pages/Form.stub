@@ -4,14 +4,26 @@ import { Models } from '@/types/models';
 
 export default function {{ name }}Form( { {{ modelVariable }}, disabled=true } : { {{ modelVariable }}: Models.{{ name }}, disabled: boolean }) {
     return (
-        <>
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        
+        <FormContext data={ {{ modelVariable }} } model={ '{{ name }}' } readonly={disabled}>
+            <FormContainer>
+                <FormSection title="General" subtitle='General Data for {{ name }}'>
+                    <Input inputName="id" />
+                </FormSection>
+
+                <Separator />
+
+                <FormSection title="Additional" subtitle='Additional Data for {{ name }}'>
+                    <div className="flex gap-2">
+                        <Input inputName="label" type="text" /> 
                     </div>
-                </div>
-            </div>
-        </>
+                </FormSection>
+            
+                
+            </FormContainer>
+
+            <FormSection boxed={true}>
+                    <FormContextSubmitButton>Speichern</FormContextSubmitButton>
+            </FormSection>
+        </FormContext>
     );
 }
