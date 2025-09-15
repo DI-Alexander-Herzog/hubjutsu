@@ -8,13 +8,7 @@ export default function {{ name }}Edit( { {{ modelVariable }}} : { {{ modelVaria
         <AuthenticatedLayout
             title="{{ name }}"
         >
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <{{ name }}Form {{ modelVariable }}={ {{ modelVariable }} }  disabled={false}/>
-                    </div>
-                </div>
-            </div>
+            <{{ name }}Form {{ modelVariable }}={ {{ modelVariable }} }  disabled={false}/>
         </AuthenticatedLayout>
     );
 }
