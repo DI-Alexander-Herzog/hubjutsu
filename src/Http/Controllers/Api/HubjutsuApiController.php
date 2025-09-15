@@ -36,7 +36,7 @@ class HubjutsuApiController
         if ($id) {
             $obj = $obj->findOrFail($id);
         }
-        if (!Gate::denies($gate, ($id ? $obj : $obj::class)) ) {
+        if (Gate::denies($gate, ($id ? $obj : $obj::class)) ) {
             throw new \Exception('Not allowed');
         }
         return $obj;
