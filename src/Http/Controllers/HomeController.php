@@ -29,7 +29,7 @@ class HomeController extends Controller
         ]);
     }
 
-    public function dashboard(Request $request): Response
+    public function dashboard(Request $request): Response|RedirectResponse
     {
         return Inertia::render('Dashboard');
     }
