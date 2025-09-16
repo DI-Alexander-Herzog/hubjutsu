@@ -10,8 +10,7 @@ type SettingEntry = {
     description?: string;
     icon?: string;
     href: string;
-    bgColor: string;
-    textColor?: string;
+    color: string;
     initials: string;
     subtitle?: string;    
 }
@@ -22,7 +21,7 @@ type SettingGroup = {
 }
 
 
-export default function Settings({ settings, extraIcons }: { settings: Array<SettingGroup>, extraIcons: Record<string, JSX.Element> }) {
+export default function Settings({ settings, extraIcons, extraColors }: { settings: Array<SettingGroup>, extraIcons: Record<string, JSX.Element>, extraColors: Record<string, JSX.Element> }) {
 
 
     const icons = {
@@ -30,6 +29,13 @@ export default function Settings({ settings, extraIcons }: { settings: Array<Set
         "folder": <FolderIcon  />,
         "shield-check": <ShieldCheckIcon  />,
         ...extraIcons
+    };
+
+    const colors = {
+        'primary': 'bg-primary text-on-primary',
+        'secondary': 'bg-secondary text-on-secondary',
+        'tertiary': 'bg-tertiary text-on-tertiary',
+        ...extraColors
     };
 
     return (
@@ -45,8 +51,7 @@ export default function Settings({ settings, extraIcons }: { settings: Array<Set
                                     <li key={setting.label} className="col-span-1 flex rounded-md shadow-sm">
                                         <div
                                             className={classNames(
-                                                'bg-' + setting.bgColor,
-                                                'text-' + (setting.textColor ?? 'white'),
+                                                colors[setting.color as keyof typeof colors] || 'bg-background text-text',
                                                 'flex w-16 shrink-0 items-center justify-center rounded-l-md text-sm font-medium',
                                                 'dark:text-gray-100 dark:bg-gray-700',
                                             )}
