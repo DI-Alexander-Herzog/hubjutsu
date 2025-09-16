@@ -79,5 +79,6 @@ class User extends Base implements
     public function setAvatar(Media $media) {
         $this->setMedia($media, 'avatar', 1);
     }
+
     
 }

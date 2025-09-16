@@ -41,7 +41,7 @@ class HubjutsuServiceProvider extends ServiceProvider
         
         // Default allow everything for now
         Gate::after(function ($user, $ability, $arguments) {
-            return true;
+            return $user ? true : false;
         });
 
 
