@@ -1,4 +1,3 @@
-import { ArrowRightIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { Link } from "@inertiajs/react";
 import classNames from "classnames";
 import { ReactNode } from "react";
@@ -15,36 +14,55 @@ type BreadcrumbsType = {
 
 export default function Breadcrumbs({items} : BreadcrumbsType ) {
     return (
-        <div className="container">
-            <nav className="flex" aria-label="Breadcrumb">
-                <ol role="list" className="flex items-center space-x-4">
-                    {items.map((item, index) => (
-                        <li key={index}>
-                            <div className="flex items-center">
-                                {index !== 0 && (
-                                    <ChevronRightIcon className="size-4"/>
+        <div className="container border-b border-gray-200 dark:border-gray-700">
+            <div className=" mx-auto px-4 py-2">
+                <nav className="flex" aria-label="Breadcrumb">
+                    <ol role="list" className="flex items-center space-x-1">
+                        {items.map((item, index) => (
+                            <li key={index} className="flex items-center">
+                                {index > 0 && (
+                                    <span className="text-gray-400 dark:text-gray-500 mx-3 text-lg">/</span>
                                 )}
+                                
                                 {item.url ? (
                                     <Link
                                         href={item.url}
-                                        className="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center"
+                                        className={classNames(
+                                            "flex items-center px-2 py-1 text-sm font-medium transition-all duration-200 relative",
+                                            index === items.length - 1
+                                                ? "text-primary after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-primary"
+                                                : "text-gray-600 dark:text-gray-300 hover:text-primary hover:after:absolute hover:after:bottom-0 hover:after:left-0 hover:after:w-full hover:after:h-0.5 hover:after:bg-primary"
+                                        )}
                                     >
-                                        {item.icon && <span className="mr-1 size-4">{item.icon}</span>}
-                                        {item.label}
+                                        {item.icon && (
+                                            <span className="mr-2 h-4 w-4 flex-shrink-0">
+                                                {item.icon}
+                                            </span>
+                                        )}
+                                        <span className="truncate">{item.label}</span>
                                     </Link>
                                 ) : (
                                     <span
-                                        className="ml-4 text-sm font-medium text-gray-500 flex items-center"    
+                                        className={classNames(
+                                            "flex items-center px-2 py-1 text-sm font-medium relative",
+                                            index === items.length - 1
+                                                ? "text-primary after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-primary"
+                                                : "text-gray-600 dark:text-gray-300"
+                                        )}
                                     >
-                                        {item.icon && <span className="mr-1 size-4">{item.icon}</span>}
-                                        {item.label}
+                                        {item.icon && (
+                                            <span className="mr-2 h-4 w-4 flex-shrink-0">
+                                                {item.icon}
+                                            </span>
+                                        )}
+                                        <span className="truncate">{item.label}</span>
                                     </span>
                                 )}
-                            </div>
-                        </li>
-                    ))}
-                </ol>
-            </nav>
+                            </li>
+                        ))}
+                    </ol>
+                </nav>
+            </div>
         </div>
     );
 }
