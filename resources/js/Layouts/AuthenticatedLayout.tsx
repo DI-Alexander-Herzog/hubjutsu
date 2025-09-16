@@ -21,12 +21,14 @@ import {
     XMarkIcon,
   } from '@heroicons/react/24/outline'
   import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import ThemeMode from '../../../stubs/resources/js/Components/ThemeMode';
-import Avatar from '@hubjutsu/Components/Avatar';
+import ThemeMode from '@/Components/ThemeMode';
+import Avatar from '@/Components/Avatar';
 import { SearchProvider } from '@/Components/SearchContext';
 import TopSearch from '@hubjutsu/Components/TopSearch';
+import Breadcrumbs, {Breadcrumb} from '@/Components/Breadcrumbs';
 
-export default function Authenticated({ title, children }: PropsWithChildren<{ title?: string }>) {
+
+export default function Authenticated({ title, children, breadcrumbs }: PropsWithChildren<{ title?: string, breadcrumbs?: Breadcrumb[] }>) {
 
     const page = usePage<PageProps>();
     const user = page.props.auth.user;
@@ -207,9 +209,11 @@ export default function Authenticated({ title, children }: PropsWithChildren<{ t
           <Head title={title} />
           <main className="flex-grow overflow-hidden">
             <div className='h-full flex flex-col'>
-              <div className='flex-shrink'></div>
+              {breadcrumbs && <div className='flex-shrink'>
+                <Breadcrumbs items={breadcrumbs} />
+              </div> }
 
-              <div className="flex-grow overflow-hidden">
+              <div className="flex-grow overflow-auto">
                 {children}
               </div>
             </div>
