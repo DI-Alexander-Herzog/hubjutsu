@@ -27,7 +27,7 @@ module.exports = {
         './resources/js/**/*.tsx',
         './vendor/aherzog/hubjutsu/resources/js/**/*.tsx',
         './vendor/aherzog/hubjutsu/resources/js/hubjutsu-style.js',
-        './vendor/aherzog/hubjutsu/resources/js/tailwind.conig.js',
+        './vendor/aherzog/hubjutsu/resources/js/tailwind.config.js',
     ],
 
     darkMode: 'selector',
