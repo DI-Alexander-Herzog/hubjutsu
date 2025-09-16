@@ -218,7 +218,12 @@ class HubjutsuSetupCommand extends Command
             if ($filesystem->glob(database_path('migrations/*_'.basename($file)))) {
                 $this->output->info('Migration already exists: '.basename($file));
             } else {
-                $filesystem->copy($file, database_path('migrations/'. date('Y_m_d_His_') .basename($file)));
+                $content = [
+                    "<?php",
+                    "",
+                    "return include(base_path('/vendor/aherzog/hubjutsu/database/migrations/" . basename($file) . "'));"
+                ];
+                $filesystem->put(database_path('migrations/'. date('Y_m_d_His_') .basename($file)), implode("\n", $content));
             }
         }
 
