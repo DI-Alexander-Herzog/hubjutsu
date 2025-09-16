@@ -14,6 +14,22 @@ class Permission {
     private function __construct() {
     }
 
+    public static function addModel($model, $name=null) {
+        if (is_object($model)) {
+            $model = get_class($model);
+        }
+
+        $name = $name ?: class_basename($model);
+        self::addGroup($model, $name);
+        self::addPermission($model, 'viewAny', "View any $name");
+        self::addPermission($model, 'view', "View $name");
+        self::addPermission($model, 'create', "Create $name");
+        self::addPermission($model, 'update', "Update $name");
+        self::addPermission($model, 'delete', "Delete $name");
+        self::addPermission($model, 'restore', "Restore $name");
+        self::addPermission($model, 'forceDelete', "Force delete $name");
+    }
+
     public static function addGroup(string $group, $name=""): void {
         $group = $group ?: 'default';
         if (!array_key_exists($group, self::$groups)) {
@@ -33,6 +49,27 @@ class Permission {
         }
     }
 
+    public static function getPermissionTable() {
+        $return = [];
+        foreach(self::$groups as $group => $name) {
+            $grp = [
+                'name' => $name,
+                'group' => $group,
+                'permissions' => []
+            ];
+            $permissions = self::$permissions[$group] ?? [];
+
+            foreach($permissions as $permission => $description) {
+                $grp['permissions'][] = [
+                    "$group::$permission",
+                    $description
+                ];
+            }
+
+            $return[] = $grp;
+        }
+        return  $return;
+    }
 
     static function getPermissionForUserAndHub(User $user, Hub $hub) {
         $permissions = [];

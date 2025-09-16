@@ -34,16 +34,6 @@ Route::name('admin.')->prefix('admin')->group(function() {
     });
 
     Route::middleware(['auth', 'verified'])->group(function () {
-        Route::get('/rolepermissions', [RolePermissionController::class, 'index'])->name('rolepermissions.index');
-        Route::get('/rolepermissions/create', [RolePermissionController::class, 'create'])->name('rolepermissions.create');
-        Route::post('/rolepermissions', [RolePermissionController::class, 'store'])->name('rolepermissions.store');
-        Route::get('/rolepermissions/{rolepermission}', [RolePermissionController::class, 'show'])->name('rolepermissions.show');
-        Route::get('/rolepermissions/{rolepermission}/edit', [RolePermissionController::class, 'edit'])->name('rolepermissions.edit');
-        Route::addRoute(['PUT', 'POST', 'PATCH'], '/rolepermissions/{rolepermission}', [RolePermissionController::class, 'update'])->name('rolepermissions.update');
-        Route::delete('/rolepermissions/{rolepermission}', [RolePermissionController::class, 'destroy'])->name('rolepermissions.destroy');
-    });
-
-    Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
         Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create');
         Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');

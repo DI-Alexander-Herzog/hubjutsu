@@ -2,12 +2,15 @@
 
 namespace AHerzog\Hubjutsu\Http\Controllers;
 
+use AHerzog\Hubjutsu\App\Auth\Permission;
 use App\Models\Role;
 use App\Http\Controllers\Controller;
+use App\Models\RolePermission;
 use Illuminate\Http\Request;
 
  use Inertia\Response;
  use Inertia\Inertia;
+use phpDocumentor\Reflection\DocBlock\Tags\Var_;
 
 class RoleController extends Controller
 {
@@ -43,7 +46,7 @@ class RoleController extends Controller
         $role->fill($request->only($role->getFillable()));
         $role->save();
 
-        return redirect()->route('roles.show', $role);
+        return redirect()->route('admin.roles.show', $role);
 
     }
 
@@ -52,8 +55,11 @@ class RoleController extends Controller
      */
     public function show(Role $role)
     {
+        $role->load('permissions');
+
         return Inertia::render('Role/View', [
-            'Role' => $role
+            'role' => $role,
+            'permissions' => Permission::getPermissionTable()
         ]);
     }
 
@@ -62,8 +68,11 @@ class RoleController extends Controller
      */
     public function edit(Role $role)
     {
+        $role->load('permissions');
+
         return Inertia::render('Role/Edit', [
-            'Role' => $role
+            'role' => $role,
+            'permissions' => Permission::getPermissionTable()
         ]);
     }
 
@@ -76,10 +85,29 @@ class RoleController extends Controller
         $role->fill($request->validate([
         ]));
         */
+
+        $permission = $request->get('permissions', []);
+        
         $role->fill($request->only($role->getFillable()));
         $role->save();
 
-        return redirect()->route('roles.show', $role);
+        $exisitngPermissions = $role->permissions()->pluck('permission', 'id')->toArray();
+        foreach($exisitngPermissions as $id => $perm) {
+            if (!in_array($perm, $permission)) {
+                RolePermission::where('id', $id)->delete();
+            } else {
+                unset($permission[array_search($perm, $permission)]);
+            }
+        }
+        foreach($permission as $perm) {
+            $rp = new RolePermission();
+            $rp->role_id = $role->id;
+            $rp->permission = $perm;
+            $rp->save();
+        }
+        
+
+        return redirect()->route('admin.roles.show', $role);
 
     }
 
@@ -89,6 +117,6 @@ class RoleController extends Controller
     public function destroy(Role $role)
     {
         $role->delete();
-        return redirect()->route('roles.index');
+        return redirect()->route('admin.roles.index');
     }
 }

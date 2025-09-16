@@ -36,12 +36,23 @@ class HubjutsuServiceProvider extends ServiceProvider
         Permission::addGroup('admin', 'Die Installation bearbeiten');
         Permission::addPermission('admin', 'admin', 'administration');
 
-        Permission::addGroup('user', 'Benutzerrechte im Hub');
-        Permission::addPermission('user', 'user.admin', 'Benutzer anzeigen');
+        Permission::addModel(\App\Models\Hub::class, __('Hub'));
+        Permission::addModel(\App\Models\User::class, __('User'));
+        Permission::addModel(\App\Models\Role::class, __('Role'));
+        
         
         // Default allow everything for now
         Gate::after(function ($user, $ability, $arguments) {
             return $user ? true : false;
+        });
+
+        Gate::before(function ($user, $ability) {
+            if ($user instanceof \App\Models\User) {
+                $domain = preg_replace('/^.*@/', '', $user->email);
+                if (in_array($domain, config('hubjutsu.super_admin_maildomains') )) {
+                    return true;
+                }
+            }
         });
 
 
@@ -69,9 +80,9 @@ class HubjutsuServiceProvider extends ServiceProvider
                 
                 $domain = preg_replace('/^.*@/', '', Auth::getUser()->email);
                 $rootDomain = preg_replace('/^.*\.([^\.]+\.[^\.]+)/', '\1', parse_url(config('app.url'), PHP_URL_HOST) );
-    
-                return in_array($domain, ['alexander-herzog.at', 'ongema.com', $rootDomain] );
-                
+
+                return in_array($domain, [$rootDomain, ...config('hubjutsu.super_admin_maildomains')] );
+
             });
         }
         
