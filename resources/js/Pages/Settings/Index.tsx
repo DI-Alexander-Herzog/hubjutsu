@@ -1,62 +1,87 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowRightIcon } from '@heroicons/react/20/solid'
+import { ArrowRightIcon, FolderIcon, ShieldCheckIcon, UserIcon } from '@heroicons/react/20/solid'
 import classNames from 'classnames';
+import FormContainer from '@hubjutsu/Components/FormContainer';
+import FormSection from '@hubjutsu/Components/FormSection';
 
-const projects = [
-  { name: 'User', initials: 'U', href: route('admin.users.index'), members: 16, bgColor: 'bg-pink-600' },
-  { name: 'Roles', initials: 'R', href: route('admin.roles.index'), members: 12, bgColor: 'bg-purple-600' },
-  { name: 'Hubs', initials: 'H', href: route('admin.hubs.index'), members: 16, bgColor: 'bg-yellow-500' },
-]
+type SettingEntry = {
+    label: string;
+    description?: string;
+    icon?: string;
+    href: string;
+    bgColor: string;
+    textColor?: string;
+    initials: string;
+    subtitle?: string;    
+}
+
+type SettingGroup = {
+    label: string;
+    settings: Array<SettingEntry>;
+}
 
 
-export default function Settings() {
+export default function Settings({ settings, extraIcons }: { settings: Array<SettingGroup>, extraIcons: Record<string, JSX.Element> }) {
+
+
+    const icons = {
+        "users": <UserIcon  />,
+        "folder": <FolderIcon  />,
+        "shield-check": <ShieldCheckIcon  />,
+        ...extraIcons
+    };
+
     return (
         <AuthenticatedLayout
             title="Settings"
         >
+            {settings.map((group) => {
+                return <>
+                    <FormContainer>
+                        <FormSection title={group.label}>
+                            <ul role="list" className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 ">
+                                {group.settings.map((setting) => (
+                                    <li key={setting.label} className="col-span-1 flex rounded-md shadow-sm">
+                                        <div
+                                            className={classNames(
+                                                'bg-' + setting.bgColor,
+                                                'text-' + (setting.textColor ?? 'white'),
+                                                'flex w-16 shrink-0 items-center justify-center rounded-l-md text-sm font-medium',
+                                                'dark:text-gray-100 dark:bg-gray-700',
+                                            )}
+                                        >
+                                            {Object.keys(icons).includes(setting.icon || '') ? <div className='size-8'>{icons[setting.icon as keyof typeof icons]}</div> : setting.initials}
+                                        </div>
+                                        <div className="flex flex-1 items-center justify-between truncate rounded-r-md border-b border-r border-t border-gray-200 bg-white">
+                                        <div className="flex-1 truncate px-4 py-2 text-sm">
+                                            <Link href={setting.href} className="font-medium text-gray-900 hover:text-gray-600">
+                                            {setting.label}
+                                            </Link>
+                                            <p className="text-gray-500">{setting.subtitle}</p>
+                                        </div>
+                                        <div className="shrink-0 pr-2">
+                                            <Link
+                                                href={setting.href} 
+                                                type="button"
+                                                className="inline-flex size-8 items-center justify-center rounded-full bg-transparent bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                            >
+                                            <span className="sr-only">Open options</span>
+                                            <ArrowRightIcon aria-hidden="true" className="size-5" />
+                                            </Link>
+                                        </div>
+                                        </div>
+                                    </li>
+                                    ))}
+                                </ul>            
+                        </FormSection>
+                    </FormContainer>
+                    
+                </>
+            })}  
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="">
+            
 
-                    <ul role="list" className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
-                        {projects.map((project) => (
-                            <li key={project.name} className="col-span-1 flex rounded-md shadow-sm">
-                                <div
-                                className={classNames(
-                                    project.bgColor,
-                                    'flex w-16 shrink-0 items-center justify-center rounded-l-md text-sm font-medium text-white dark:text-gray-100',
-                                )}
-                                >
-                                {project.initials}
-                                </div>
-                                <div className="flex flex-1 items-center justify-between truncate rounded-r-md border-b border-r border-t border-gray-200 bg-white">
-                                <div className="flex-1 truncate px-4 py-2 text-sm">
-                                    <Link href={project.href} className="font-medium text-gray-900 hover:text-gray-600">
-                                    {project.name}
-                                    </Link>
-                                    <p className="text-gray-500">{project.members} Members</p>
-                                </div>
-                                <div className="shrink-0 pr-2">
-                                    <Link
-                                        href={project.href} 
-                                        type="button"
-                                        className="inline-flex size-8 items-center justify-center rounded-full bg-transparent bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                                    >
-                                    <span className="sr-only">Open options</span>
-                                    <ArrowRightIcon aria-hidden="true" className="size-5" />
-                                    </Link>
-                                </div>
-                                </div>
-                            </li>
-                            ))}
-                        </ul>
-
-
-                    </div>
-                </div>
-            </div>
         </AuthenticatedLayout>
     );
 }

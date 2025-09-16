@@ -37,7 +37,19 @@ export default function HubForm({ disabled=false, hub }: { disabled?: boolean; h
                         <Input inputName="color_text" type="color" />
                     </div>
                 </FormSection>
-               
+
+               <Separator />
+
+                <FormSection title="Schriften" subtitle='Einstellungen zur Schriftgestaltung am Hub'>
+                    
+                    <Input inputName="font_primary" type="text" />
+                    <Input inputName="font_primary_size" type="number" />
+                
+                    <Input inputName="font_secondary" type="text" />
+                    <Input inputName="font_secondary_size" type="number" />
+                
+                    
+                </FormSection>
                 
             </FormContainer>
 

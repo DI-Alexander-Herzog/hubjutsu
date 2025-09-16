@@ -1,7 +1,8 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import DataTable, { DataTableFormatter } from "@/Components/DataTable";
+import DataTable from "@/Components/DataTable";
 import DataTableLink from "@hubjutsu/Components/DataTableLink";
 import InputText from "@hubjutsu/Components/InputText";
+import { DataTableFormatter } from "@hubjutsu/Components/DataTableFormatter";
 
 const textEditor = (options: any) => {
 	return (

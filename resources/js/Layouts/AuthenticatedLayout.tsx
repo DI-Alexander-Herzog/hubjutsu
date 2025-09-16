@@ -23,7 +23,7 @@ import {
   import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import ThemeMode from '../../../stubs/resources/js/Components/ThemeMode';
 import Avatar from '@hubjutsu/Components/Avatar';
-import { SearchProvider } from '@hubjutsu/Components/SearchContext';
+import { SearchProvider } from '@/Components/SearchContext';
 import TopSearch from '@hubjutsu/Components/TopSearch';
 
 export default function Authenticated({ title, children }: PropsWithChildren<{ title?: string }>) {
