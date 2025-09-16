@@ -1,19 +1,20 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Models } from '@/types/models';
 import { Head } from '@inertiajs/react';
+import RoleForm from './Form';
 
-export default function RoleView() {
+export default function RoleView({ role, permissions } : { role: Models.Role, permissions: any }) {
     return (
         <AuthenticatedLayout
-            title="Role"
+            title="Edit Role"
+            breadcrumbs={[
+                { label: 'Settings', url: route('settings.index') },
+                { label: 'Roles', url: route('admin.roles.index') },
+                { label: `${role.name}`, url: route('admin.roles.edit', { role: role.id }) }
+            ]}
         >
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900 dark:text-gray-100">IRGENDWELCHE SETTINGS!</div>
-                    </div>
-                </div>
-            </div>
+            <RoleForm role={ role } permissions={ permissions }  disabled={true}/>
         </AuthenticatedLayout>
     );
 }

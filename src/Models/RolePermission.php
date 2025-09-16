@@ -9,7 +9,10 @@ class RolePermission extends Base
 {
     use HasFactory; //HasTimestamp
 
-    protected $fillable = [];
+    protected $fillable = [
+        'role_id', 
+        'permission'
+    ];
 
     protected $casts = [];
 
