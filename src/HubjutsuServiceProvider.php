@@ -12,6 +12,7 @@ use AHerzog\Hubjutsu\Console\HubjutsuMakeComponentCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuSetupCommand;
 use AHerzog\Hubjutsu\Events\BuildMenuEvent;
 use Auth;
+use Gate;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\ServiceProvider;
 use LogViewer;
@@ -38,6 +39,10 @@ class HubjutsuServiceProvider extends ServiceProvider
         Permission::addGroup('user', 'Benutzerrechte im Hub');
         Permission::addPermission('user', 'user.admin', 'Benutzer anzeigen');
         
+        // Default allow everything for now
+        Gate::after(function ($user, $ability, $arguments) {
+            return true;
+        });
 
 
         if ($this->app->runningInConsole()) {
