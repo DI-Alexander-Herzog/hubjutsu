@@ -1,6 +1,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import DataTable, { DataTableFormatter } from "@/Components/DataTable";
-import { Head, Link, router } from "@inertiajs/react";
+import DataTable from "@/Components/DataTable";
+import { DataTableDynamicFormatter } from "@hubjutsu/Components/DataTableDynamicFormatter";
 
 export default function HubIndex() {
 	return (
@@ -15,7 +15,7 @@ export default function HubIndex() {
 						filter: true,
 						frozen: true,
 						width: "500px",
-						formatter: DataTableFormatter.dynamic.link('admin.hubs.edit'),
+						formatter: DataTableDynamicFormatter.link('admin.hubs.edit'),
 					},
 					{
 						field: "url",

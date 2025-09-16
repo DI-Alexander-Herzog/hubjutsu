@@ -13,18 +13,18 @@ import {
 } from "@heroicons/react/20/solid";
 import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
 import classNames from "classnames";
-import Checkbox from "./Checkbox";
+import Checkbox from "@/Components/Checkbox";
 import { DateTime } from "luxon";
-import PrimaryButton from "./PrimaryButton";
-import SecondaryButton from "./SecondaryButton";
-import DangerButton from "./DangerButton";
-import DataTableLink from "./DataTableLink";
-import DataTableFilter from "./DataTableFilter";
+import PrimaryButton from "@/Components/PrimaryButton";
+import SecondaryButton from "@/Components/SecondaryButton";
+import DangerButton from "@/Components/DangerButton";
+import DataTableFilter from "@/Components/DataTableFilter";
 
 import { flushSync } from "react-dom";
-import { useSearch } from "./SearchContext";
+import { useSearch } from "@/Components/SearchContext";
 import { useLaravelReactI18n } from "laravel-react-i18n";
-import ErrorToast from "./ErrorToast";
+import ErrorToast from "@/Components/ErrorToast";
+import { DataTableFormatter } from "@/Components/DataTableFormatter";
 
 // 📌 Spalten-Typen definieren
 interface Column {
@@ -1062,47 +1062,6 @@ const DataTable: React.FC<DataTableProps> = ({
 	);
 };
 
-const DataTableDynamicFormatter = {
-	link: (linkroute: string | ((row: Row) => string)) => {
-		return (row: Row, field: string) => {
-			const href =
-				typeof linkroute === "function"
-					? linkroute(row)
-					: route(linkroute as any, [row]);
-			return <DataTableLink href={href}>{row[field] || "View"}</DataTableLink>;
-		};
-	},
-};
 
-const DataTableFormatter = {
-	dynamic: DataTableDynamicFormatter,
-
-	default: (row: Row, field: string) => {
-		if (field.includes(".")) {
-			const parts = field.split(".");
-			return (
-				parts.reduce(
-					(acc, part) => (acc && acc[part] ? acc[part] : undefined),
-					row
-				) ?? ""
-			);
-		}
-		if (row[field] === undefined || row[field] === null) return "";
-		if (typeof row[field] === "object") return JSON.stringify(row[field]);
-		return row[field] || "";
-	},
-
-	datetime: (row: Row, field: string) => {
-		if (!row[field]) return "";
-		const date = DateTime.fromISO(row[field], { zone: "utc" }).setZone(
-			"Europe/Vienna"
-		);
-		return date.isValid
-			? date.toLocaleString(DateTime.DATETIME_MED)
-			: row[field];
-	},
-
-};
 
 export default DataTable;
-export { DataTableFormatter, DataTableDynamicFormatter };
