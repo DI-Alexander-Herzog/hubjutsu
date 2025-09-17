@@ -3,6 +3,7 @@ import DataTable from "@/Components/DataTable";
 import DataTableLink from "@hubjutsu/Components/DataTableLink";
 import InputText from "@hubjutsu/Components/InputText";
 import { DataTableFormatter } from "@hubjutsu/Components/DataTableFormatter";
+import { CogIcon, UserIcon } from "@heroicons/react/20/solid";
 
 const textEditor = (options: any) => {
 	return (
@@ -16,7 +17,11 @@ const textEditor = (options: any) => {
 
 export default function RoleIndex() {
 	return (
-		<AuthenticatedLayout title={"User"}>
+		<AuthenticatedLayout title={"User"} 	
+		breadcrumbs={[
+						{ label: 'Settings', url: route('settings.index'), icon: <CogIcon /> },
+						{ label: 'User', icon: <UserIcon /> }
+					]}>
 			<DataTable
 				routemodel="user"
 				columns={[
