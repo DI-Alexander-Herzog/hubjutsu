@@ -31,13 +31,13 @@ export default function NavLink({
 
     const variants = {
         nav: active
-            ? 'bg-primary hover:text-onprimary group flex gap-x-3 rounded-md p-2 font-semibold leading-6'
-            : 'text-gray-700 dark:text-gray-100 hover:bg-primary-300 hover:text-onprimary group flex gap-x-3 rounded-md p-2 font-semibold leading-6',
-        inline: 'text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 underline font-medium'
+            ? 'bg-primary text-onprimary flex items-center text-sm font-medium transition-all duration-200 rounded-xl relative group'
+            : 'text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/20 flex items-center text-sm font-medium transition-all duration-200 rounded-xl relative group hover:shadow-md',
+        inline: 'text-primary dark:text-primary hover:text-primary/80 dark:hover:text-primary/80 underline font-medium transition-colors duration-200'
     };
 
     return (
-        <div className="space-y-1 mt-2">
+        <div>
             {variant === 'inline' && preText && (
                 <p className="text-sm text-gray-800 dark:text-gray-200">
                     {preText}
@@ -48,7 +48,11 @@ export default function NavLink({
                             className
                         )}
                     >
-                        {icon}
+                        {icon && (
+                            <span className="inline-flex h-4 w-4 flex-shrink-0 items-center justify-center mr-2">
+                                {icon}
+                            </span>
+                        )}
                         {children}
                     </Link>
                 </p>
@@ -59,11 +63,24 @@ export default function NavLink({
                     {...props}
                     className={classNames(
                         variants[variant],
+                        "px-3 py-2.5",
                         className
                     )}
                 >
-                    {icon}
-                    {children}
+                    {icon && (
+                        <span className={classNames(
+                            "flex h-6 w-6 flex-shrink-0 items-center justify-center transition-colors duration-200 mr-3",
+                            active 
+                                ? "text-onprimary" 
+                                : "text-gray-500 dark:text-gray-400 group-hover:text-primary dark:group-hover:text-primary"
+                        )}>
+                            {icon}
+                        </span>
+                    )}
+                    <span className="truncate font-medium">{children}</span>
+                    {active && (
+                        <span className="absolute right-2 top-1/2 transform -translate-y-1/2 h-2 w-2 bg-onprimary rounded-full"></span>
+                    )}
                 </Link>
             )}
 
