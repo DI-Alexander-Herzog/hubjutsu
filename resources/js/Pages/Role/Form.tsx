@@ -23,14 +23,6 @@ export default function RoleForm({ disabled = false, role, permissions }: { disa
         permissions: role?.permissions?.map(p => p.permission) || []
      });
 
-     useEffect(() => {
-        const int = setInterval(() => {
-            console.log(data);
-        }, 1000);
-        return () => {
-            clearInterval(int);
-        };
-     }, [data]);
 
     const updatePermissions = (permission: string, value: boolean) => {
         setData((prev) => {

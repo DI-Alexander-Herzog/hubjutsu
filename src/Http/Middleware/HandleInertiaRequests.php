@@ -48,7 +48,7 @@ class HandleInertiaRequests extends Middleware
         ];
     }
 
-    public function generateMenus(MenuManager $menuManager)
+    public function generateMenus(MenuManager $menuManager, Request $request)
     {
         $menu = $menuManager->addMenu('Main Menu');
         $dashboard = $menu->addItem('Dashboard');
