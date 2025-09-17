@@ -20,6 +20,14 @@ const DataTableFormatter = {
         return row[field] || "";
     },
 
+    color: (row: Row, field: string) => {
+        if (!row[field]) return "";
+        return <>
+            <span className="inline-block align-middle w-3 h-3 border border-gray-300 dark:border-gray-700 rounded mr-2" style={{ backgroundColor: row[field] }}></span> {row[field]}
+        </>;
+        
+    },
+
     datetime: (row: Row, field: string) => {
         if (!row[field]) return "";
         const date = DateTime.fromISO(row[field], { zone: "utc" }).setZone(

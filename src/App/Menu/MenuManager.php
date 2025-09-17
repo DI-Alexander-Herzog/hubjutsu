@@ -58,4 +58,18 @@ class MenuManager {
         return $this->menus;
     }
 
+    public function checkActiveURL($url) {
+        foreach($this->menus as $menu) {
+            foreach($menu->items as $item) {
+                if ($item->route === $url) {
+                    $item->active = true;
+                } elseif (is_array($item->route)) {
+                    if (route($item->route[0], $item->route[1] ?? []) === $url) {
+                        $item->active = true;
+                    }
+                }
+            }
+        }
+    }
+
 }

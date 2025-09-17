@@ -350,6 +350,7 @@ class HubjutsuSetupCommand extends Command
             $this->runCommands([
                 'php artisan migrate --force',
                 'php artisan ide-helper:model -RW',
+                'php artisan hubjutsu:generate:types',
                 'npm run build'
             ]);
         }

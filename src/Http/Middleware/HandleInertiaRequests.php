@@ -41,9 +41,11 @@ class HandleInertiaRequests extends Middleware
                 return Hub::first()->uiData();
             },  
             'menus' => function() use ( $request ) {
-                $menuMenager = app('menuManager');
-                $this->generateMenus($menuMenager, $request);
-                return $menuMenager->getMenus();
+                /** @var MenuManager $menuManager */
+                $menuManager = app('menuManager');
+                $this->generateMenus($menuManager, $request);
+                $menuManager->checkActiveURL($request->url());
+                return $menuManager->getMenus();
             }
         ];
     }
