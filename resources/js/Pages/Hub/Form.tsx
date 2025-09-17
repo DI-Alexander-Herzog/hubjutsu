@@ -5,6 +5,7 @@ import FormContainer from '@/Components/FormContainer';
 import FormSection from '@/Components/FormSection';
 import { Models } from '@/types/models';
 import Separator from '@/Components/Separator';
+import { router } from '@inertiajs/react';
 
 export default function HubForm({ disabled=false, hub }: { disabled?: boolean; hub: Models.Hub }) {
 
@@ -53,8 +54,8 @@ export default function HubForm({ disabled=false, hub }: { disabled?: boolean; h
                 
             </FormContainer>
 
-            <FormSection boxed={true}>
-                    <FormContextSubmitButton>Speichern</FormContextSubmitButton>
+            <FormSection boxed={true} className="mt-4">
+                    <FormContextSubmitButton postSave={() => { window.location.reload(); }}>Speichern</FormContextSubmitButton>
             </FormSection>
         </FormContext>
         
