@@ -2,13 +2,14 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import DataTable from "@/Components/DataTable";
 import { DataTableDynamicFormatter } from "@hubjutsu/Components/DataTableDynamicFormatter";
 import { CogIcon, FolderIcon } from "@heroicons/react/20/solid";
+import IconLibrary from "@hubjutsu/Components/IconLibrary";
 
 export default function HubIndex() {
 	return (
 		<AuthenticatedLayout title="Hubs"
 			breadcrumbs={[
-				{ label: 'Settings', url: route('settings.index'), icon:<CogIcon /> }, 
-				{ label: 'Hubs', icon: <FolderIcon /> }
+				{ label: 'Settings', url: route('settings.index'), icon:<IconLibrary name="cog" /> }, 
+				{ label: 'Hubs', icon: <IconLibrary name="folder" /> }
 			]}
 		>
 			<DataTable
