@@ -61,16 +61,7 @@ class HubjutsuApiController
         foreach($request->get('filters', []) as $filter) {
             if (!isset($filter['value'])) continue;
             
-            if ($modelObj->searchInApi($queryBuilder, $filter['field'], $filter['value'], $filter['matchMode'] ?? null)) {
-                // handled by model
-                continue;
-            } elseif ($filter['matchMode'] == "NOT IN") {
-                $queryBuilder->whereNotIn($filter['field'], $filter['value']);
-            } elseif ($filter['matchMode'] == "IN") {
-                $queryBuilder->whereIn($filter['field'], $filter['value']);
-            } else {
-                $queryBuilder->where($filter['field'], $filter['matchMode'], $filter['value']);
-            }
+            $modelObj->searchInApi($queryBuilder, $filter['field'], $filter['value'], $filter['matchMode'] ?? null);
         };
 
         foreach($request->get('with', []) as $with) {
