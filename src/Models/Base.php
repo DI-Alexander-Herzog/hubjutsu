@@ -7,6 +7,7 @@ use Cache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
+use phpDocumentor\Reflection\DocBlock\Tags\Var_;
 
 class Base extends Model {    
 
@@ -27,7 +28,18 @@ class Base extends Model {
     }
 
     public function searchInApi(Builder $builder, string $field, $value, string $matchMode = 'contains') {
-        return false;
+        if ($value === null) return;
+
+        $matchMode = strtoupper($matchMode);
+        if ($matchMode == "NOT IN") {
+            $builder->whereNotIn($field, $value);
+        } elseif ($matchMode == "IN") {
+            $builder->whereIn($field, $value);
+        } elseif ($matchMode == "CONTAINS") {
+            $builder->where($field, 'LIKE' , '%' . $value . '%');
+        } else {
+            $builder->where($field, $matchMode, $value);
+        }
     }
 
     protected function getSearchableFields() {

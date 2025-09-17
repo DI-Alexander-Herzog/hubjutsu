@@ -153,8 +153,7 @@ const DataTable: React.FC<DataTableProps> = ({
 			rows: perPage,
 			page: 1,
 			search: useGlobalSearch ? query : undefined,
-			filters: Object.keys(filters).map((key) => {
-				const value = filters[key];
+			filters: Object.entries(filters).map(([key, value]) => {
 				if (Array.isArray(value) && value.length > 0) {
 					return { field: key, matchMode: "IN", value: value };
 				}
@@ -287,11 +286,24 @@ const DataTable: React.FC<DataTableProps> = ({
 			...prev,
 			first: 0,
 			page: 1,
-			filters: Object.entries(newFilters).map(([field, filter]) => ({
-				field,
-				matchMode: filter.matchMode,
-				value: filter.value,
-			})),
+			filters: Object.entries({...filters, ...newFilters}).map(([key, value]) => {
+				if (Array.isArray(value) && value.length > 0) {
+					return { field: key, matchMode: "IN", value: value };
+				}
+				if (
+					typeof value === "object" &&
+					value !== null &&
+					"matchMode" in value &&
+					"value" in value
+				) {
+					return {
+						field: key,
+						matchMode: (value as any).matchMode,
+						value: (value as any).value,
+					};
+				}
+				return { field: key, matchMode: "=", value: value };
+			}),
 		}));
 	};
 
