@@ -39,7 +39,7 @@ interface Column {
 	width?: string;
 	align?: string;
 	headerAlign?: string;
-	formatter?: (row: Row, field: string) => JSX.Element;
+	formatter?: (row: Row, field: string) => JSX.Element | string | Element;
 }
 
 interface Row {
@@ -589,11 +589,12 @@ const DataTable: React.FC<DataTableProps> = ({
 											<td
 												className={classNames(
 													" px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100  border-gray-200 dark:border-gray-700 sticky left-0 z-10",
-													isSelected
-														? "bg-primary-50 dark:bg-primary-900 group-hover:bg-primary-100 dark:group-hover:bg-primary-900"
-														: row_ofs % 2 === 0
-														? "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-700"
-														: "bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-600"
+													{
+														"bg-primary-50 dark:bg-primary-900 group-hover:bg-primary-100 dark:group-hover:bg-primary-900": isSelected,
+														"bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-700": !isSelected && row_ofs % 2 === 0,
+														"bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-600": !isSelected && row_ofs % 2 !== 0,
+													},
+													"overflow-hidden"
 												)}
 											>
 												<Checkbox
@@ -650,7 +651,8 @@ const DataTable: React.FC<DataTableProps> = ({
 																// Sticky/frozen column backgrounds
 																["bg-gray-50 dark:bg-gray-800"]:
 																	isFrozen && !isSelected,
-															}
+															},
+															'overflow-hidden'
 														)}
 														onClick={
 															Object.keys(editingRecord).length > 0
