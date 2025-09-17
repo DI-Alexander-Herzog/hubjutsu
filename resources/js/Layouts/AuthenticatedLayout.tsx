@@ -56,23 +56,28 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
                 </div>
               </TransitionChild>
               {/* Sidebar component, swap this element with another sidebar if you like */}
-              <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4">
-                <div className="flex h-16 shrink-0 items-center">
+              <div className="flex grow flex-col gap-y-6 overflow-y-auto bg-white dark:bg-gray-900 px-4 pb-4">
+                <div className="flex h-16 shrink-0 items-center px-2">
                     <ApplicationLogo className="h-8 w-auto" />
                   
                 </div>
                 <nav className="flex flex-1 flex-col">
-                  <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                  <ul role="list" className="flex flex-1 flex-col gap-y-8">
                   {Object.keys(page.props.menus).map((menuSlug, index) => {
                       const menu = page.props.menus[menuSlug];
 
                       return <li key={menuSlug}>
-                        { index > 0 && <div className="text-xs font-semibold leading-6 text-gray-400">{menu.name}</div>}
-                        <ul role="list" className={classNames("-mx-2 space-y-1", { "mt-2": index > 0 })} >
+                        { index > 0 && <div className="text-xs font-semibold leading-6 text-primary dark:text-primary uppercase tracking-wider px-3 py-1 border-t border-gray-200 dark:border-gray-700 pt-6 -mt-2">{menu.name}</div>}
+                        <ul role="list" className={classNames("space-y-1", { "mt-3": index > 0 })} >
                             {menu.items?.map((item, index) => {
                               
                               return <li key={item.title + ' ' + index}>
-                                <NavLink target={item.target} href={Array.isArray(item.route) ? route(item.route[0] as string, item.route[1] as any[]) : '' + item.route} active={item.active} icon={item.icon}>
+                                <NavLink 
+                                  target={item.target} 
+                                  href={Array.isArray(item.route) ? route(item.route[0] as string, item.route[1] as any[]) : '' + item.route} 
+                                  active={item.active} 
+                                  icon={item.icon}
+                                >
                                   {item.title}
                                 </NavLink>
                               </li>;
@@ -81,15 +86,16 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
                         </ul>
                       </li>;
                     })}
-                    <li className="mt-auto">
-                        <NavLink href={route('settings.index')}  active={false}
-                            icon={<Cog6ToothIcon
-                                aria-hidden="true"
-                                className={classNames(
-                                'h-6 w-6 shrink-0',
-                                )}
-                            />}>
-                            Settings
+                    <li className="mt-auto border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <NavLink 
+                          href={route('settings.index')} 
+                          active={false}
+                          icon={<Cog6ToothIcon
+                              aria-hidden="true"
+                              className="h-5 w-5 shrink-0"
+                          />}
+                        >
+                          Settings
                         </NavLink>
                       
                     </li>
@@ -101,44 +107,63 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
         </Dialog>
 
         {/* Static sidebar for desktop */}
-        <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col  bg-gray-100 dark:bg-gray-900 text-black  dark:text-gray-100">
-          {/* Sidebar component, swap this element with another sidebar if you like */}
-          <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white dark:bg-slate-950 dark:text-gray-100  px-6 pb-4">
-            <div className="flex h-16 shrink-0 items-center">
-            <ApplicationLogo className="h-8 w-auto" />
+        <div className={classNames(
+          "hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300 ease-in-out lg:w-64",            
+        )}>
+          {/* Sidebar component */}
+          <div className="flex grow flex-col overflow-y-auto bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-lg">
+            <div className="flex h-16 shrink-0 items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
+              <div className={classNames(
+                "transition-all duration-300 opacity-100",
+              
+              )}>
+                <ApplicationLogo className="h-8 w-auto" />
+              </div>
+            
             </div>
-            <nav className="flex flex-1 flex-col">
-              <ul role="list" className="flex flex-1 flex-col gap-y-7">
+            
+            {/* Navigation */}
+            <nav className="flex flex-1 flex-col px-3 py-4">
+              <ul role="list" className="flex flex-1 flex-col">
                 
                 {Object.keys(page.props.menus).map((menuSlug, index) => {
                   const menu = page.props.menus[menuSlug];
 
                   return <li key={menuSlug}>
-                    { index > 0 && <div className="text-xs font-semibold leading-6 text-gray-400">{menu.name}</div>}
-                    <ul role="list" className={classNames("-mx-2 space-y-1", { "mt-2": index > 0 })} >
+                    {index > 0 && (
+                      <div className="text-xs font-semibold leading-6 text-primary dark:text-primary uppercase tracking-wider px-3 py-2 mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+                        {menu.name}
+                      </div>
+                    )}
+                    <ul role="list" className="space-y-1">
                         {menu.items?.map((item, index) => {
                           
                           return <li key={item.title + ' ' + index}>
-                            <NavLink target={item.target} href={Array.isArray(item.route) ? route(item.route[0] as string, item.route[1] as any[]) : '' + item.route} active={item.active} icon={item.icon}>
+                            <NavLink 
+                              target={item.target} 
+                              href={Array.isArray(item.route) ? route(item.route[0] as string, item.route[1] as any[]) : '' + item.route} 
+                              active={item.active} 
+                              icon={item.icon}
+                            >
                               {item.title}
                             </NavLink>
                           </li>;
                         })}
-                     
                     </ul>
                   </li>;
                 })}
+
                 
-                
-                <li className="mt-auto">
-                  <NavLink href={route('settings.index')}   active={false}
-                      icon={<Cog6ToothIcon
-                          aria-hidden="true"
-                          className={classNames(
-                          'h-6 w-6 shrink-0',
-                          )}
-                      />}>
-                      Settings
+                <li className="mt-auto border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <NavLink 
+                    href={route('settings.index')} 
+                    active={false}
+                    icon={<Cog6ToothIcon
+                        aria-hidden="true"
+                        className="h-5 w-5 shrink-0"
+                    />}
+                  >
+                    Settings
                   </NavLink>
                 </li>
               </ul>
@@ -146,7 +171,9 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
           </div>
         </div>
 
-        <div className="lg:pl-64 flex flex-col h-full">
+        <div className={classNames(
+          "flex flex-col h-full transition-all duration-300 ease-in-out lg:pl-64",
+        )}>
           <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
             <button type="button" onClick={() => setSidebarOpen(true)} className="-m-2.5 p-2.5 lg:hidden">
               <span className="sr-only">Open sidebar</span>
