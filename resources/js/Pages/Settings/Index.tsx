@@ -32,9 +32,9 @@ export default function Settings({ settings, extraIcons, extraColors }: { settin
     };
 
     const colors = {
-        'primary': 'bg-primary text-on-primary',
-        'secondary': 'bg-secondary text-on-secondary',
-        'tertiary': 'bg-tertiary text-on-tertiary',
+        'primary': 'bg-primary text-onprimary',
+        'secondary': 'bg-secondary text-onsecondary',
+        'tertiary': 'bg-tertiary text-ontertiary',
         ...extraColors
     };
 
@@ -53,7 +53,7 @@ export default function Settings({ settings, extraIcons, extraColors }: { settin
                                             className={classNames(
                                                 colors[setting.color as keyof typeof colors] || 'bg-background text-text',
                                                 'flex w-16 shrink-0 items-center justify-center rounded-l-md text-sm font-medium',
-                                                'dark:text-gray-100 dark:bg-gray-700',
+                                                
                                             )}
                                         >
                                             {Object.keys(icons).includes(setting.icon || '') ? <div className='size-8'>{icons[setting.icon as keyof typeof icons]}</div> : setting.initials}
