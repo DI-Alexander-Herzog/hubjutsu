@@ -14,10 +14,10 @@ class PermissionPolicy {
     /**
      * Determine whether the user can view any models.
      */
-    protected function checkPermission(User $user, Base $model): bool
+    protected function checkPermission(User $user, Base $model, string $action): bool
     {
         $modelClass = get_class($model);
-
+        
         return true;
         
     }
