@@ -17,7 +17,7 @@ const DataTableFormatter = {
         }
         if (row[field] === undefined || row[field] === null) return "";
         if (typeof row[field] === "object") return JSON.stringify(row[field]);
-        return row[field] || "";
+        return typeof row[field] || "";
     },
 
     color: (row: Row, field: string) => {
@@ -33,9 +33,10 @@ const DataTableFormatter = {
         const date = DateTime.fromISO(row[field], { zone: "utc" }).setZone(
             "Europe/Vienna"
         );
+
         return date.isValid
             ? date.toLocaleString(DateTime.DATETIME_MED)
-            : row[field];
+            : JSON.stringify(row[field]);
     },
 
 };

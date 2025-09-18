@@ -177,10 +177,13 @@ const DataTable: React.FC<DataTableProps> = ({
 	});
 
 	useEffect(() => {
+		if (!useGlobalSearch) return;
+
 		setSearchState((prev) => {
+			if (prev.search === query) return prev;
 			return { ...prev, search: query, first: 0, page: 1 };
 		});
-	}, [query]);
+	}, [query, useGlobalSearch]);
 
 	const perPageList = [2, 10, 15, 20, 50, 100, 1000];
 	if (perPageList.indexOf(perPage) === -1) {
@@ -782,9 +785,23 @@ const DataTable: React.FC<DataTableProps> = ({
 															</>
 														) : (
 															<div className="text-gray-900 dark:text-gray-100">
-																{col.formatter
-																	? col.formatter(row, col.field)
-																	: DataTableFormatter.default(row, col.field)}
+																{(() => {
+																	const value = col.formatter
+																		? col.formatter(row, col.field)
+																		: DataTableFormatter.default(row, col.field);
+																	// Only render if value is a valid ReactNode
+																	if (
+																		typeof value === "string" ||
+																		typeof value === "number" ||
+																		React.isValidElement(value) ||
+																		value === null ||
+																		value === undefined
+																	) {
+																		return value;
+																	}
+																	// Fallback: render as JSON string
+																	return JSON.stringify(value);
+																})()}
 															</div>
 														)}
 
