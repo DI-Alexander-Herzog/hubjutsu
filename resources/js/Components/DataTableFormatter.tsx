@@ -17,7 +17,7 @@ const DataTableFormatter = {
         }
         if (row[field] === undefined || row[field] === null) return "";
         if (typeof row[field] === "object") return JSON.stringify(row[field]);
-        return typeof row[field] || "";
+        return row[field] || "";
     },
 
     color: (row: Row, field: string) => {
