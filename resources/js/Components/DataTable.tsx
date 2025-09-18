@@ -14,7 +14,6 @@ import {
 import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
 import classNames from "classnames";
 import Checkbox from "@/Components/Checkbox";
-import { DateTime } from "luxon";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import DangerButton from "@/Components/DangerButton";
@@ -25,12 +24,17 @@ import { useSearch } from "@/Components/SearchContext";
 import { useLaravelReactI18n } from "laravel-react-i18n";
 import ErrorToast from "@/Components/ErrorToast";
 import { DataTableFormatter } from "@/Components/DataTableFormatter";
+import DataTableEditor from "@/Components/DataTableEditor"; 
+import type { DataTableCustomEditorProps } from "@/Components/DataTableEditor";
 
 // 📌 Spalten-Typen definieren
 interface Column {
 	label?: string;
 	field: string;
-	editor?: "text" | "number" | "select" | any;
+	editor?:
+		| string
+		| ((props: DataTableCustomEditorProps) => React.ReactNode)
+		| undefined;
 	editor_properties?: Record<string, any>;
 	sortable?: boolean;
 	filter?: boolean | string | any;
@@ -131,7 +135,7 @@ const DataTable: React.FC<DataTableProps> = ({
 	const [records, setRecords] = useState<Row[]>([]);
 	const [selectedRecords, setSelectedRecords] = useState<Row[]>([]);
 	const [error, setError] = useState<null | string | any>(null);
-	const [editingRecord, setEditingRecord] = useState<{ [key: string]: Row }>(
+	const [editingRecord, setEditingRecord] = useState<{ [key: number]: Row }>(
 		{}
 	);
 	const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -356,7 +360,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		});
 	};
 
-	const disableEditing = (id: string) => {
+	const disableEditing = (id: number) => {
 		setEditingRecord((prev) => {
 			const clone = { ...prev };
 			delete clone[id];
@@ -364,7 +368,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		});
 	};
 
-	const saveRow = (editingRecordId: string, row_ofs: number) => {
+	const saveRow = (editingRecordId: number, row_ofs: number) => {
 		setRecords((prev) => {
 			const newRecords = [...prev];
 			newRecords[row_ofs] = editingRecord[editingRecordId];
@@ -372,7 +376,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		});
 
 		setLoading(true);
-		const updateOrCreateRoute = editingRecordId
+		const updateOrCreateRoute = editingRecordId > 0
 			? route("api.model.update", {
 					model: routemodel,
 					[datakey]: editingRecordId,
@@ -412,7 +416,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		}
 	};
 
-	const setRowValue = (id: string, field: string, value: any) => {
+	const setRowValue = (id: number, field: string, value: any) => {
 		setEditingRecord((prev) => {
 			const base = prev[id] ?? {};
 			const nextRow = { ...base, [field]: value };
@@ -456,7 +460,9 @@ const DataTable: React.FC<DataTableProps> = ({
 		} else if (typeof newRecord === "function") {
 			newRecord();
 		} else {
-			const newRow = newRecord || { [datakey]: 0 };
+			const newRow = { [datakey]: -records.length, ...newRecord } ;
+			console.log(newRow, newRecord, records.length);
+
 			setRecords((prev) => [newRow, ...prev]);
 			setEditingRecord((prev) => ({
 				...prev,
@@ -685,104 +691,15 @@ const DataTable: React.FC<DataTableProps> = ({
 														}
 													>
 														{editingRecord[row[datakey]] && col.editor ? (
-															<>
-																{col.editor === "number" && (
-																	<input
-																		type="number"
-																		defaultValue={row[col.field]}
-																		onKeyDown={(e) =>
-																			handleKeyDown(e, col.field, row, row_ofs)
-																		}
-																		className="text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
-																		{...col.editor_properties}
-																		onChange={(e) =>
-																			setRowValue(
-																				row[datakey],
-																				col.field,
-																				e.target.value
-																			)
-																		}
-																	/>
-																)}
-
-																{col.editor === "datetime" && (
-																	<input
-																		type="datetime-local"
-																		defaultValue={
-																			row[col.field]
-																				? DateTime.fromISO(row[col.field], {
-																						zone: "utc",
-																				  })
-																						.setZone("Europe/Vienna")
-																						.toFormat("yyyy-MM-dd'T'HH:mm")
-																				: ""
-																		}
-																		onKeyDown={(e) =>
-																			handleKeyDown(e, col.field, row, row_ofs)
-																		}
-																		className="text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
-																		{...col.editor_properties}
-																		onChange={(e) =>
-																			setRowValue(
-																				row[datakey],
-																				col.field,
-																				e.target.value
-																			)
-																		}
-																	/>
-																)}
-
-																{col.editor === "select" && (
-																	<select
-																		defaultValue={row[col.field]}
-																		onKeyDown={(e) =>
-																			handleKeyDown(e, col.field, row, row_ofs)
-																		}
-																		className="text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
-																		{...col.editor_properties}
-																		onChange={(e) =>
-																			setRowValue(
-																				row[datakey],
-																				col.field,
-																				e.target.value
-																			)
-																		}
-																	>
-																		<option value="">-- Select --</option>
-																		{col.editor_properties?.options?.map(
-																			(option: any, index: number) => (
-																				<option
-																					key={index}
-																					value={option.value}
-																				>
-																					{option.label}
-																				</option>
-																			)
-																		)}
-																	</select>
-																)}
-
-																{!["select", "number", "datetime"].includes(
-																	col.editor
-																) && (
-																	<input
-																		type={col.editor}
-																		defaultValue={row[col.field]}
-																		onKeyDown={(e) =>
-																			handleKeyDown(e, col.field, row, row_ofs)
-																		}
-																		onChange={(e) =>
-																			setRowValue(
-																				row[datakey],
-																				col.field,
-																				e.target.value
-																			)
-																		}
-																		className="text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md"
-																		{...col.editor_properties}
-																	/>
-																)}
-															</>
+															<DataTableEditor
+																editor={col.editor}
+																column={col}
+																row={row}
+																datakey={datakey}
+																rowIndex={row_ofs}
+																onValueChange={setRowValue}
+																onKeyDown={handleKeyDown}
+															/>
 														) : (
 															<div className="text-gray-900 dark:text-gray-100">
 																{(() => {
@@ -1034,9 +951,9 @@ const DataTable: React.FC<DataTableProps> = ({
 									// iterate through rows, check if editing is enabled and save row
 									Object.keys(editingRecord).forEach((id) => {
 										const row_ofs = records.findIndex(
-											(r) => r[datakey] === editingRecord[id][datakey]
+											(r) => r[datakey] === editingRecord[Number(id)][datakey]
 										);
-										if (row_ofs !== -1) saveRow(id, row_ofs);
+										if (row_ofs !== -1) saveRow(Number(id), row_ofs);
 									});
 								}}
 								className="flex items-center gap-2 text-xs px-2 py-1"
