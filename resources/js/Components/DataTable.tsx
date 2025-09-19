@@ -397,7 +397,7 @@ const DataTable: React.FC<DataTableProps> = ({
 				});
 			})
 			.catch((error) => {
-				setError(error);
+				setError(error.response?.data || error.message || error.toString() || "Error");
 				setLoading(false);
 			});
 	};
@@ -1013,3 +1013,4 @@ const DataTable: React.FC<DataTableProps> = ({
 
 
 export default DataTable;
+export type { Column };

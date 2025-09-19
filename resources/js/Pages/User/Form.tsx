@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 
-export default function RoleForm() {
+export default function UserForm() {
     return (
         <>
             <div className="py-12">

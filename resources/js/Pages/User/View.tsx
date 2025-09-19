@@ -1,10 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 
-export default function RoleView() {
+export default function UserView() {
     return (
         <AuthenticatedLayout
-            title="Role"
+            title="User"
         >
 
             <div className="py-12">

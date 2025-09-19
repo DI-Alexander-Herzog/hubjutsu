@@ -4,6 +4,7 @@ namespace AHerzog\Hubjutsu\Http\Middleware;
 
 use AHerzog\Hubjutsu\App\Menu\MenuManager;
 use App\Models\Hub;
+use App\Services\HubManager;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -38,11 +39,45 @@ class HandleInertiaRequests extends Middleware
             ],
 
             'hub' => function() {
-                return Hub::first()->uiData();
+                try {
+                    return app()->get(HubManager::class)->current()->uiData();
+                    
+                } catch (\Exception $e) {
+                    return [
+                        'id' => 0,
+                        'name' => $e->getMessage(),
+                        'slug' => 'error',
+                        'url' => config('app.url'),
+                        'has_darkmode' => false,
+                        'enable_registration' => false,
+                        'enable_guestmode' => false,
+                        'cssVars' => [],
+                        'colors' => [
+                            'primary' => '#000',
+                            'primary_text' => '#fff',
+                            'secondary' => '#000',
+                            'secondary_text' => '#fff',
+                            'tertiary' => '#000',
+                            'tertiary_text' => '#fff',
+                            'text' => '#000',
+                            'background' => '#fff',
+                        ],
+                        'fonts' => [
+                            'size' => 1,
+                            'sans' => 'sans-serif',
+                            'serif' => 'serif',
+                            'mono' => 'monospace',
+                            'header' => 'sans-serif',
+                            'text' => 'sans-serif',
+                            'import' => '',
+                        ]
+                    ];
+                }
+                
             },  
             'menus' => function() use ( $request ) {
                 /** @var MenuManager $menuManager */
-                $menuManager = app('menuManager');
+                $menuManager = app(MenuManager::class);
                 $this->generateMenus($menuManager, $request);
                 $menuManager->checkActiveURL($request->url());
                 return $menuManager->getMenus();

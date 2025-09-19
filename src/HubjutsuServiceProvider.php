@@ -10,12 +10,12 @@ use AHerzog\Hubjutsu\Console\HubjutsuGitCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuMakeCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuMakeComponentCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuSetupCommand;
-use AHerzog\Hubjutsu\Events\BuildMenuEvent;
 use Auth;
 use Gate;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\ServiceProvider;
 use LogViewer;
+use Request;
 
 class HubjutsuServiceProvider extends ServiceProvider
 {
@@ -95,10 +95,13 @@ class HubjutsuServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/hubjutsu.php', 'hubjutsu');
 
         // Register the main class to use with the facade
-        $this->app->singleton('menuManager', function () {
+        $this->app->singleton(MenuManager::class, function () {
             return new MenuManager();
         });
 
+        if (class_exists("App\Services\HubManager")) {
+            $this->app->singleton(App\Services\HubManager::class, fn($app) => new App\Services\HubManager($app->make(Request::class)));
+        }
 
     }
 

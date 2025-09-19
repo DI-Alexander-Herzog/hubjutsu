@@ -91,7 +91,7 @@ export function FormContext({ data, model, children, with: withRelations = [], d
 }
 
 export function FormContextSubmitButton({ children, className, postSave }: { children: React.ReactNode; className?: string, postSave?: () => void }) {
-  const { save, loading, readonly } = useFormContext();
+  const { save, loading, readonly, recentlySuccessful } = useFormContext();
   
   if (readonly) return;
 
@@ -108,6 +108,7 @@ export function FormContextSubmitButton({ children, className, postSave }: { chi
     className="w-fit"
 	>
 		{children}
+    {recentlySuccessful ? <span className="ml-2 text-green-500">✓</span> : null}
 	</PrimaryButton>
   );
 }

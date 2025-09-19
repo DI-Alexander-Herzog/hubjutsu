@@ -57,6 +57,22 @@ class Hub extends Base
         return self::getColors($colors);
     }
 
+    protected static function boot()
+    {
+        parent::boot();
+        static::saved(function ($model) {
+            if ($model->primary) {
+                // Set all other hubs to non-primary
+                self::where('id', '!=', $model->id)->update(['primary' => false]);
+            }
+        });
+        static::saving(function ($model) {
+            // Ensure slug is set
+            if (empty($model->slug) && !empty($model->name)) {
+                $model->slug = \Str::slug($model->name);
+            }
+        });
+    }
 
 
     protected static function getColors(Colors $baseColors) { 
