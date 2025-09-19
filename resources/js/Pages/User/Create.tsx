@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 
-export default function RoleCreate() {
+export default function UserCreate() {
     return (
         <AuthenticatedLayout
             title="Role"

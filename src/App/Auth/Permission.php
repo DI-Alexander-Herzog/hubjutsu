@@ -81,4 +81,8 @@ class Permission {
 
         return $permissions;
     }
+
+    static function exists($group, $permission): bool {
+        return isset(self::$permissions[$group][$permission]);
+    }
 }

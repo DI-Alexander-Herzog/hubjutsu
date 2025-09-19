@@ -4,24 +4,17 @@ import DataTableLink from "@hubjutsu/Components/DataTableLink";
 import InputText from "@hubjutsu/Components/InputText";
 import { DataTableFormatter } from "@hubjutsu/Components/DataTableFormatter";
 import { CogIcon, UserIcon } from "@heroicons/react/20/solid";
+import { Column } from "@hubjutsu/Components/DataTable";
 
-const textEditor = (options: any) => {
+export default function UserIndex({extraColumns}: {extraColumns?: Column[]	}) {
 	return (
-		<InputText
-			type="text"
-			value={options.value}
-			onChange={(e) => options.editorCallback(e.target.value)}
-		/>
-	);
-};
-
-export default function RoleIndex() {
-	return (
-		<AuthenticatedLayout title={"User"} 	
-		breadcrumbs={[
-						{ label: 'Settings', url: route('settings.index'), icon: <CogIcon /> },
-						{ label: 'User', icon: <UserIcon /> }
-					]}>
+		<AuthenticatedLayout 
+			title={"User"} 	
+			breadcrumbs={[
+				{ label: 'Settings', url: route('settings.index'), icon: <CogIcon /> },
+				{ label: 'User', icon: <UserIcon /> }
+			]}
+		>
 			<DataTable
 				routemodel="user"
 				columns={[
@@ -56,6 +49,7 @@ export default function RoleIndex() {
 						editor: "datetime",
 						width: "300px",
 					},
+					...(extraColumns || []),
 				]}
 			></DataTable>
 		</AuthenticatedLayout>

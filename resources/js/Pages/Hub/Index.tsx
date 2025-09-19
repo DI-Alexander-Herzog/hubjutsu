@@ -3,8 +3,9 @@ import DataTable from "@/Components/DataTable";
 import { DataTableDynamicFormatter } from "@hubjutsu/Components/DataTableDynamicFormatter";
 import { CogIcon, FolderIcon } from "@heroicons/react/20/solid";
 import IconLibrary from "@hubjutsu/Components/IconLibrary";
+import { Column } from "@hubjutsu/Components/DataTable";
 
-export default function HubIndex() {
+export default function HubIndex({extraColumns}: {extraColumns?: Column[]	}) {
 	return (
 		<AuthenticatedLayout title="Hubs"
 			breadcrumbs={[
@@ -22,6 +23,7 @@ export default function HubIndex() {
 						filter: true,
 						frozen: true,
 						width: "500px",
+						editor: "text",
 						formatter: DataTableDynamicFormatter.link('admin.hubs.edit'),
 					},
 					{
@@ -40,6 +42,7 @@ export default function HubIndex() {
 						editor: "text",
 						width: "300px",
 					},
+					...(extraColumns || [])
 				]}
 			></DataTable>
 		</AuthenticatedLayout>
