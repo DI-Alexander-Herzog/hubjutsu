@@ -284,7 +284,7 @@ import {
     XMarkIcon,
 } from "@heroicons/react/24/solid";
 
-const iconMap = {
+export const iconMap = {
     "academic-cap": AcademicCapIcon,
     "adjustments-horizontal": AdjustmentsHorizontalIcon,
     "adjustments-vertical": AdjustmentsVerticalIcon,
@@ -571,7 +571,7 @@ const iconMap = {
 
 type IconSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
-type IconLibraryProps = {
+export type IconLibraryProps = {
     name: keyof typeof iconMap ;
     size?: IconSize;
     className?: string;
