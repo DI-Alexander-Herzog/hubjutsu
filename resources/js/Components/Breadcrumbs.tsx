@@ -1,10 +1,11 @@
 import { Link } from "@inertiajs/react";
 import classNames from "classnames";
 import { ReactNode } from "react";
+import IconLibrary, { iconMap } from "./IconLibrary";
 
 export type Breadcrumb = {
     label: string;
-    icon?: ReactNode;
+    icon?: ReactNode | keyof typeof iconMap;
     url?: string;
 };
 
@@ -36,7 +37,7 @@ export default function Breadcrumbs({items} : BreadcrumbsType ) {
                                     >
                                         {item.icon && (
                                             <span className="mr-2 h-4 w-4 flex-shrink-0">
-                                                {item.icon}
+                                                {typeof item.icon === "string" ? <IconLibrary name={item.icon as keyof typeof iconMap} /> :  item.icon}
                                             </span>
                                         )}
                                         <span className="truncate">{item.label}</span>
@@ -52,7 +53,7 @@ export default function Breadcrumbs({items} : BreadcrumbsType ) {
                                     >
                                         {item.icon && (
                                             <span className="mr-2 h-4 w-4 flex-shrink-0">
-                                                {item.icon}
+                                                {typeof item.icon === "string" ? <IconLibrary name={item.icon as keyof typeof iconMap} /> :  item.icon}
                                             </span>
                                         )}
                                         <span className="truncate">{item.label}</span>
