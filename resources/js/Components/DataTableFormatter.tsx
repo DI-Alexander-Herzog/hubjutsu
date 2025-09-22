@@ -20,6 +20,11 @@ const DataTableFormatter = {
         return row[field] || "";
     },
 
+    boolean: (row: Row, field: string) => {
+        if (row[field] === undefined || row[field] === null) return "";
+        return row[field] ? "Ja" : "Nein";
+    },
+
     color: (row: Row, field: string) => {
         if (!row[field]) return "";
         return <>
