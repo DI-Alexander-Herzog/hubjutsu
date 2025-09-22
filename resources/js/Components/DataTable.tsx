@@ -473,6 +473,8 @@ const DataTable: React.FC<DataTableProps> = ({
 
 	const hasActiveFilters = Object.keys(activeFilters).length > 0;
 
+	const noEditor = columns.filter(c => c.editor).length === 0;
+
 	return (
 		<div
 			className={classNames("w-full h-full flex flex-col")}
@@ -676,18 +678,26 @@ const DataTable: React.FC<DataTableProps> = ({
 															'overflow-hidden'
 														)}
 														onClick={
-															Object.keys(editingRecord).length > 0
-																? (event) => {
+															(() => {
+																if (noEditor) {
+																	return (event) => toggleRowSelection(row);
+																}
+																// If some row is being edited, clicking any cell enables editing that row
+																// Otherwise, clicking enables selection, double-click enables editing
+																if (Object.keys(editingRecord).length > 0) {
+																	return (event) => {
 																		enableEditing(row);
 																		focusEditor(event.target, col.field);
-																  }
-																: handleDoubleClick(
-																		(event) => toggleRowSelection(row),
-																		(event) => {
-																			enableEditing(row);
-																			focusEditor(event.target, col.field);
-																		}
-																  )
+																	};
+																}
+																return handleDoubleClick(
+																	(event) => toggleRowSelection(row),
+																	(event) => {
+																		enableEditing(row);
+																		focusEditor(event.target, col.field);
+																	}
+																);
+															})()
 														}
 													>
 														{editingRecord[row[datakey]] && col.editor ? (

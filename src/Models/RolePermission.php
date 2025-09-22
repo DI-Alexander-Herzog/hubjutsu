@@ -23,7 +23,7 @@ class RolePermission extends Base
 
     public function role()
     {
-        return $this->belongsTo(Role::class, 'role_id', 'id');
+        return $this->belongsTo(\App\Models\Role::class, 'role_id', 'id');
     }
 
 }

@@ -28,11 +28,11 @@ class UserHubRole extends Base
     }
     public function hub()
     {
-        return $this->belongsTo(Hub::class, 'hub_id', 'id');
+        return $this->belongsTo(\App\Models\Hub::class, 'hub_id', 'id');
     }
     public function role()
     {
-        return $this->belongsTo(Role::class, 'role_id', 'id');
+        return $this->belongsTo(\App\Models\Role::class, 'role_id', 'id');
     }
 
 }

@@ -3,6 +3,7 @@ import InputText from "@/Components/InputText";
 import InputError from "@/Components/InputError";
 import { UseForm } from "@/types";
 import { useFormContext, useOptionalFormContext } from "@/Components/FormContext";
+import InputTextarea from "@/Components/InputTextarea";
 
 
 
@@ -52,7 +53,19 @@ export default function Input({ className = '', label='', inputId = '', inputNam
         <div className="space-y-1  w-full">
             <InputLabel htmlFor={id} value={label || (inputName.charAt(0).toUpperCase() + inputName.slice(1)) } />
 
-            <InputText
+            {type == "textarea" && <InputTextarea
+                id={id}
+                name={inputName}
+                value={_useForm.data ? _useForm.data[inputName] : '' }
+                className={`mt-1 block w-full ${className}`}
+                {...props}
+                onChange={(e) => _useForm.setData((data: { [key: string]: any }) => ({
+                    ...data,
+                    [inputName]: e.target.value
+                }))}
+            />}
+            
+            {type != "textarea" && <InputText
                 id={id}
                 type={type}
                 name={inputName}
@@ -63,7 +76,7 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                     ...data,
                     [inputName]: e.target.value
                 }))}
-            />
+            />}
 
             <InputError message={_useForm.errors ? _useForm.errors[inputName] : ''} className="mt-2" />
 
