@@ -146,7 +146,6 @@ const DataTableEditor: React.FC<DataTableEditorProps> = ({
 	onKeyDown,
 }) => {
 	const handleValueChange = (value: any) => {
-		console.log("Value changed:", value, row[datakey], column.field, value);
 		onValueChange(row[datakey], column.field, value);
 	};
 
