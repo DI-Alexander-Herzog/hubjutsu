@@ -37,6 +37,7 @@ class Hub extends Base
         'font_header',
         'font_text',
         'font_import',
+        'font_size_root'
     ];
 
     protected $casts = [

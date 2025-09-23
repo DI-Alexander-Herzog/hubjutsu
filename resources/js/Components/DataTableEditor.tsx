@@ -107,12 +107,7 @@ const booleanEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, 
 			"after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full " +
 			"after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600 dark:peer-checked:bg-primary-600 "
 		}></div>
-		
   	</label>;
-
-
-  
-
 };
 
 

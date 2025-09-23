@@ -1,9 +1,10 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import DataTable from "@/Components/DataTable";
-import { DataTableDynamicFormatter } from "@hubjutsu/Components/DataTableDynamicFormatter";
-import { CogIcon, FolderIcon } from "@heroicons/react/20/solid";
-import IconLibrary from "@hubjutsu/Components/IconLibrary";
+import { DataTableDynamicFormatter } from "@/Components/DataTableDynamicFormatter";
+
+import IconLibrary from "@/Components/IconLibrary";
 import { Column } from "@hubjutsu/Components/DataTable";
+import { DataTableFormatter } from "@/Components/DataTableFormatter";
 
 export default function HubIndex({extraColumns}: {extraColumns?: Column[]	}) {
 	return (
@@ -39,7 +40,8 @@ export default function HubIndex({extraColumns}: {extraColumns?: Column[]	}) {
 						label: "Primary",
 						sortable: true,
 						filter: true,
-						editor: "text",
+						editor: "boolean",
+						formatter: DataTableFormatter.boolean,
 						width: "300px",
 					},
 					...(extraColumns || [])
