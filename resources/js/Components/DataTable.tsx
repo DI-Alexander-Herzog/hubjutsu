@@ -426,6 +426,7 @@ const DataTable: React.FC<DataTableProps> = ({
 	};
 
 	const toggleRowSelection = (row: Row, state?: boolean) => {
+		
 		if (editingRecord[row[datakey]]) state = true;
 
 		if (state === undefined) {
@@ -435,6 +436,11 @@ const DataTable: React.FC<DataTableProps> = ({
 					: [...prev, row]
 			);
 		} else if (state) {
+			if (selectedRecords.findIndex((r) => r[datakey] === row[datakey]) !== -1) {
+				/* skip if in list */
+				return;
+			}
+
 			setSelectedRecords((prev) => [
 				...prev.filter((r) => r[datakey] !== row[datakey]),
 				row,
@@ -704,7 +710,7 @@ const DataTable: React.FC<DataTableProps> = ({
 															<DataTableEditor
 																editor={col.editor}
 																column={col}
-																row={row}
+																row={editingRecord[row[datakey]]}
 																datakey={datakey}
 																rowIndex={row_ofs}
 																onValueChange={setRowValue}
