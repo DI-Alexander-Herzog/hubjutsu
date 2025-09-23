@@ -40,6 +40,7 @@ module.exports = {
                 mono: ['var(--font-mono)', ...defaultTheme.fontFamily.mono],
                 header: ['var(--font-header)', 'sans-serif'],
                 text: ['var(--font-text)', 'sans-serif'],
+                'header-font': ['var(--font-header)', 'sans-serif'],
             },
             boxShadow: {
                 'outline-primary': '0 0 0 0.2rem rgba(var(--color-primary) / 0.5)'
