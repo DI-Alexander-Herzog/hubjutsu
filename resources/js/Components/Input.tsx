@@ -23,7 +23,6 @@ export default function Input({ className = '', label='', inputId = '', inputNam
     const _useForm = props.useForm || useFormContext().form;
     props.disabled = props.disabled || useOptionalFormContext()?.readonly || false;
 
-
     if (type == "checkbox") {
         return <div className="space-y-1 w-full">
             <div className="flex items-center">
@@ -44,42 +43,78 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                 <label htmlFor={id} className="ml-3 block text-sm leading-6 ">
                     {label || inputName.charAt(0).toUpperCase() + inputName.slice(1) }
                 </label>
+                <InputError message={_useForm.errors ? _useForm.errors[inputName] : ''} className="mt-2" />
+            </div>
+        </div>
+    }
+
+    if (type == "boolean" || type == "toggle") {
+        const checked = _useForm.data && _useForm.data[inputName] ? true : false;
+
+        return <div className="space-y-1 w-full">
+            <div className="flex items-center">
+                <label className={"inline-flex items-center cursor-pointer align-middle"} htmlFor={id}>
+                    <input 
+                        id={id}
+                        name={inputName} 
+                        type="checkbox" value="1" className="sr-only peer" checked={checked} 
+                        onChange={(e) => _useForm.setData((data: { [key: string]: any }) => {
+                        return {
+                            ...data,
+                            [inputName]: !checked
+                        }
+                    })}
+                    disabled={props.disabled}
+                    />
+                    <div className={
+                        "relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 " +
+                        "rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white " + 
+                        "after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full " +
+                        "after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600 dark:peer-checked:bg-primary-600 "
+                    }></div>
+                    <span className="ml-2">{label || inputName.charAt(0).toUpperCase() + inputName.slice(1) }</span>
+                </label>
+                <InputError message={_useForm.errors ? _useForm.errors[inputName] : ''} className="mt-2" />
             </div>
 
         </div>
     }
 
+    const editor = (() => {
+        if (type == "textarea") {
+            return <InputTextarea
+                id={id}
+                name={inputName}
+                value={_useForm.data ? _useForm.data[inputName] : '' }
+                className={`mt-1 block w-full ${className}`}
+                {...props}
+                onChange={(e) => _useForm.setData((data: { [key: string]: any }) => ({
+                    ...data,
+                    [inputName]: e.target.value
+                }))}
+            />;
+        }
+
+        return <InputText
+            id={id}
+            type={type}
+            name={inputName}
+            value={_useForm.data ? _useForm.data[inputName] : '' }
+            className={`mt-1 block w-full ${className}`}
+            {...props}
+            onChange={(e) => _useForm.setData((data: { [key: string]: any }) => ({
+                ...data,
+                [inputName]: e.target.value
+            }))}
+        />
+
+    })();
+
     return (
-        <div className="space-y-1  w-full">
+        <div className="space-y-1 w-full">
             <InputLabel htmlFor={id} value={label || (inputName.charAt(0).toUpperCase() + inputName.slice(1)) } />
-
-            {type == "textarea" && <InputTextarea
-                id={id}
-                name={inputName}
-                value={_useForm.data ? _useForm.data[inputName] : '' }
-                className={`mt-1 block w-full ${className}`}
-                {...props}
-                onChange={(e) => _useForm.setData((data: { [key: string]: any }) => ({
-                    ...data,
-                    [inputName]: e.target.value
-                }))}
-            />}
-            
-            {type != "textarea" && <InputText
-                id={id}
-                type={type}
-                name={inputName}
-                value={_useForm.data ? _useForm.data[inputName] : '' }
-                className={`mt-1 block w-full ${className}`}
-                {...props}
-                onChange={(e) => _useForm.setData((data: { [key: string]: any }) => ({
-                    ...data,
-                    [inputName]: e.target.value
-                }))}
-            />}
-
+            {editor}
             <InputError message={_useForm.errors ? _useForm.errors[inputName] : ''} className="mt-2" />
-
         </div>
     );
 }

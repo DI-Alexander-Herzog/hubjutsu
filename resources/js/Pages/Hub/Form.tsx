@@ -14,8 +14,19 @@ export default function HubForm({ disabled=false, hub }: { disabled?: boolean; h
             <FormContainer>
                 <FormSection title="Allgemein" subtitle='Allgemeine Angaben zum Hub'>
                     <Input inputName="name" />
+                    <Input inputName="slug" />
                     <Input inputName="url" type="url" />
-                    <Input inputName="primary" type='checkbox' />
+                    <Input inputName="app_id" />
+                </FormSection>
+
+                <Separator />
+
+                <FormSection title="Flags" subtitle='Allgemeine Einstellungen zum Hub'>
+                    <Input inputName="primary" type='boolean' />
+                    <Input inputName="has_darkmode" type='boolean' />
+
+                    <Input inputName="enable_registration" type='boolean' />
+                    <Input inputName="enable_guestmode" type='boolean' />
                 </FormSection>
 
                 <Separator />
@@ -43,12 +54,14 @@ export default function HubForm({ disabled=false, hub }: { disabled?: boolean; h
 
                 <FormSection title="Schriften" subtitle='Einstellungen zur Schriftgestaltung am Hub'>
                     
-                    <Input inputName="font_primary" type="text" />
-                    <Input inputName="font_primary_size" type="number" />
-                
-                    <Input inputName="font_secondary" type="text" />
-                    <Input inputName="font_secondary_size" type="number" />
-                
+                    <Input inputName="font_sans" type="text" />
+                    <Input inputName="font_serif" type="text" />
+                    <Input inputName="font_mono" type="text" />
+                    <Input inputName="font_header" type="text" />
+                    <Input inputName="font_text" type="text" />
+
+                    <Input inputName="font_size_root" type="text" />
+                    <Input inputName="font_import" type="text" />
                     
                 </FormSection>
                 

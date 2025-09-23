@@ -54,7 +54,7 @@ export default function RoleForm({ disabled = false, role, permissions }: { disa
                     
                     {type.permissions.map(permission => (
                         <div>
-                            <label>
+                            <label className='dark:text-gray-300 text-text'>
                                 <Checkbox
                                     checked={data.permissions.includes(permission[0])}
                                     onChange={(e) => updatePermissions(permission[0], e.target.checked)}
