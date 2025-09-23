@@ -99,10 +99,10 @@ const selectEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, c
 const booleanEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, className }) => {
 	const checked = row[column.field] && row[column.field] != '0';
 	
-	return <label className={"inline-flex items-center cursor-pointer align-middle "}>
+	return <label className={"inline-flex items-center cursor-pointer align-middle ml-2"}>
 		<input {...column.editor_properties} name={column.field} onKeyDown={onKeyDown} type="checkbox" value="1" className="sr-only peer" checked={checked} onChange={() => onValueChange(!checked)} />
   		<div className={
-			" relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 " +
+			"relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 " +
 			"rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white " + 
 			"after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full " +
 			"after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600 dark:peer-checked:bg-primary-600 "
