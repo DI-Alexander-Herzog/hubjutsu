@@ -6,6 +6,7 @@ import FormSection from '@/Components/FormSection';
 import { Models } from '@/types/models';
 import Separator from '@/Components/Separator';
 import { router } from '@inertiajs/react';
+import MediaUpload from '@/Components/MediaUpload';
 
 export default function HubForm({ disabled=false, hub }: { disabled?: boolean; hub: Models.Hub }) {
 
@@ -65,6 +66,15 @@ export default function HubForm({ disabled=false, hub }: { disabled?: boolean; h
                     
                 </FormSection>
                 
+            </FormContainer>
+
+            <FormContainer>
+
+                <FormSection title="Bilder" subtitle='Einstellungen zu den Bildern am Hub'>
+                    <Input type="media" accept='image/*' inputName="brand_image" label="Brand Image" />
+                    <Input type="media" accept='image/*' inputName="logo" label="Logo (hell)" />
+                    <Input type="media" accept='image/*' inputName="logo_dark" label="Logo (dunkel)" />
+                </FormSection>
             </FormContainer>
 
             <FormSection boxed={true} className="mt-4">

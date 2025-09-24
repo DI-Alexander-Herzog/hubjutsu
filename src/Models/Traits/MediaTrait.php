@@ -6,14 +6,43 @@ use App\Models\Address;
 use App\Models\Media;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Str;
 
 trait MediaTrait
 {
+
+    
+    public function fillableMedia(): array
+    {
+        return property_exists($this, 'fillableMedia') ? $this->fillableMedia  : [];
+    }
+
+    public function fillMedia(array $attributes)
+    {
+        foreach ($this->fillableMedia() as $key) {
+            
+            $setter = Str::camel('set_'.$key);
+            $snake = Str::snake($key);
+            
+            if (isset($attributes[$snake]) && method_exists($this, $setter)) {
+                $media = $attributes[$snake];
+                 if (is_array($media)) {
+                    if (isset($media['id'])) {
+                        $data = $media;
+                        $media = Media::find($data['id']);
+                        $media->fill($data);
+                    } else {
+                        $media = new Media($media);
+                    }
+                }
+                $this->$setter($media);
+            }
+        }
+    }
+
     public function medias() {
         return $this->morphMany(Media::class, 'mediable');
     }
-
-
 
     /** 
      * @return MorphOne
