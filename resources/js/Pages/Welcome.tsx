@@ -1,4 +1,4 @@
-import { Link, Head, useForm } from '@inertiajs/react';
+import { Link, Head, useForm, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import ThemeModeButton from '@hubjutsu/Components/ThemeMode';
@@ -6,9 +6,14 @@ import Input from '@/Components/Input';
 import { FormEventHandler } from 'react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 
-export default function Welcome({ auth, laravelVersion, phpVersion, canLogin, canRegister, brandImage }: PageProps<{ laravelVersion: string, phpVersion: string, canLogin:boolean, canRegister:boolean, brandImage:string }>) {
+export default function Welcome({ auth, laravelVersion, phpVersion, canLogin, canRegister }: PageProps<{ laravelVersion: string, phpVersion: string, canLogin:boolean, canRegister:boolean }>) {
     const { t } = useLaravelReactI18n();
+
+    const { props } = usePage<PageProps>();
     
+    const brandImage = props.hub?.brandImage?.thumbnail || '';
+    
+
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',

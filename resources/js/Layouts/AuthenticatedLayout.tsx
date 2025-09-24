@@ -59,7 +59,6 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
               <div className="flex grow flex-col gap-y-6 overflow-y-auto bg-white dark:bg-gray-900 px-4 pb-4">
                 <div className="flex h-16 shrink-0 items-center px-2">
                     <ApplicationLogo className="h-8 w-auto" />
-                  
                 </div>
                 <nav className="flex flex-1 flex-col">
                   <ul role="list" className="flex flex-1 flex-col gap-y-8">

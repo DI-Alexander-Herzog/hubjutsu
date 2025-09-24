@@ -326,7 +326,10 @@ class Hub extends Base
                 'header' => $this->font_header,
                 'text' => $this->font_text,
                 'import' => $this->font_import,
-            ]
+            ],
+            'brandImage' => $this->brandImage ? $this->brandImage->toArray() : null,
+            'logo' => $this->logo ? $this->logo->toArray() : null,
+            'logoDark' => $this->logoDark ? $this->logoDark->toArray() : null
         ];
     }
 
