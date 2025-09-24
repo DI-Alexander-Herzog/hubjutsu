@@ -90,7 +90,7 @@ class Media extends Base {
     }
 
     public function getThumbnailAttribute() {
-        if (in_array($this->mimetype, ['image/jpeg', 'image/png', 'image/gif'])) {
+        if (in_array($this->mimetype, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'])) {
             return $this->getUrl();
         }
         return null;
