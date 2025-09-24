@@ -4,6 +4,7 @@ import InputError from "@/Components/InputError";
 import { UseForm } from "@/types";
 import { useFormContext, useOptionalFormContext } from "@/Components/FormContext";
 import InputTextarea from "@/Components/InputTextarea";
+import MediaUpload from "./MediaUpload";
 
 
 
@@ -57,7 +58,10 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                     <input 
                         id={id}
                         name={inputName} 
-                        type="checkbox" value="1" className="sr-only peer" checked={checked} 
+                        type="checkbox" 
+                        value="1" 
+                        className="sr-only peer" 
+                        checked={checked} 
                         onChange={(e) => _useForm.setData((data: { [key: string]: any }) => {
                         return {
                             ...data,
@@ -85,7 +89,7 @@ export default function Input({ className = '', label='', inputId = '', inputNam
             return <InputTextarea
                 id={id}
                 name={inputName}
-                value={_useForm.data ? _useForm.data[inputName] : '' }
+                value={_useForm.data && _useForm.data[inputName] ? _useForm.data[inputName] : '' }
                 className={`mt-1 block w-full ${className}`}
                 {...props}
                 onChange={(e) => _useForm.setData((data: { [key: string]: any }) => ({
@@ -93,13 +97,21 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                     [inputName]: e.target.value
                 }))}
             />;
+        } else if (type == "media") {
+            return <MediaUpload
+                useForm={_useForm}
+                name={inputName}
+                className={className}
+                label={undefined}
+                {...props}
+            />;
         }
 
         return <InputText
             id={id}
             type={type}
             name={inputName}
-            value={_useForm.data ? _useForm.data[inputName] : '' }
+            value={_useForm.data && _useForm.data[inputName] ? _useForm.data[inputName] : '' }
             className={`mt-1 block w-full ${className}`}
             {...props}
             onChange={(e) => _useForm.setData((data: { [key: string]: any }) => ({

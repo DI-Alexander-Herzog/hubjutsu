@@ -96,6 +96,9 @@ class HubjutsuApiController
     {
         $modelObj = $this->getModelIfAllowed($model, null, 'create');
         $modelObj->fill($request->only($modelObj->getFillable()));
+        if (method_exists($modelObj, 'fillMedia')) {
+            $modelObj->fillMedia($request->all());
+        }
         $modelObj->save();
         return response()->json($modelObj->prepareForApi($request)->toArray());
     }
@@ -104,6 +107,10 @@ class HubjutsuApiController
     {
         $modelObj = $this->getModelIfAllowed($model, $id, 'update');
         $modelObj->fill($request->only($modelObj->getFillable()));
+        
+        if (method_exists($modelObj, 'fillMedia')) {
+            $modelObj->fillMedia($request->all());
+        }
         $modelObj->save();
         return response()->json($modelObj->prepareForApi($request)->toArray());
     }

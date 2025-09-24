@@ -3,12 +3,15 @@
 namespace AHerzog\Hubjutsu\Models;
 
 use AHerzog\Hubjutsu\DTO\Colors;
+use AHerzog\Hubjutsu\Models\Traits\MediaTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Base;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Hub extends Base
 {
     use HasFactory; //HasTimestamp
+    use MediaTrait;
 
     protected $fillable = [
         'created_at',
@@ -40,6 +43,12 @@ class Hub extends Base
         'font_size_root'
     ];
 
+    protected $fillableMedia = [
+        'brandImage',
+        'logo',
+        'logoDark'
+    ];
+
     protected $casts = [
         'has_darkmode' => 'boolean',
         'enable_registration' => 'boolean',
@@ -48,7 +57,11 @@ class Hub extends Base
 
     protected $appends = [];
 
-    protected $with = [];
+    protected $with = [
+        'brandImage',
+        'logo',
+        'logoDark'
+    ];
 
 
     public static function appColors(?Colors $colors=null) {
@@ -348,5 +361,28 @@ class Hub extends Base
         return implode("\n", $out);
     }
 
+    public function brandImage(): MorphOne {
+        return $this->media('brandImage');
+    }
+
+    public function setBrandImage(Media $media) {
+        $this->setMedia($media, 'brandImage');
+    }
+
+    public function logo(): MorphOne {
+        return $this->media('logo');
+    }
+
+    public function setLogo(Media $media) {
+        $this->setMedia($media, 'logo');
+    }
+
+    public function logoDark(): MorphOne {
+        return $this->media('logoDark');
+    }
+
+    public function setLogoDark(Media $media) {
+        $this->setMedia($media, 'logoDark');
+    }
 
 }
