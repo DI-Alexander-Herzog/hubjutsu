@@ -21,9 +21,6 @@ export interface UseForm {
   setData: (data: { [key: string]: any } | any) => void;
 }
 
-
-
-
 export interface HubjutsuMenus {
     [key:string]: HubjutsuMenu;
 }
@@ -70,6 +67,11 @@ export interface HubUIData {
         text: string;
         import?: string | null; // Optional import field
     };
+    app_id?: string;
+    logoDark?: Media | null;
+    logo?: Media | null;
+    favicon?: Media | null;
+    brandImage?: Media | null;
 } 
 
 export type PageProps<T extends Record<string, unknown> = Record<string, unknown>> = T & {

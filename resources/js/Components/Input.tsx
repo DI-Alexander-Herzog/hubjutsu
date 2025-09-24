@@ -9,7 +9,7 @@ import MediaUpload from "./MediaUpload";
 
 
 
-export default function Input({ className = '', label='', inputId = '', inputName = '', type = "text",...props }:{
+export default function Input({ className = '', label='', inputId = '', inputName = '', useForm=undefined, type = "text",...props }:{
     className?: string,
     label?: string,
     inputId?: string,
@@ -21,7 +21,7 @@ export default function Input({ className = '', label='', inputId = '', inputNam
 
     const id = inputId || inputName;
 
-    const _useForm = props.useForm || useFormContext().form;
+    const _useForm = useForm || useFormContext().form;
     props.disabled = props.disabled || useOptionalFormContext()?.readonly || false;
 
     if (type == "checkbox") {

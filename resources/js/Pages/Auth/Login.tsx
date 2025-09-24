@@ -5,10 +5,15 @@ import InputError from '@hubjutsu/Components/InputError';
 import InputLabel from '@hubjutsu/Components/InputLabel';
 import PrimaryButton from '@hubjutsu/Components/PrimaryButton';
 import TextInput from '@hubjutsu/Components/InputText';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import Input from '@/Components/Input';
+import { PageProps } from '@/types';
 
 export default function Login({ status, canResetPassword }: { status?: string, canResetPassword: boolean }) {
+
+    const { props } = usePage<PageProps>();
+    console.log(props.hub);    
+    
     const { data, setData, post, processing, errors, reset } = useForm<{
         email: string;
         password: string;
