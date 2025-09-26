@@ -20,7 +20,20 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserHubRoleController;
+use App\Services\HubManager;
+use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
+Route::get('/favicon.ico', function (Request $request, HubManager $hubManager) {
+    $hub = $hubManager->current();
+    if (!$hub || !$hub->logo) {
+        return response()->noContent(404);
+    }
+    return response()->file($hub->logo->getPath(), [
+        'Content-Type' => $hub->logo->mimetype,
+        'Content-Disposition' => 'inline; filename="'.$hub->logo->filename.'"'
+    ]);
+})->name('favicon');
+    
 
 Route::name('admin.')->prefix('admin')->group(function() {
     Route::middleware(['auth', 'verified'])->group(function () {
