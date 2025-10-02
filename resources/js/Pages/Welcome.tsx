@@ -6,7 +6,7 @@ import Input from '@/Components/Input';
 import { FormEventHandler } from 'react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 
-export default function Welcome({ auth, laravelVersion, phpVersion, canLogin, canRegister }: PageProps<{ laravelVersion: string, phpVersion: string, canLogin:boolean, canRegister:boolean }>) {
+export default function Welcome({ auth, guestMode, canRegister }: PageProps<{ guestMode:boolean, canRegister:boolean }>) {
     const { t } = useLaravelReactI18n();
 
     const { props } = usePage<PageProps>();

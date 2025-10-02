@@ -2,6 +2,7 @@
 
 namespace AHerzog\Hubjutsu\Http\Controllers\Auth;
 
+use App\Services\HubManager;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
@@ -12,14 +13,18 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use Redirect;
 
 class RegisteredUserController extends Controller
 {
     /**
      * Display the registration view.
      */
-    public function create(): Response
+    public function create(HubManager $hubManager): Response|RedirectResponse
     {
+        if (!$hubManager->current()?->enable_registration) {
+            return redirect(route('login', ['msg' => 'registration is disabled']));
+        }
         return Inertia::render('Auth/Register');
     }
 
