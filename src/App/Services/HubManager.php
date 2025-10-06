@@ -9,9 +9,9 @@ class HubManager {
 
     private Hub $hub;
 
-    public function __construct(\Illuminate\Http\Request $request) {
-        
-        if (app()->runningInConsole()) {
+    public function __construct($request) {
+
+        if (app()->runningInConsole() || !method_exists($request, 'getHost')) {
             $this->hub = Hub::where('primary', true)->firstOrFail();
         } else {
             $this->hub = Hub::where('primary', true)->orWhere('url', 'LIKE', '%'.$request->getHost().'%')->orderBy('primary', 'asc')->firstOrFail();
