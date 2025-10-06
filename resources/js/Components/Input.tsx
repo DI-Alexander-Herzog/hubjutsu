@@ -5,17 +5,21 @@ import { UseForm } from "@/types";
 import { useFormContext, useOptionalFormContext } from "@/Components/FormContext";
 import InputTextarea from "@/Components/InputTextarea";
 import MediaUpload from "./MediaUpload";
+import { Select } from "@headlessui/react";
+import InputSelect from "./InputSelect";
+import { DateTime } from "luxon";
 
 
 
 
-export default function Input({ className = '', label='', inputId = '', inputName = '', useForm=undefined, type = "text",...props }:{
+export default function Input({ className = '', label='', inputId = '', inputName = '', useForm=undefined, type = "text", options=[], ...props }:{
     className?: string,
     label?: string,
     inputId?: string,
     inputName: string,
     useForm?: UseForm,
     type?: string,
+    options?: [value:string, label:string][]
     [key: string]: any
 }) {
 
@@ -85,7 +89,20 @@ export default function Input({ className = '', label='', inputId = '', inputNam
     }
 
     const editor = (() => {
-        if (type == "textarea") {
+         if (type == "select") {
+            return <InputSelect
+                id={id}
+                name={inputName}
+                value={_useForm.data && _useForm.data[inputName] ? _useForm.data[inputName] : '' }
+                className={`mt-1 block w-full ${className}`}
+                {...props}
+                options={options}
+                onChange={(e) => _useForm.setData((data: { [key: string]: any }) => ({
+                    ...data,
+                    [inputName]: e.target.value
+                }))}
+            />;
+        } else if (type == "textarea") {
             return <InputTextarea
                 id={id}
                 name={inputName}
@@ -107,16 +124,36 @@ export default function Input({ className = '', label='', inputId = '', inputNam
             />;
         }
 
+        let value = _useForm.data && _useForm.data[inputName] ? _useForm.data[inputName] : '';
+        if (type == "datetime") {
+            if (value) {
+                value = DateTime.fromISO(value, { zone: "utc" }).setZone("Europe/Vienna").toFormat("yyyy-MM-dd'T'HH:mm:ss");
+            }
+            props.step = props.step || 1;
+        }
+
+        const typemap: Record<string, string> = {
+            datetime: "datetime-local"
+        }
+
+        const targetValueFilter = (e: any) => {
+            let val = e.target.value;
+            if (type == "datetime" && val) {
+                val = DateTime.fromISO(val, { zone: "Europe/Vienna" }).setZone("utc").toFormat("yyyy-MM-dd'T'HH:mm:ss") + ".000000Z";
+            }
+            return val;
+        }
+
         return <InputText
             id={id}
-            type={type}
+            type={typemap[type] || type}
             name={inputName}
-            value={_useForm.data && _useForm.data[inputName] ? _useForm.data[inputName] : '' }
+            value={value}
             className={`mt-1 block w-full ${className}`}
             {...props}
             onChange={(e) => _useForm.setData((data: { [key: string]: any }) => ({
                 ...data,
-                [inputName]: e.target.value
+                [inputName]: targetValueFilter(e)
             }))}
         />
 
