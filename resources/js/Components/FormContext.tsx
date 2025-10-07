@@ -74,7 +74,7 @@ export function FormContext({ data, model, children, with: withRelations = [], d
       return response.data;
 
     } catch (err: any) {
-      setError(err);
+      setError(err.response?.data?.message || data);
       setLoading(false);
       throw err;
     }

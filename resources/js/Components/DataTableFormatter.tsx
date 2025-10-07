@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { useRef, useState } from "react";
 
 interface Row {
 	[key: string]: any;
@@ -52,6 +53,25 @@ const DataTableFormatter = {
         return date.isValid
             ? date.toLocaleString(DateTime.DATETIME_MED)
             : JSON.stringify(row[field]);
+    },
+
+    base64image: (row: Row, field: string) => {
+        if (!row[field]) return "";
+
+        return <img
+            onClick={e => {
+                if (e.currentTarget.classList.contains('w-4')) {
+                    e.currentTarget.classList.remove('w-4', 'h-4');
+                    e.currentTarget.classList.add('w-24', 'h-24');
+                } else {
+                    e.currentTarget.classList.add('w-4', 'h-4');
+                    e.currentTarget.classList.remove('w-24', 'h-24');
+                }
+            }}
+            src={`data:image/png;base64,${row[field]}`}
+            alt=""
+            className="object-contain w-4 h-4 cursor-pointer"
+        />
     },
 
 };

@@ -26,6 +26,8 @@ import ErrorToast from "@/Components/ErrorToast";
 import { DataTableFormatter } from "@/Components/DataTableFormatter";
 import DataTableEditor from "@/Components/DataTableEditor"; 
 import type { DataTableCustomEditorProps } from "@/Components/DataTableEditor";
+import IconLibrary from "@/Components/IconLibrary";
+import { iconMap } from "./IconLibrary";
 
 // 📌 Spalten-Typen definieren
 interface Column {
@@ -35,7 +37,7 @@ interface Column {
 		| string
 		| ((props: DataTableCustomEditorProps) => React.ReactNode)
 		| undefined;
-	editor_properties?: Record<string, any>;
+	editor_properties?: Record<string, any> ;
 	sortable?: boolean;
 	filter?: boolean | string | any;
 
@@ -52,7 +54,7 @@ interface Row {
 
 interface DataTableAction {
 	label: string;
-	icon?: JSX.Element;
+	icon?: JSX.Element |  keyof typeof iconMap ;
 	onClick: (selectedRecords: Row[]) => void;
 	variant?: "primary" | "secondary" | "danger" | "link";
 	disabled?: boolean | ((selectedRecords: Row[]) => boolean);
@@ -1006,7 +1008,7 @@ const DataTable: React.FC<DataTableProps> = ({
 									disabled={isDisabled}
 									className={classNames("text-xs flex items-center gap-2 px-2 py-1", isDisabled && 'opacity-50 cursor-not-allowed')}
 								>
-									{action.icon && <span aria-hidden="true"  className="size-4">{action.icon}</span>}
+									{action.icon && <span aria-hidden="true"  className="size-4">{typeof action.icon == "string" ? <IconLibrary name={action.icon} />: action.icon }</span>}
 									{action.label}
 								</ButtonComponent>
 							);
