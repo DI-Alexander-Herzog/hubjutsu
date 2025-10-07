@@ -3,7 +3,7 @@ import classNames from "classnames";
 
 export default function Avatar({user, className="", inline=false}:{user: User, className?: string, inline?: boolean}) {
 
-    let avatar = <>{user.name[0]}</>;
+    let avatar = <>{(user.name || user.email)[0]}</>;
     if (user.avatar) {
         avatar = <img className="object-contain w-100 aspect-square" src={user.avatar.thumbnail} />
     }
