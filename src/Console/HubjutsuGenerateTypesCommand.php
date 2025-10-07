@@ -61,7 +61,7 @@ class HubjutsuGenerateTypesCommand extends Command
             'float' => 'number',
             'bool' => 'boolean',
             'boolean' => 'boolean',
-            'datetime' => 'Date',
+            'datetime' => 'string',
             'array' => '{ [key: string | number]: any }|any[]',
             'object' => '{ [key: string | number]: any }|any',
             'mixed' => '{ [key: string | number]: any }|any'
