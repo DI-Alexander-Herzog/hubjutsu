@@ -47,6 +47,8 @@ class HubjutsuGenerateTypesCommand extends Command
         $this->runCommands([
             'php artisan ide-helper:models -RW',
         ]);
+
+        $modelTypes = [];
         
         $targetPath = resource_path('js/types/models.d.ts');
         $targetFile = fopen($targetPath, 'w+');
@@ -70,12 +72,18 @@ class HubjutsuGenerateTypesCommand extends Command
         fwrite($targetFile, "export namespace Models {\n");
         $files = glob(app_path('Models/*.php'));
         foreach($files as $file) {
-            $modelClass = 'App\\Models\\'.basename($file, '.php');
+            $name = basename($file, '.php');
+
+            $modelClass = 'App\\Models\\'.$name;
 
             $model = new $modelClass();
             $properties = $this->getProperties($model);
             
-            fwrite($targetFile, "   export type ".basename($file, '.php')." = {\n");
+            if ($name != "Base") {
+                $modelTypes[] = $name;
+            }
+
+            fwrite($targetFile, "   export type ".$name." = {\n");
             foreach($properties['fields'] as $prop) {
                 $type = $replaceTypes[$prop['type']] ?? $prop['type'];
                 fwrite($targetFile, "       ".$prop['name'].($prop['nullable'] ? '?' : '').": ".$type.";\n");
@@ -84,6 +92,15 @@ class HubjutsuGenerateTypesCommand extends Command
             fwrite($targetFile, "   }\n");
         }
         fwrite($targetFile, "}\n");
+
+        fwrite($targetFile, "\n\n");
+        fwrite($targetFile, "export type ModelKey =\n");
+        foreach($modelTypes as $i => $modelType) {
+            fwrite($targetFile, '  | "'.$modelType.'"'.($i < count($modelTypes)-1 ? "\n" : ";\n"));
+        }
+        fwrite($targetFile, "\n");
+        fwrite($targetFile, "export type ModelType<K extends ModelKey> = Models[K];\n");
+        
     }
 
 
