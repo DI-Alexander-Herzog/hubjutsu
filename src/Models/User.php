@@ -69,6 +69,18 @@ class User extends Base implements
     }
 
 
+
+    public static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($user) {
+            if (!$user->password) {
+                $user->password = env('ADMIN_PASSWORD', base64_encode(random_bytes(16)));
+            }
+        });
+    }
+    
     /** 
      * @return Media
      */
