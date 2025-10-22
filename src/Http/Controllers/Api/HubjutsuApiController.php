@@ -100,6 +100,7 @@ class HubjutsuApiController
         if (method_exists($modelObj, 'fillMedia')) {
             $modelObj->fillMedia($request->all());
         }
+        $modelObj->refresh();
         return response()->json($modelObj->prepareForApi($request)->toArray());
     }
 
@@ -112,6 +113,7 @@ class HubjutsuApiController
             $modelObj->fillMedia($request->all());
         }
         $modelObj->save();
+        $modelObj->refresh();
         return response()->json($modelObj->prepareForApi($request)->toArray());
     }
 

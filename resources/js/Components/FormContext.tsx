@@ -54,7 +54,7 @@ export function FormContext({ data, model, children, with: withRelations = [], d
 
     setLoading(true);
     setError(null);
-
+    
     const updateOrCreateRoute = (data as any).id
       ? route("api.model.update", {
         model,
@@ -71,6 +71,7 @@ export function FormContext({ data, model, children, with: withRelations = [], d
       setLoading(false);
       setRecentlySuccessful(true);
       setTimeout(() => setRecentlySuccessful(false), 2000);
+      _setData(response.data);
       return response.data;
 
     } catch (err: any) {
@@ -91,7 +92,7 @@ export function FormContext({ data, model, children, with: withRelations = [], d
   );
 }
 
-export function FormContextSubmitButton({ children, className, postSave }: { children: React.ReactNode; className?: string, postSave?: () => void }) {
+export function FormContextSubmitButton({ children, className, postSave }: { children: React.ReactNode; className?: string, postSave?: (data?: any) => void }) {
   const { save, loading, readonly, recentlySuccessful } = useFormContext();
   
   if (readonly) return;
@@ -101,8 +102,8 @@ export function FormContextSubmitButton({ children, className, postSave }: { chi
     type="submit"
 		onClick={(e) => {
 			e.preventDefault();
-			save().then(() => {
-				postSave?.();
+			save().then((data) => {
+				postSave?.(data);
 			});
 		}}
 		disabled={loading}
