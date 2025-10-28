@@ -9,6 +9,7 @@ use File;
 use finfo;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Http\UploadedFile;
+use phpDocumentor\Reflection\DocBlock\Tags\Var_;
 use Storage;
 use Str;
 use Symfony\Component\Mime\MimeTypes;
@@ -122,6 +123,18 @@ class Media extends Base {
         Storage::disk($this->storage)->put($this->filename, $content);
     }
 
+    static function fromUrl($url, $type='media', $storage="public", $private=true) {
+        $contents = file_get_contents($url);
+        
+        $ext = pathinfo($url, PATHINFO_EXTENSION);
+        $title = urldecode(basename(parse_url($url, PHP_URL_PATH), '.' . $ext));
+        $file = md5($contents).'/'. $title . '.' . $ext;
+
+        Storage::disk('local')->put($file, $contents);
+
+        return self::fromPath(Storage::disk('local')->path($file), $type, $storage, $private);
+    }
+    
     static function fromPath($path, $type='media', $storage="public", $private=true) {
         if (!file_exists($path)) {
             throw new \InvalidArgumentException("File $path does not exist");
