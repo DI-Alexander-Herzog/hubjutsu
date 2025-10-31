@@ -28,6 +28,7 @@ Falls das Submodule schon existiert und auf dem Server umgestellt werden muss:
 
 ```bash
 git config submodule.packages/aherzog/hubjutsu.url "https://github.com/DI-Alexander-Herzog/hubjutsu.git"
+git config -f .gitmodules submodule.packages/aherzog/hubjutsu.url "https://github.com/DI-Alexander-Herzog/hubjutsu.git"
 git submodule sync packages/aherzog/hubjutsu
 ```
 
