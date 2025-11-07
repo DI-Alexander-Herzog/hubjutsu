@@ -572,7 +572,7 @@ export const iconMap = {
 type IconSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
 export type IconLibraryProps = {
-    name: keyof typeof iconMap ;
+    name: keyof typeof iconMap | string;
     size?: IconSize;
     className?: string;
 };
@@ -586,8 +586,12 @@ const sizeClasses: Record<IconSize, string> = {
     "2xl": "size-10",
 };
 
+export function iconExists(name: string): boolean {
+    return Object.keys(iconMap).includes(name);
+}
+
 export default function IconLibrary({ name, size = "sm", className = "" }: IconLibraryProps) {
-    const IconComponent = iconMap[name];
+    const IconComponent = iconMap[name as keyof typeof iconMap];
 
     if (!IconComponent) {
         console.warn(`Icon "${name}" not found in icon map`);
