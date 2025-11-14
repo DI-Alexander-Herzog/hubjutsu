@@ -34,7 +34,8 @@ class HubjutsuSetupCommand extends Command
 
 
     protected $filesystem = null;
-    protected function getFilesystem() {
+    /** @return Filesystem */
+    protected function getFilesystem(): mixed {
         if ($this->filesystem === null) {
             $this->filesystem = new Filesystem();
         }
@@ -85,7 +86,7 @@ class HubjutsuSetupCommand extends Command
                     return false;
                 }
 
-            } elseif ($filesystem->exists($target)) {
+            } elseif ($filesystem->exists($target) && $filesystem) {
                 continue;
 
             } elseif (!$filesystem->copy($item->getPathname(), $target)) {

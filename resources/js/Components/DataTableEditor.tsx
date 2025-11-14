@@ -1,10 +1,59 @@
 import React from "react";
 import { DateTime } from "luxon";
-import classNames from "classnames";
+import { Popover, PopoverButton, PopoverPanel, Transition } from "@headlessui/react";
+import { Fragment, useState, useEffect } from "react";
+import axios from "axios";
+import { DataTableFormatter } from "./DataTableFormatter";
+
+
+interface BaseEditorConfig {
+    type: string;
+}
+
+export interface SelectEditorConfig extends BaseEditorConfig {
+    type: "select";
+    options: Array<{ label: string; value: any }>;
+}
+
+export interface NumberEditorConfig extends BaseEditorConfig {
+    type: "number";
+    min?: number;
+    max?: number;
+    step?: number;
+}
+
+export interface BooleanEditorConfig extends BaseEditorConfig {
+    type: "boolean";
+}
+
+export interface DatetimeEditorConfig extends BaseEditorConfig {
+    type: "datetime";
+}
+
+export interface ModelEditorConfig extends BaseEditorConfig {
+    type: "model";
+    model: string;
+    filter?: (row: Record<string, any>) => Record<string, any>;
+    valueField?: string;
+    labelField: string;
+    debounce?: number;   // optional
+	columns?: Array<{ field: string; label: string, width?: string, formatter?: (row: Record<string, any>, field: string) => JSX.Element | string | Element; }>;
+}
+export type EditorConfig =
+    | SelectEditorConfig
+    | NumberEditorConfig
+    | BooleanEditorConfig
+    | DatetimeEditorConfig
+    | ModelEditorConfig;
+
 
 interface DataTableEditorColumn {
 	field: string;
-	editor?: string | ((props: DataTableCustomEditorProps) => React.ReactNode);
+	editor?: string | EditorConfig | ((props: DataTableCustomEditorProps) => React.ReactNode);
+	/**
+ 	 * @deprecated Nicht mehr verwenden. 
+	 * Wurde durch "editor: { type: 'select', ... }" ersetzt.
+	 */
 	editor_properties?: Record<string, any>;
 }
 
@@ -124,11 +173,145 @@ const defaultEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, 
 	/>
 );
 
+function useDebounce(value: any, delay = 300) {
+    const [debounced, setDebounced] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => setDebounced(value), delay);
+        return () => clearTimeout(handler);
+    }, [value, delay]);
+    return debounced;
+}
+
+const ModelEditor: EditorRenderer = ({
+    column,
+    row,
+    onValueChange,
+    onKeyDown,
+    className
+}) => {
+    const cfg = column.editor as ModelEditorConfig;
+
+    const [query, setQuery] = useState("");
+    const debouncedSearch = useDebounce(query, cfg.debounce ?? 300);
+
+    const [data, setData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const valueField = cfg.valueField ?? "id";
+    const labelField = cfg.labelField ?? "name";
+
+    useEffect(() => {
+        if (!debouncedSearch) return;
+
+        setLoading(true);
+
+		
+        axios.get(route("api.model.search", { model: cfg.model }), {
+            params: {
+                q: debouncedSearch,
+                ...(cfg.filter ? cfg.filter(row) : {})
+            }
+        }).then(res => {
+            setData(res.data.data);
+        }).finally(() => setLoading(false));
+    }, [debouncedSearch]);
+
+    const selectedDisplay = (() => {
+        const v = row[column.field];
+        const found = data.find(r => r[valueField] === v);
+        return found ? found[labelField] : "";
+    })();
+
+	const cols = cfg.columns ?? [{ field: labelField, label: cfg.model }];
+
+    return (
+        <Popover className="relative w-full">
+            <PopoverButton  as="div" className="w-full">
+                <input
+                    readOnly
+                    onKeyDown={onKeyDown}
+                    className={className}
+                    value={selectedDisplay}
+                    placeholder="Bitte auswählen…"
+                />
+            </PopoverButton>
+
+            <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+            >
+                <PopoverPanel
+                    className="
+                        absolute z-50 w-[900px] mt-1
+                        bg-white dark:bg-gray-800
+                        border border-gray-300 dark:border-gray-700 
+                        rounded-md shadow-xl
+                        max-h-[300px] overflow-auto
+                    "
+                >
+                    {/* Search */}
+                    <div className="p-2 border-b dark:border-gray-700">
+                        <input
+                            className="w-full px-2 py-1 border rounded bg-gray-50 dark:bg-gray-700"
+                            value={query}
+                            autoFocus
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="Suchen…"
+                        />
+                    </div>
+
+                    {/* Table */}
+                    <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-gray-100 dark:bg-gray-700">
+                            <tr>
+                                {cols.map(col => (
+									<th key={col.field} className="px-2 py-1 text-left border-b dark:border-gray-700" style={{width: col.width}}>{col.label}</th>
+								))}
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {!loading && data.map((r, i) => (
+                                <tr
+                                    key={i}
+                                    className="cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900"
+                                    onClick={() => {
+                                        onValueChange(r[valueField]);
+                                    }}
+                                >
+                                    {cols.map((col) => (
+                                        <td key={col.field} className="px-2 py-1 border-b dark:border-gray-700">
+                                            {col.formatter ? col.formatter(r, col.field) : DataTableFormatter.default(r, col.field)}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+
+                            {loading && (
+                                <tr>
+                                    <td className="p-3 text-center opacity-60">Lade…</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </PopoverPanel>
+            </Transition>
+        </Popover>
+    );
+};
+
+
 const editorMap: Record<string, EditorRenderer> = {
 	number: numberEditor,
 	datetime: datetimeEditor,
 	select: selectEditor,
-	boolean: booleanEditor
+	boolean: booleanEditor,
+	model: ModelEditor,
 };
 
 const DataTableEditor: React.FC<DataTableEditorProps> = ({
@@ -148,6 +331,21 @@ const DataTableEditor: React.FC<DataTableEditorProps> = ({
 		onKeyDown(event, column.field, row, rowIndex);
 	};
 
+	const editorConfig =
+        typeof editor === "object" && editor !== null
+            ? editor
+            : typeof editor === "string"
+                ? { type: editor } // default config for string editors
+                : null;
+
+    const editorType = editorConfig?.type;
+
+	const editorProperties =
+        editorConfig && typeof editorConfig === "object"
+            ? { ...(column.editor_properties ?? {}), ...editorConfig }
+            : column.editor_properties;
+
+
 	if (typeof editor === "function") {
 		return (
 			<>
@@ -165,16 +363,16 @@ const DataTableEditor: React.FC<DataTableEditorProps> = ({
 		);
 	}
 
-	const renderer = editor && typeof editor === "string" ? editorMap[editor] : undefined;
-	const renderEditor = renderer ?? defaultEditor;
+	const renderer = editorType ? editorMap[editorType] : undefined;
+    const renderEditor = renderer ?? defaultEditor;
 
-	return renderEditor({
-		column,
-		row,
-		className: editorClassName,
-		onValueChange: handleValueChange,
-		onKeyDown: handleKeyDown,
-	});
+    return renderEditor({
+        column: { ...column, editor_properties: editorProperties },
+        row,
+        className: editorClassName,
+        onValueChange: handleValueChange,
+        onKeyDown: handleKeyDown,
+    });
 };
 
 export default DataTableEditor;

@@ -25,7 +25,7 @@ import { useLaravelReactI18n } from "laravel-react-i18n";
 import ErrorToast from "@/Components/ErrorToast";
 import { DataTableFormatter } from "@/Components/DataTableFormatter";
 import DataTableEditor from "@/Components/DataTableEditor"; 
-import type { DataTableCustomEditorProps } from "@/Components/DataTableEditor";
+import type { DataTableCustomEditorProps, EditorConfig } from "@/Components/DataTableEditor";
 import IconLibrary from "@/Components/IconLibrary";
 import { iconMap } from "./IconLibrary";
 
@@ -35,9 +35,11 @@ interface Column {
 	field: string;
 	editor?:
 		| string
+		| EditorConfig
 		| ((props: DataTableCustomEditorProps) => React.ReactNode)
 		| undefined;
-	editor_properties?: Record<string, any> ;
+	/** @deprecated Nicht mehr verwenden.  */
+	editor_properties?: Record<string, any>;
 	sortable?: boolean;
 	filter?: boolean | string | any;
 

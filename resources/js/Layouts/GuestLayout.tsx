@@ -16,7 +16,7 @@ export default function Guest({ children }: PropsWithChildren) {
             </div>
             <div>
                 <Link href="/">
-                    <ApplicationLogo className="w-20 h-20 fill-current text-gray-500" />
+                    <ApplicationLogo className="w-20 max-h-20 fill-current text-gray-500" />
                 </Link>
             </div>
 

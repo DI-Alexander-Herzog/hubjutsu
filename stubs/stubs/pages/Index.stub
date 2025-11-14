@@ -10,7 +10,7 @@ export default function {{ name }}Index() {
         >
             <DataTable 
                 routemodel='{{ modelVariable }}'
-                filter={{}}
+                filters={{}}
                 defaultSortField={[
                     ['id', 1]
                 ]}
@@ -22,6 +22,7 @@ export default function {{ name }}Index() {
                         filter: true,
                         frozen: true,
                         width: '300px',
+                        editor: 'text',
                         formatter: DataTableDynamicFormatter.link((row) => route( '{{ modelVariablePlural }}.show',  [ row.id ]))
                     }
                 ]}
