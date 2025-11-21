@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useRef } from "react";
 import { DateTime } from "luxon";
 import { Popover, PopoverButton, PopoverPanel, Transition } from "@headlessui/react";
 import { Fragment, useState, useEffect } from "react";
 import axios from "axios";
 import { DataTableFormatter } from "./DataTableFormatter";
+import modelAPI from "@hubjutsu/api/modelAPI";
+import { createPortal } from "react-dom";
 
 
 interface BaseEditorConfig {
@@ -55,6 +57,7 @@ interface DataTableEditorColumn {
 	 * Wurde durch "editor: { type: 'select', ... }" ersetzt.
 	 */
 	editor_properties?: Record<string, any>;
+	formatter: (row: Record<string, any>, field: string) => JSX.Element | string | Element;
 }
 
 interface DataTableEditorProps {
@@ -176,135 +179,278 @@ const defaultEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, 
 function useDebounce(value: any, delay = 300) {
     const [debounced, setDebounced] = useState(value);
     useEffect(() => {
-        const handler = setTimeout(() => setDebounced(value), delay);
-        return () => clearTimeout(handler);
+        const h = setTimeout(() => setDebounced(value), delay);
+        return () => clearTimeout(h);
     }, [value, delay]);
     return debounced;
 }
 
-const ModelEditor: EditorRenderer = ({
+export const ModelEditor: EditorRenderer = ({
     column,
     row,
     onValueChange,
     onKeyDown,
-    className
 }) => {
     const cfg = column.editor as ModelEditorConfig;
+    const [open, setOpen] = useState(false);
 
+	const [highlightIndex, setHighlightIndex] = useState<number>(-1);
+	const listRef = useRef<HTMLTableSectionElement | null>(null);
+
+    const panelRef = useRef<HTMLDivElement | null>(null);
+    const triggerRef = useRef<HTMLButtonElement | null>(null);
+    const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+
+    // Query / search
     const [query, setQuery] = useState("");
-    const debouncedSearch = useDebounce(query, cfg.debounce ?? 300);
+    const debounced = useDebounce(query, cfg.debounce ?? 300);
 
-    const [data, setData] = useState<any[]>([]);
+    // Data
     const [loading, setLoading] = useState(false);
+    const [data, setData] = useState<any[]>([]);
 
     const valueField = cfg.valueField ?? "id";
     const labelField = cfg.labelField ?? "name";
 
+	const handleListKey = (e: React.KeyboardEvent) => {
+		if (!open) return;
+
+		if (e.key === "Escape") {
+			e.preventDefault();
+			setOpen(false);
+			triggerRef.current?.focus();
+			return;
+		}
+
+		if (e.key === "ArrowDown") {
+			e.preventDefault();
+			setHighlightIndex(i => {
+				const next = Math.min(i + 1, data.length - 1);
+				return next < 0 ? 0 : next;
+			});
+		}
+
+		if (e.key === "ArrowUp") {
+			e.preventDefault();
+			setHighlightIndex(i => Math.max(i - 1, 0));
+		}
+
+		if (e.key === "Enter") {
+			e.preventDefault();
+			const row = data[highlightIndex];
+			if (row) {
+				onValueChange(row[valueField]);
+				setOpen(false);
+				triggerRef.current?.focus();
+			}
+		}
+	};
+
+	useEffect(() => {
+		if (!listRef.current || highlightIndex < 0) return;
+
+		const el = listRef.current.querySelector(`tr[data-idx="${highlightIndex}"]`);
+		if (el) {
+			el.scrollIntoView({ block: "nearest" });
+		}
+	}, [highlightIndex]);
+
+
+    // Load data
     useEffect(() => {
-        if (!debouncedSearch) return;
+        if (!open) return;
 
         setLoading(true);
 
-		
-        axios.get(route("api.model.search", { model: cfg.model }), {
-            params: {
-                q: debouncedSearch,
-                ...(cfg.filter ? cfg.filter(row) : {})
-            }
-        }).then(res => {
-            setData(res.data.data);
-        }).finally(() => setLoading(false));
-    }, [debouncedSearch]);
+        modelAPI(cfg.model as any)
+            .search({
+				order: [[labelField, 1]],
+                search: debounced,
+                filter: cfg.filter ? cfg.filter(row) : {},
+            })
+            .then((res) => {
+                setData(res.data);
+            })
+            .finally(() => setLoading(false));
+    }, [open, debounced]);
 
-    const selectedDisplay = (() => {
-        const v = row[column.field];
-        const found = data.find(r => r[valueField] === v);
-        return found ? found[labelField] : "";
-    })();
+    // Position popup on open
+    useEffect(() => {
+        if (!open || !triggerRef.current) return;
 
-	const cols = cfg.columns ?? [{ field: labelField, label: cfg.model }];
+        const r = triggerRef.current.getBoundingClientRect();
+        setPos({
+            top: r.bottom + window.scrollY + 2,
+            left: r.left + window.scrollX,
+            width: r.width,
+        });
+    }, [open]);
 
-    return (
-        <Popover className="relative w-full">
-            <PopoverButton  as="div" className="w-full">
-                <input
-                    readOnly
-                    onKeyDown={onKeyDown}
-                    className={className}
-                    value={selectedDisplay}
-                    placeholder="Bitte auswählen…"
-                />
-            </PopoverButton>
+    // Close on outside click
+	useEffect(() => {
+		if (!open) return;
 
-            <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
+		const handler = (e: MouseEvent) => {
+			const target = e.target as Node;
+
+			const insideTrigger = triggerRef.current && triggerRef.current.contains(target);
+			const insidePanel = panelRef.current && panelRef.current.contains(target);
+
+			if (insideTrigger || insidePanel) return;
+
+			setOpen(false);
+		};
+
+		window.addEventListener("mousedown", handler);
+		return () => window.removeEventListener("mousedown", handler);
+	}, [open]);
+
+    // Selected label (fallback falls Liste noch nicht geladen)
+    const selectedValue = row[column.field];
+    const selectedLabel =
+        data.find((r) => r[valueField] === selectedValue)?.[labelField] ?? column.formatter(row, column.field);
+
+    const cols =
+        cfg.columns ??
+        [{ field: labelField, label: cfg.model, width: "100%" }];
+
+    const popup = open && createPortal(
+            <div
+                className="z-50 bg-white dark:bg-gray-800 border border-gray-300 
+                           dark:border-gray-700 rounded-md shadow-xl
+                           max-h-[300px] overflow-auto text-sm"
+                style={{
+                    position: "absolute",
+                    top: pos.top,
+                    left: pos.left,
+                    width: Math.max(pos.width * 2, 600),
+                }}
+				ref={panelRef}
             >
-                <PopoverPanel
-                    className="
-                        absolute z-50 w-[900px] mt-1
-                        bg-white dark:bg-gray-800
-                        border border-gray-300 dark:border-gray-700 
-                        rounded-md shadow-xl
-                        max-h-[300px] overflow-auto
-                    "
-                >
-                    {/* Search */}
-                    <div className="p-2 border-b dark:border-gray-700">
-                        <input
-                            className="w-full px-2 py-1 border rounded bg-gray-50 dark:bg-gray-700"
-                            value={query}
-                            autoFocus
-                            onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Suchen…"
-                        />
-                    </div>
+                <div className="sticky top-0 z-10 p-1 bg-white dark:bg-gray-800 border-b dark:border-gray-700">
+					<input
+						autoFocus
+						className={editorClassName}
+						value={query}
+						placeholder="Suchen…"
+						onChange={(e) => {
+							setQuery(e.target.value);
+							setHighlightIndex(0); // Reset Highlight bei neuer Suche
+						}}
+						onKeyDown={handleListKey}
+					/>
+				</div>
 
-                    {/* Table */}
-                    <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-gray-100 dark:bg-gray-700">
-                            <tr>
-                                {cols.map(col => (
-									<th key={col.field} className="px-2 py-1 text-left border-b dark:border-gray-700" style={{width: col.width}}>{col.label}</th>
-								))}
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {!loading && data.map((r, i) => (
+                <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            {cols.map((c) => (
+                                <th
+                                    key={c.field}
+                                    className="px-2 py-1 text-left border-b dark:border-gray-700"
+                                    style={{ width: c.width }}
+                                >
+                                    {c.label}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody ref={listRef}>
+                        {!loading &&
+                            data.map((r, idx) => (
                                 <tr
-                                    key={i}
-                                    className="cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900"
+                                    key={idx}
+                                    className={`
+										border-b dark:border-gray-700 cursor-pointer
+										hover:bg-primary-50 dark:hover:bg-primary-900
+										${idx === highlightIndex ? "bg-primary-100 dark:bg-primary-800" : ""}
+									`}
                                     onClick={() => {
                                         onValueChange(r[valueField]);
+                                        setOpen(false);
+										triggerRef.current?.focus();
                                     }}
                                 >
-                                    {cols.map((col) => (
-                                        <td key={col.field} className="px-2 py-1 border-b dark:border-gray-700">
-                                            {col.formatter ? col.formatter(r, col.field) : DataTableFormatter.default(r, col.field)}
+                                    {cols.map((c) => (
+                                        <td
+                                            key={c.field}
+                                            className="px-2 py-1 border-b dark:border-gray-700"
+                                        >
+                                            {c.formatter
+                                                ? c.formatter(r, c.field)
+                                                : DataTableFormatter.default(
+                                                      r,
+                                                      c.field
+                                                  )}
                                         </td>
                                     ))}
                                 </tr>
                             ))}
 
-                            {loading && (
-                                <tr>
-                                    <td className="p-3 text-center opacity-60">Lade…</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </PopoverPanel>
-            </Transition>
-        </Popover>
+                        {loading && (
+                            <tr>
+                                <td
+                                    className="p-3 text-center opacity-60"
+                                    colSpan={cols.length}
+                                >
+                                    Lade…
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>,
+            document.body
+        );
+
+    return (
+        <>
+            <button
+				ref={triggerRef}
+				type="button"
+				onClick={() => setOpen(v => !v)}
+				onKeyDown={(e) => {
+					onKeyDown(e);
+					handleListKey(e);   // ← deine Navigation
+				}}
+				className="
+					w-full relative text-left
+					bg-white dark:bg-gray-800
+					border border-gray-300 dark:border-gray-600
+					rounded-md
+					px-2 py-1
+					flex items-center justify-between
+					cursor-pointer
+					text-sm
+					text-gray-900 dark:text-gray-100
+					hover:border-primary
+					focus:outline-none
+					focus:ring-2 focus:ring-primary
+					transition
+				"
+			>
+				<span className="truncate pointer-events-none">
+					{selectedLabel || "Bitte auswählen…"}
+				</span>
+
+				<svg
+					className={`
+						w-4 h-4 ml-2 pointer-events-none text-gray-500 dark:text-gray-400
+						transition-transform 
+						${open ? "rotate-180" : ""}
+					`}
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+					viewBox="0 0 24 24"
+				>
+					<path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+				</svg>
+			</button>
+            {popup}
+        </>
     );
 };
-
 
 const editorMap: Record<string, EditorRenderer> = {
 	number: numberEditor,

@@ -4,6 +4,9 @@ import { UseForm } from "@/types";
 import axios from "axios";
 import ErrorToast from "@/Components/ErrorToast";
 import PrimaryButton from "@/Components/PrimaryButton";
+import SecondaryButton from "./SecondaryButton";
+import { router } from "@inertiajs/react";
+import { useLaravelReactI18n } from "laravel-react-i18n";
 
 type FormContextType = {
   form: UseForm;
@@ -92,10 +95,16 @@ export function FormContext({ data, model, children, with: withRelations = [], d
   );
 }
 
-export function FormContextSubmitButton({ children, className, postSave }: { children: React.ReactNode; className?: string, postSave?: (data?: any) => void }) {
+export function FormContextSubmitButton({ children, className, postSave, editLink }: { editLink?: string; children: React.ReactNode; className?: string, postSave?: (data?: any) => void }) {
   const { save, loading, readonly, recentlySuccessful } = useFormContext();
+  const { t } = useLaravelReactI18n();
   
-  if (readonly) return;
+  if (readonly) {
+    if (editLink) {
+      return <SecondaryButton onClick={() => router.visit(editLink)} className={className}>{t('Edit')}</SecondaryButton>;
+    }
+    return;
+  }
 
   return (
 	<PrimaryButton

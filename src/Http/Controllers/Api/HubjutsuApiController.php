@@ -58,14 +58,22 @@ class HubjutsuApiController
             $queryBuilder->orderBy($sort[0], $sort[1] > 0 ? 'asc' : 'desc');
         };
         
-        foreach($request->get('filters', []) as $filter) {
-            if (!isset($filter['value'])) continue;
-            
-            $modelObj->searchInApi($queryBuilder, $filter['field'], $filter['value'], $filter['matchMode'] ?? null);
-        };
+        
+        $queryBuilder->where(function($q) use ($request, $modelObj) {
+            foreach($request->get('filters', []) as $filter) {
+                if (!isset($filter['value'])) continue;
+                
+                $modelObj->searchInApi($q, $filter['field'], $filter['value'], $filter['matchMode'] ?? null);
+            };
+        });
+        
 
         foreach($request->get('with', []) as $with) {
             $queryBuilder->with($with);
+        };
+
+        if(($includeIds = $request->get('include', []) )) {
+            $queryBuilder->orWhere($modelObj->getKeyName(), 'in', $includeIds);
         };
 
 
