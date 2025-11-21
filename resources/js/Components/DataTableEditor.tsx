@@ -57,7 +57,7 @@ interface DataTableEditorColumn {
 	 * Wurde durch "editor: { type: 'select', ... }" ersetzt.
 	 */
 	editor_properties?: Record<string, any>;
-	formatter: (row: Record<string, any>, field: string) => JSX.Element | string | Element;
+	formatter?: ((row: Record<string, any>, field: string) => JSX.Element | string | Element) | undefined;
 }
 
 interface DataTableEditorProps {
@@ -308,7 +308,7 @@ export const ModelEditor: EditorRenderer = ({
     // Selected label (fallback falls Liste noch nicht geladen)
     const selectedValue = row[column.field];
     const selectedLabel =
-        data.find((r) => r[valueField] === selectedValue)?.[labelField] ?? column.formatter(row, column.field);
+        data.find((r) => r[valueField] === selectedValue)?.[labelField] ?? (column.formatter ? column.formatter(row, column.field) : selectedValue);
 
     const cols =
         cfg.columns ??

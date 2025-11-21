@@ -15,8 +15,11 @@ class HubjutsuSeeder extends \AHerzog\Hubjutsu\Database\HubjutsuSeeder
 
 
     public function defaultHubsettings() {
-        $arr = parent::defaultHubsettings();
-        return $arr;
+        return array_merge(
+            [
+            ],
+            parent::defaultHubsettings()
+        );
     }
     public function defaultLogo() {
         return parent::defaultLogo();

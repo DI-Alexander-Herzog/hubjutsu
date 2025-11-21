@@ -43,17 +43,18 @@ class HubjutsuSeeder extends Seeder
         ];
     }
     public function defaultLogo() {
-        return Media::fromUrl('https://alexander-herzog.at/wp-content/uploads/2022/08/full_color_512x.png');
+        return 'https://alexander-herzog.at/wp-content/uploads/2022/08/full_color_512x.png';
     }
     public function defaultBrandImage() {
-        return Media::fromUrl('https://alexander-herzog.at/wp-content/uploads/2022/08/full_color_512x.png');
+        return 'https://alexander-herzog.at/wp-content/uploads/2022/08/full_color_512x.png';
     }
 
     public function seedHubs() {
         $hub = Hub::updateOrCreate([
             'slug' => Str::slug(config('app.name')),
         ],
-        array_merge([
+        array_merge(
+            [
                 'name' => config('app.name'),
                 'url' => url('/'),
                 'primary' => true,
@@ -62,9 +63,23 @@ class HubjutsuSeeder extends Seeder
             $this->defaultHubsettings()
         ));
 
-        $hub->setLogo($this->defaultLogo());
-        $hub->setBrandImage($this->defaultBrandImage());
-    
+        $logo = $this->defaultLogo();
+        if ($logo instanceof Media) {
+            $hub->setLogo($logo);
+        } elseif (filter_var($logo, FILTER_VALIDATE_URL)) {
+            $hub->setLogo(Media::fromUrl($logo));
+        } elseif (is_string($logo) && file_exists($logo)) {
+            $hub->setLogo(Media::fromFile($logo));
+        }
+        
+        $brandImage = $this->defaultBrandImage();
+        if ($brandImage instanceof Media) {
+            $hub->setBrandImage($brandImage);
+        } elseif (filter_var($brandImage, FILTER_VALIDATE_URL)) {
+            $hub->setBrandImage(Media::fromUrl($brandImage));
+        } elseif (is_string($brandImage) && file_exists($brandImage)) {
+            $hub->setBrandImage(Media::fromFile($brandImage));
+        }
     }
 
     public function initialUsers() {
