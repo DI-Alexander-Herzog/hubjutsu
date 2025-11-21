@@ -3,6 +3,7 @@
 namespace AHerzog\Hubjutsu\Database;
 
 use App\Models\Hub;
+use App\Models\Media;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -20,14 +21,8 @@ class HubjutsuSeeder extends Seeder
         $this->seedUsers();  
     }
 
-    public function seedHubs() {
-        Hub::updateOrCreate([
-            'slug' => Str::slug(config('app.name')),
-        ],[
-            'name' => config('app.name'),
-            'url' => url('/'),
-            'primary' => true,
-            'app_id' => implode('.', array_reverse(explode('.', parse_url(url('/'), PHP_URL_HOST)))) . '.app',
+    public function defaultHubsettings() {
+        return [
             'color_primary' => '#F39200',
             'color_primary_text' => '#FFFFFF',
             'color_secondary' => '#F39200',
@@ -38,8 +33,38 @@ class HubjutsuSeeder extends Seeder
             'color_background' => '#FFFFFF',
             'has_darkmode' => true,
             'enable_registration' => true,
-            'enable_guestmode' => true
-        ]);
+            'enable_guestmode' => true,
+            'font_sans' => 'Noto Sans',
+            'font_serif' => 'Noto Serif',
+            'font_mono' => 'Noto Sans Mono',
+            'font_header' => 'Noto Serif',
+            'font_text' => 'Noto Sans',
+            'font_import' => "https://fonts.bunny.net/css?family=noto-sans:100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i|noto-sans-mono:100,200,300,400,500,600,700,800,900|noto-serif:100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i",
+        ];
+    }
+    public function defaultLogo() {
+        return Media::fromUrl('https://alexander-herzog.at/wp-content/uploads/2022/08/full_color_512x.png');
+    }
+    public function defaultBrandImage() {
+        return Media::fromUrl('https://alexander-herzog.at/wp-content/uploads/2022/08/full_color_512x.png');
+    }
+
+    public function seedHubs() {
+        $hub = Hub::updateOrCreate([
+            'slug' => Str::slug(config('app.name')),
+        ],
+        array_merge([
+                'name' => config('app.name'),
+                'url' => url('/'),
+                'primary' => true,
+                'app_id' => implode('.', array_reverse(explode('.', parse_url(url('/'), PHP_URL_HOST)))) . '.app',
+            ],
+            $this->defaultHubsettings()
+        ));
+
+        $hub->setLogo($this->defaultLogo());
+        $hub->setBrandImage($this->defaultBrandImage());
+    
     }
 
     public function initialUsers() {
