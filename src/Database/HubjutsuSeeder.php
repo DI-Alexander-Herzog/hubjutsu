@@ -46,7 +46,7 @@ class HubjutsuSeeder extends Seeder
         return 'https://alexander-herzog.at/wp-content/uploads/2022/08/full_color_512x.png';
     }
     public function defaultBrandImage() {
-        return 'https://alexander-herzog.at/wp-content/uploads/2022/08/full_color_512x.png';
+        return 'https://alexander-herzog.at/wp-content/uploads/2023/06/DSC02929-02.jpeg';
     }
 
     public function seedHubs() {
