@@ -39,7 +39,6 @@ export default function UserIndex({extraColumns}: {extraColumns?: Column[]	}) {
 						sortable: false,
 						filter: false,
 						formatter: DataTableFormatter.media,
-						editor: "media",
 						width: "100px",
 					},
 					{
