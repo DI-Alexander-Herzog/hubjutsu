@@ -15,8 +15,6 @@ use Str;
 use Symfony\Component\Mime\MimeTypes;
 
 /**
- * 
- *
  * @property int $id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -24,28 +22,50 @@ use Symfony\Component\Mime\MimeTypes;
  * @property int|null $updated_by
  * @property string $name
  * @property string $description
- * @property string|null $tags
+ * @property array<array-key, mixed>|null $tags
  * @property string|null $storage
  * @property string|null $filename
- * @property int $private
- * @method static \Illuminate\Database\Eloquent\Builder|Media newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|Media newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|Media query()
- * @method static \Illuminate\Database\Eloquent\Builder|Media whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Media whereCreatedBy($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Media whereDescription($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Media whereFilename($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Media whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Media whereName($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Media wherePrivate($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Media whereStorage($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Media whereTags($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Media whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Media whereUpdatedBy($value)
+ * @property bool $private
+ * @property string|null $mimetype
+ * @property string|null $mediable_type
+ * @property int|null $mediable_id
+ * @property int|null $mediable_sort
+ * @property string|null $category
+ * @property-read mixed $thumbnail
+ * @property-read \Illuminate\Database\Eloquent\Model|\Eloquent|null $mediable
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media query()
+ * @method static Builder<static>|Media search($term)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereCategory($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereCreatedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereFilename($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereMediableId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereMediableSort($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereMediableType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereMimetype($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media wherePrivate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereStorage($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereTags($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Media whereUpdatedBy($value)
  * @mixin \Eloquent
  */
 class Media extends Base {
     use UserTrait, HasTimestamps;
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function (Media $media) {
+            $media->relocateFileIfNecessary();
+        });
+    }
 
     protected $fillable = [
         'name',
@@ -54,7 +74,8 @@ class Media extends Base {
         'storage',
         'filename',
         'private',
-        'mimetype'
+        'mimetype',
+        'category'
     ];
 
     protected $casts = [
@@ -103,6 +124,33 @@ class Media extends Base {
 
     public function getPath() {
         return Storage::disk($this->storage)->path($this->filename);
+    }
+
+    protected function relocateFileIfNecessary(): void
+    {
+        $currentStorage = $this->storage;
+        $file = $this->filename;
+        $category = $this->category;
+
+        $disks = config("filesystems.disks");
+        $filenamePrefix = "";
+        if (!isset($disks[$category])) {
+            $filenamePrefix = '/' . $category;
+            $storage = 'public';
+        } else {
+            $storage = $category;
+        }
+
+        if ($currentStorage !== $storage || ($category && !str_starts_with($file, $filenamePrefix . '/'))) {
+            $contents = Storage::disk($currentStorage)->get($file);
+            $newFilename = $filenamePrefix . '/' . $this->created_at->format('Y/m') . '/' . basename($file);
+            Storage::disk($storage)->put($newFilename, $contents);
+            $this->storage = $storage;
+            $this->filename = $newFilename;
+            $this->save();
+            Storage::disk($currentStorage)->delete($file);
+        }
+
     }
 
     public function setContent($content, $filename=null) {

@@ -27,25 +27,30 @@ class MediaController extends Controller
         foreach($files as $key => $file) {
             /** @var UploadedFile $file */
 
-            
+            $attributes = $request->get('attributes', []);
+            $fieldAttributes = is_array($attributes) && isset($attributes[$key]) ? $attributes[$key] : $attributes;
+            if (!is_array($fieldAttributes)) {
+                $fieldAttributes = [];
+            }
+
+            $requestedStorage = $fieldAttributes['storage'] ?? $key;
             $filenamePrefix = "";
-            $storage = $key;
-            if (!isset($disks[$key])) {
-                $filenamePrefix = '/' . $key;
+            $storage = $requestedStorage;
+            if (!isset($disks[$requestedStorage])) {
+                $filenamePrefix = '/' . $requestedStorage;
                 $storage = 'public';
             }
-            
 
-            $attributes = $request->get('attributes', []);
-            
-            $media = new Media(array_merge($attributes, [
+            $defaults = [
                 'name' => $file->getClientOriginalName(),
                 'description' => $file->getClientOriginalName(),
                 'tags' => $key,
                 'storage' => $storage,
                 'filename' => $filenamePrefix . '/' . date('Y/m') . '/' . basename($file->getFilename()) . '.' . $file->getClientOriginalExtension(),
                 'private' => true,
-            ]));
+            ];
+
+            $media = new Media(array_merge($defaults, $fieldAttributes));
             $media->save();
             $media->setContent($file->getContent());
             $media->save();

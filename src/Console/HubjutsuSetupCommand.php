@@ -86,7 +86,7 @@ class HubjutsuSetupCommand extends Command
                     return false;
                 }
 
-            } elseif ($filesystem->exists($target) && $filesystem) {
+            } elseif ($filesystem->exists($target) && $filesystem->lastModified($item->getPathname()) <= $filesystem->lastModified($target)) {
                 continue;
 
             } elseif (!$filesystem->copy($item->getPathname(), $target)) {
