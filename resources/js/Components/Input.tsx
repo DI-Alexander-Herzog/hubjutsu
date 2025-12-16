@@ -5,6 +5,7 @@ import { UseForm } from "@/types";
 import { useFormContext, useOptionalFormContext } from "@/Components/FormContext";
 import InputTextarea from "@/Components/InputTextarea";
 import MediaUpload from "./MediaUpload";
+import ModelSelect from "./ModelSelect";
 import { Select } from "@headlessui/react";
 import InputSelect from "./InputSelect";
 import { DateTime } from "luxon";
@@ -121,6 +122,18 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                 className={className}
                 label={undefined}
                 {...props}
+            />;
+        } else if (type == "model") {
+            return <ModelSelect
+                id={id}
+                className={`mt-1 block w-full ${className}`}
+                value={_useForm.data ? _useForm.data[inputName] : null}
+                onChange={(val) => _useForm.setData((data: { [key: string]: any }) => ({
+                    ...data,
+                    [inputName]: val
+                }))}
+                disabled={props.disabled}
+                {...props as any}
             />;
         }
 
