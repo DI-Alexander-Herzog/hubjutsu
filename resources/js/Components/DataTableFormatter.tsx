@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import { useRef, useState } from "react";
+import { MEDIA_DELETE_FLAG } from "../constants/media";
 
 interface Row {
 	[key: string]: any;
@@ -77,7 +78,9 @@ const DataTableFormatter = {
     media: (row: Row, field: string) => {
         const value = row[field];
         if (!value) return "";
-        
+        if (typeof value === "object" && value !== null && value[MEDIA_DELETE_FLAG]) {
+            return <span className="text-xs text-gray-500 italic">Wird gelöscht…</span>;
+        }
 
         const isObject = typeof value === "object" && value !== null;
         const preview = isObject

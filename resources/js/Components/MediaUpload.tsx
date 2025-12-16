@@ -4,6 +4,7 @@ import { useDropzone } from 'react-dropzone';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import InputError from './InputError';
+import { markMediaForDeletion, isMediaMarkedForDeletion } from '../constants/media';
 
 interface Props {
   useForm?: any;
@@ -21,7 +22,10 @@ export default forwardRef(function ChunkedMediaUpload(
 ) {
   const { t } = useLaravelReactI18n();
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(useForm?.data?.[name]?.thumbnail || null);
+  const currentValue = useForm?.data?.[name];
+  const [preview, setPreview] = useState<string | null>(
+    isMediaMarkedForDeletion(currentValue) ? null : currentValue?.thumbnail || null
+  );
   const [progress, setProgress] = useState<number>(0);
   const [err, setErr] = useState<string | null>(null);
 
@@ -75,6 +79,28 @@ export default forwardRef(function ChunkedMediaUpload(
     upload(f);
   };
 
+  useEffect(() => {
+    if (!useForm) return;
+    const value = useForm.data?.[name];
+    if (isMediaMarkedForDeletion(value)) {
+      setPreview(null);
+      setFile(null);
+    } else if (value?.thumbnail) {
+      setPreview(value.thumbnail);
+    }
+  }, [useForm?.data?.[name]]);
+
+  const handleRemove = () => {
+    const marked = markMediaForDeletion(currentValue);
+    setPreview(null);
+    setProgress(0);
+    setErr(null);
+    useForm?.setData((data: any) => ({ ...data, [name]: marked }));
+    onChange?.({
+      target: { name, value: marked },
+    } as unknown as SyntheticEvent);
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
     accept: accept ? { [accept]: [] } : undefined,
@@ -100,6 +126,19 @@ export default forwardRef(function ChunkedMediaUpload(
         <div className="w-full bg-gray-200 h-2 rounded">
           <div className="bg-blue-600 h-2 rounded" style={{ width: `${progress}%` }} />
         </div>
+      )}
+
+      {(preview || currentValue) && (
+        <button
+          type="button"
+          className="text-xs text-red-500 hover:text-red-600"
+          onClick={handleRemove}
+        >
+          {t('Remove file')}
+        </button>
+      )}
+      {isMediaMarkedForDeletion(currentValue) && (
+        <p className="text-xs italic text-gray-500">{t('File will be removed')}</p>
       )}
 
       <InputError

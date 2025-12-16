@@ -26,6 +26,10 @@ trait MediaTrait
             
             if (isset($attributes[$snake]) && method_exists($this, $setter)) {
                 $media = $attributes[$snake];
+                if (is_array($media) && !empty($media[Media::DELETE_FLAG])) {
+                    $this->media($key)->delete();
+                    continue;
+                }
                  if (is_array($media)) {
                     if (isset($media['id'])) {
                         $data = $media;
@@ -58,6 +62,10 @@ trait MediaTrait
     
 
     public function setMedia(Media|array $media, $category="main", $sort=1) {
+        if (is_array($media) && !empty($media[Media::DELETE_FLAG])) {
+            $this->media($category)->delete();
+            return;
+        }
         if (is_array($media)) {
             if (isset($media['id'])) {
                 $data = $media;

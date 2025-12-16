@@ -57,6 +57,7 @@ use Symfony\Component\Mime\MimeTypes;
  */
 class Media extends Base {
     use UserTrait, HasTimestamps;
+    public const DELETE_FLAG = '__DELETE';
 
     protected static function boot()
     {
@@ -64,6 +65,9 @@ class Media extends Base {
 
         static::saved(function (Media $media) {
             $media->relocateFileIfNecessary();
+        });
+        static::deleting(function (Media $media) {
+            $media->deleteStoredFile();
         });
     }
 
@@ -124,6 +128,21 @@ class Media extends Base {
 
     public function getPath() {
         return Storage::disk($this->storage)->path($this->filename);
+    }
+
+    protected function deleteStoredFile(): void
+    {
+        if (!$this->storage || !$this->filename) {
+            return;
+        }
+
+        try {
+            if (Storage::disk($this->storage)->exists($this->filename)) {
+                Storage::disk($this->storage)->delete($this->filename);
+            }
+        } catch (\Throwable $e) {
+            // Ignore file deletion errors to avoid breaking delete flow
+        }
     }
 
     protected function relocateFileIfNecessary(): void

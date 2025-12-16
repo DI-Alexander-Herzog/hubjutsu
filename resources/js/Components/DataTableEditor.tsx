@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { useDropzone } from "react-dropzone";
 import { v4 as uuidv4 } from "uuid";
 import { ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+import { MEDIA_DELETE_FLAG, isMediaMarkedForDeletion, markMediaForDeletion } from "../constants/media";
 
 
 interface BaseEditorConfig {
@@ -108,6 +109,7 @@ const editorClassName =
 	"text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md";
 
 const getMediaPreview = (value: any): string | null => {
+	if (isMediaMarkedForDeletion(value)) return null;
 	if (!value) return null;
 	if (typeof value === "string") return value;
 	if (typeof value === "object") {
@@ -117,6 +119,7 @@ const getMediaPreview = (value: any): string | null => {
 };
 
 const getMediaLabel = (value: any): string => {
+	if (isMediaMarkedForDeletion(value)) return "Wird gelöscht";
 	if (!value) return "";
 	if (typeof value === "string") return value;
 	if (typeof value === "object") {
@@ -193,6 +196,7 @@ const booleanEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, 
 const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) => {
 	const editorProps = column.editor_properties ?? {};
 	const currentValue = row[column.field];
+	const markedForDeletion = isMediaMarkedForDeletion(currentValue);
 	const [preview, setPreview] = useState<string | null>(getMediaPreview(currentValue));
 	const [label, setLabel] = useState<string>(getMediaLabel(currentValue));
 	const [progress, setProgress] = useState(0);
@@ -244,7 +248,9 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 						setPreview(getMediaPreview(uploaded));
 						setLabel(getMediaLabel(uploaded));
 						setProgress(100);
-						onValueChange(uploaded);
+						const cleaned = { ...uploaded };
+						delete cleaned[MEDIA_DELETE_FLAG];
+						onValueChange(cleaned);
 						break;
 					}
 				}
@@ -305,6 +311,15 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 		},
 	});
 
+	const handleRemove = () => {
+		const marked = markMediaForDeletion(currentValue);
+		setPreview(null);
+		setLabel(getMediaLabel(marked));
+		setProgress(0);
+		setError(null);
+		onValueChange(marked);
+	};
+
 	return (
 		<div
 			className="flex items-center gap-3 text-xs text-gray-800 dark:text-gray-100"
@@ -352,6 +367,19 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 					<span className="block truncate text-[11px] text-gray-600 dark:text-gray-300">
 						{label}
 					</span>
+				)}
+				{!markedForDeletion && currentValue && (
+					<button
+						type="button"
+						className="text-[11px] text-red-500 hover:text-red-600"
+						onClick={(event) => {
+							event.stopPropagation();
+							handleRemove();
+						}}
+						disabled={uploading}
+					>
+						Entfernen
+					</button>
 				)}
 				{error && <span className="block text-[11px] text-red-500">{error}</span>}
 			</div>
