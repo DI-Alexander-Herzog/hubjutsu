@@ -74,6 +74,41 @@ const DataTableFormatter = {
         />
     },
 
+    media: (row: Row, field: string) => {
+        const value = row[field];
+        if (!value) return "";
+        
+
+        const isObject = typeof value === "object" && value !== null;
+        const preview = isObject
+            ? value.thumbnail ?? value.url ?? null
+            : typeof value === "string"
+                ? value
+                : null;
+        const label = isObject
+            ? value.name ?? value.filename ?? value.id ?? ""
+            : value;
+
+        const smllClss = ['w-8', 'h-8', '-my-2'];
+
+        return <img
+            onClick={e => {
+                if (e.currentTarget.classList.contains('w-24')) {
+                    e.currentTarget.classList.add(...smllClss);
+                    e.currentTarget.classList.remove('w-24', 'h-24');
+                } else {
+                    e.currentTarget.classList.remove(...smllClss);
+                    e.currentTarget.classList.add('w-24', 'h-24');
+                }
+            }}
+            src={preview}
+            alt={label || "media"}
+            title={label || "media"}
+            className={"object-contain cursor-pointer " + smllClss.join(' ')}
+        />
+        
+    },
+
 };
 
 

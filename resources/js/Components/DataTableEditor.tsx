@@ -1,11 +1,12 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { DateTime } from "luxon";
-import { Popover, PopoverButton, PopoverPanel, Transition } from "@headlessui/react";
-import { Fragment, useState, useEffect } from "react";
 import axios from "axios";
 import { DataTableFormatter } from "./DataTableFormatter";
 import modelAPI from "@hubjutsu/api/modelAPI";
 import { createPortal } from "react-dom";
+import { useDropzone } from "react-dropzone";
+import { v4 as uuidv4 } from "uuid";
+import { ArrowUpTrayIcon } from "@heroicons/react/24/outline";
 
 
 interface BaseEditorConfig {
@@ -41,12 +42,21 @@ export interface ModelEditorConfig extends BaseEditorConfig {
     debounce?: number;   // optional
 	columns?: Array<{ field: string; label: string, width?: string, formatter?: (row: Record<string, any>, field: string) => JSX.Element | string | Element; }>;
 }
+
+export interface MediaEditorConfig extends BaseEditorConfig {
+	type: "media";
+	accept?: string;
+	label?: string;
+	className?: string;
+	attributes?: Record<string, any>;
+}
 export type EditorConfig =
     | SelectEditorConfig
     | NumberEditorConfig
     | BooleanEditorConfig
     | DatetimeEditorConfig
-    | ModelEditorConfig;
+    | ModelEditorConfig
+    | MediaEditorConfig;
 
 
 interface DataTableEditorColumn {
@@ -96,6 +106,24 @@ type EditorRenderer = (props: {
 
 const editorClassName =
 	"text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md";
+
+const getMediaPreview = (value: any): string | null => {
+	if (!value) return null;
+	if (typeof value === "string") return value;
+	if (typeof value === "object") {
+		return value.thumbnail ?? value.url ?? null;
+	}
+	return null;
+};
+
+const getMediaLabel = (value: any): string => {
+	if (!value) return "";
+	if (typeof value === "string") return value;
+	if (typeof value === "object") {
+		return value.name ?? value.filename ?? value.id ?? "";
+	}
+	return "";
+};
 
 const numberEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, className }) => (
 	<input
@@ -160,6 +188,175 @@ const booleanEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, 
 			"after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600 dark:peer-checked:bg-primary-600 "
 		}></div>
   	</label>;
+};
+
+const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) => {
+	const editorProps = column.editor_properties ?? {};
+	const currentValue = row[column.field];
+	const [preview, setPreview] = useState<string | null>(getMediaPreview(currentValue));
+	const [label, setLabel] = useState<string>(getMediaLabel(currentValue));
+	const [progress, setProgress] = useState(0);
+	const [uploading, setUploading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		setPreview(getMediaPreview(currentValue));
+		setLabel(getMediaLabel(currentValue));
+	}, [currentValue]);
+
+	const uploadFile = useCallback(
+		async (file: File) => {
+			const chunkSize = 1024 * 512;
+			const uploadId = uuidv4();
+			const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
+
+			setUploading(true);
+			setError(null);
+			setProgress(0);
+
+			try {
+				for (let i = 0; i < totalChunks; i++) {
+					const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
+					const form = new FormData();
+					form.append("chunk", chunk);
+					form.append("upload_id", uploadId);
+					form.append("chunk_index", i.toString());
+					form.append("total_chunks", totalChunks.toString());
+					form.append("filename", file.name);
+
+					const response = await axios.post("/media/chunked-upload", form, {
+						onUploadProgress: (event) => {
+							if (!event.total) return;
+							const percent = Math.min(
+								100,
+								((i + event.loaded / event.total) / totalChunks) * 100
+							);
+							setProgress(percent);
+						},
+					});
+
+					if (response.data?.error) {
+						throw new Error(response.data.error);
+					}
+
+					if (response.data?.done) {
+						const uploaded = response.data.media;
+						setPreview(getMediaPreview(uploaded));
+						setLabel(getMediaLabel(uploaded));
+						setProgress(100);
+						onValueChange(uploaded);
+						break;
+					}
+				}
+			} catch (err) {
+				console.error(err);
+				setError("Upload fehlgeschlagen");
+			} finally {
+				setUploading(false);
+			}
+		},
+		[onValueChange]
+	);
+
+	const onDrop = useCallback(
+		(accepted: File[]) => {
+			const file = accepted[0];
+			if (!file) return;
+
+			const isImage = file.type.startsWith("image/");
+			const tempUrl = isImage ? URL.createObjectURL(file) : null;
+			if (tempUrl) {
+				setPreview(tempUrl);
+			} else {
+				setPreview(null);
+			}
+			setLabel(file.name);
+			setProgress(0);
+			setError(null);
+
+			uploadFile(file).finally(() => {
+				if (tempUrl) {
+					URL.revokeObjectURL(tempUrl);
+				}
+			});
+		},
+		[uploadFile]
+	);
+
+	const dropzoneAccept = useMemo(() => {
+		if (!editorProps.accept) return undefined;
+		if (typeof editorProps.accept === "string") {
+			return { [editorProps.accept]: [] };
+		}
+		return editorProps.accept;
+	}, [editorProps.accept]);
+
+	const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+		onDrop,
+		accept: dropzoneAccept,
+		multiple: false,
+		noKeyboard: true,
+		noClick: true,
+	});
+	const rootProps = getRootProps({
+		onClick: (event) => {
+			event.stopPropagation();
+			open();
+		},
+	});
+
+	return (
+		<div
+			className="flex items-center gap-3 text-xs text-gray-800 dark:text-gray-100"
+			tabIndex={0}
+			onKeyDown={(event) => onKeyDown(event)}
+		>
+			<div
+				{...rootProps}
+				className={`group relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed transition ${
+					isDragActive
+						? "border-primary-500 bg-primary-50"
+						: "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+				} ${uploading ? "opacity-70 cursor-wait" : "cursor-pointer"}`}
+				title={label || "Datei hochladen"}
+			>
+				<input {...getInputProps()} />
+				{preview ? (
+					<img
+						src={preview}
+						alt={label || "media"}
+						className="absolute inset-0 h-full w-full object-cover"
+					/>
+				) : (
+					<ArrowUpTrayIcon className="h-6 w-6 text-gray-400 group-hover:text-primary-500" />
+				)}
+				<div
+					className={`pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] font-medium text-white transition ${
+						isDragActive || uploading
+							? "bg-black/60 opacity-100"
+							: "bg-black/60 opacity-0 group-hover:opacity-100"
+					}`}
+				>
+					{uploading ? "Upload…" : "Ändern"}
+				</div>
+				{uploading && (
+					<div
+						className="absolute bottom-0 left-0 h-1 bg-primary-500 transition-all"
+						style={{ width: `${progress}%` }}
+					/>
+				)}
+			</div>
+
+			<div className="min-w-0 space-y-1">
+				{label && (
+					<span className="block truncate text-[11px] text-gray-600 dark:text-gray-300">
+						{label}
+					</span>
+				)}
+				{error && <span className="block text-[11px] text-red-500">{error}</span>}
+			</div>
+		</div>
+	);
 };
 
 
@@ -458,6 +655,7 @@ const editorMap: Record<string, EditorRenderer> = {
 	select: selectEditor,
 	boolean: booleanEditor,
 	model: ModelEditor,
+	media: mediaEditor,
 };
 
 const DataTableEditor: React.FC<DataTableEditorProps> = ({

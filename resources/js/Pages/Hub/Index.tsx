@@ -16,7 +16,18 @@ export default function HubIndex({extraColumns}: {extraColumns?: Column[]	}) {
 		>
 			<DataTable
 				routemodel="hub"
+				with={['logo']}
 				columns={[
+					{
+						field: "logo",
+						label: "Logo",
+						sortable: false,
+						filter: false,
+						frozen: true,
+						width: "100px",
+						editor: "media",
+						formatter: DataTableFormatter.media,
+					},
 					{
 						field: "name",
 						label: "Name",

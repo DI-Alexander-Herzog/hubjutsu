@@ -17,6 +17,7 @@ export default function UserIndex({extraColumns}: {extraColumns?: Column[]	}) {
 		>
 			<DataTable
 				routemodel="user"
+				with={['avatar']}
 				columns={[
 					{
 						field: "email",
@@ -31,6 +32,15 @@ export default function UserIndex({extraColumns}: {extraColumns?: Column[]	}) {
 								{row.email}
 							</DataTableLink>
 						),
+					},
+					{
+						field: "avatar",
+						label: "Avatar",
+						sortable: false,
+						filter: false,
+						formatter: DataTableFormatter.media,
+						editor: "media",
+						width: "100px",
 					},
 					{
 						field: "name",
