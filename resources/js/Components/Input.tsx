@@ -5,6 +5,7 @@ import { UseForm } from "@/types";
 import { useFormContext, useOptionalFormContext } from "@/Components/FormContext";
 import InputTextarea from "@/Components/InputTextarea";
 import MediaUpload from "./MediaUpload";
+import ColorInput from "./ColorInput";
 import ModelSelect from "./ModelSelect";
 import { Select } from "@headlessui/react";
 import InputSelect from "./InputSelect";
@@ -122,6 +123,17 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                 className={className}
                 label={undefined}
                 {...props}
+            />;
+        } else if (type == "color") {
+            return <ColorInput
+                id={id}
+                value={_useForm.data ? _useForm.data[inputName] : ''}
+                className={`mt-1 w-full ${className}`}
+                disabled={props.disabled}
+                onChange={(val) => _useForm.setData((data: { [key: string]: any }) => ({
+                    ...data,
+                    [inputName]: val
+                }))}
             />;
         } else if (type == "model") {
             return <ModelSelect

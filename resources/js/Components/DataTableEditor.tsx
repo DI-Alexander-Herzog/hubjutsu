@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback, useMemo } from "react"
 import { DateTime } from "luxon";
 import axios from "axios";
 import { DataTableFormatter } from "./DataTableFormatter";
+import ColorInput from "./ColorInput";
 import modelAPI from "@hubjutsu/api/modelAPI";
 import { createPortal } from "react-dom";
 import { useDropzone } from "react-dropzone";
@@ -387,6 +388,18 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 	);
 };
 
+const colorEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) => {
+	return (
+		<ColorInput
+			value={row[column.field] ?? ""}
+			className="w-full"
+			disabled={column.editor_properties?.disabled}
+			onKeyDown={onKeyDown}
+			onChange={(val) => onValueChange(val)}
+		/>
+	);
+};
+
 
 const defaultEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, className }) => (
 	<input
@@ -684,6 +697,7 @@ const editorMap: Record<string, EditorRenderer> = {
 	boolean: booleanEditor,
 	model: ModelEditor,
 	media: mediaEditor,
+	color: colorEditor,
 };
 
 const DataTableEditor: React.FC<DataTableEditorProps> = ({

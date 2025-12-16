@@ -55,6 +55,15 @@ export default function HubIndex({extraColumns}: {extraColumns?: Column[]	}) {
 						formatter: DataTableFormatter.boolean,
 						width: "300px",
 					},
+					{
+						field: "color_primary",
+						label: "Primary Color",
+						sortable: false,
+						filter: false,
+						editor: "color",
+						formatter: DataTableFormatter.color,
+						width: "100px",
+					},
 					...(extraColumns || [])
 				]}
 			></DataTable>
