@@ -88,7 +88,7 @@ export default function RoleAssignmentSection({
 				label: "User",
 				width: "220px",
 				frozen: true,
-				formatter: (row) => (
+				formatter: (row: Record<string, any>) => (
 					<div className="flex flex-col">
 						<span className="font-medium text-gray-900 dark:text-gray-50">
 							{valueOrFallback(row.user?.name, row.user?.email) ??
@@ -104,7 +104,7 @@ export default function RoleAssignmentSection({
 				field: "role_id",
 				label: "Role",
 				width: "160px",
-				formatter: (row) => (
+				formatter: (row: Record<string, any>) => (
 					<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
 						{row.role?.name ?? `#${row.role_id}`}
 					</span>
@@ -115,7 +115,7 @@ export default function RoleAssignmentSection({
 				label: "Assigned",
 				width: "140px",
 				sortable: true,
-				formatter: (row) => {
+				formatter: (row: Record<string, any>) => {
 					if (!row.created_at) return "-";
 					const date = new Date(row.created_at);
 					return date.toLocaleString();
