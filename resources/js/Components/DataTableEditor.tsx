@@ -39,6 +39,7 @@ export interface ModelEditorConfig extends BaseEditorConfig {
     type: "model";
     model: string;
     filter?: (row: Record<string, any>) => Record<string, any>;
+	with?: string[];
     valueField?: string;
     labelField: string;
     debounce?: number;   // optional
@@ -505,6 +506,7 @@ export const ModelEditor: EditorRenderer = ({
 				order: [[labelField, 1]],
                 search: debounced,
                 filter: cfg.filter ? cfg.filter(row) : {},
+				with: cfg.with ?? [],
             })
             .then((res) => {
                 setData(res.data);
@@ -625,6 +627,16 @@ export const ModelEditor: EditorRenderer = ({
                                 </tr>
                             ))}
 
+                        {(!loading && !data.length) && (
+                            <tr>
+                                <td
+                                    className="p-3 text-center opacity-60"
+                                    colSpan={cols.length}
+                                >
+                                    Keine Einträge gefunden.
+                                </td>
+                            </tr>
+                        )}
                         {loading && (
                             <tr>
                                 <td

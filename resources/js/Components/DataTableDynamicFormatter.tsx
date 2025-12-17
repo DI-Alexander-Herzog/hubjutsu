@@ -15,6 +15,11 @@ const DataTableDynamicFormatter = {
 			return <DataTableLink href={href}>{ DataTableFormatter.default(row, field) || "View"}</DataTableLink>;
 		};
 	},
+	model: (item:string) => {
+		return (row: Row, field: string) => {
+			return DataTableFormatter.default(row, item);
+		};
+	}
 };
 
 export { DataTableDynamicFormatter };

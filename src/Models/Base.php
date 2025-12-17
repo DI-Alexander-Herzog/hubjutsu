@@ -20,7 +20,8 @@ class Base extends Model {
     {
         $with = $request->get('with', []);
         foreach($with as $relation) {
-            if (method_exists($this, $relation)) {
+            $submodel = explode('.', $relation)[0];
+            if (method_exists($this, $submodel)) {
                 $this->loadMissing($relation);
             }
         }
