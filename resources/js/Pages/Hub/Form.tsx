@@ -1,12 +1,9 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { FormContext, FormContextSubmitButton } from '@/Components/FormContext';
 import Input from '@/Components/Input';
 import FormContainer from '@/Components/FormContainer';
 import FormSection from '@/Components/FormSection';
 import { Models } from '@/types/models';
 import Separator from '@/Components/Separator';
-import { router } from '@inertiajs/react';
-import MediaUpload from '@/Components/MediaUpload';
 
 export default function HubForm({ disabled=false, hub }: { disabled?: boolean; hub: Models.Hub }) {
 

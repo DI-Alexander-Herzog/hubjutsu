@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\HubjutsuApiAppDataController;
 use App\Http\Controllers\Api\HubjutsuApiController;
+use App\Http\Controllers\Api\RoleAssignmentController as ApiRoleAssignmentController;
 use App\Http\Controllers\Api\HubjutsuApiTokenController;
 
 Route::name('api.token.')->group(function() {
@@ -28,10 +29,12 @@ Route::middleware(['auth:sanctum'])->name('api.')->group(function() {
         Route::delete('/{model}/{id}/force', [HubjutsuApiController::class, 'forceDelete'])->name('forceDelete');
         Route::delete('/{model}/{id}', [HubjutsuApiController::class, 'delete'])->name('delete');
     });
+
+    Route::name('roleassignments.')->prefix('role-assignments')->group(function () {
+        Route::get('/stack', [ApiRoleAssignmentController::class, 'stack'])->name('stack');
+    });
 });
 
 Route::any('/{any}', function() {
     return response()->json(['error' => 'Not Found'], 404);
 })->where('any', '.*');
-
-
