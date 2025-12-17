@@ -1,10 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 
-export default function UserHubRoleEdit() {
+export default function RoleAssignmentCreate() {
     return (
         <AuthenticatedLayout
-            title="UserHubRole"
+            title="RoleAssignment"
         >
 
             <div className="py-12">

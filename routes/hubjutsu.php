@@ -19,7 +19,7 @@ use App\Http\Controllers\HubController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\UserHubRoleController;
+use App\Http\Controllers\RoleAssignmentController;
 use App\Services\HubManager;
 use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
@@ -37,13 +37,13 @@ Route::get('/favicon.ico', function (Request $request, HubManager $hubManager) {
 
 Route::name('admin.')->prefix('admin')->group(function() {
     Route::middleware(['auth', 'verified'])->group(function () {
-        Route::get('/userhubroles', [UserHubRoleController::class, 'index'])->name('userhubroles.index');
-        Route::get('/userhubroles/create', [UserHubRoleController::class, 'create'])->name('userhubroles.create');
-        Route::post('/userhubroles', [UserHubRoleController::class, 'store'])->name('userhubroles.store');
-        Route::get('/userhubroles/{userhubrole}', [UserHubRoleController::class, 'show'])->name('userhubroles.show');
-        Route::get('/userhubroles/{userhubrole}/edit', [UserHubRoleController::class, 'edit'])->name('userhubroles.edit');
-        Route::addRoute(['PUT', 'POST', 'PATCH'], '/userhubroles/{userhubrole}', [UserHubRoleController::class, 'update'])->name('userhubroles.update');
-        Route::delete('/userhubroles/{userhubrole}', [UserHubRoleController::class, 'destroy'])->name('userhubroles.destroy');
+        Route::get('/role-assignments', [RoleAssignmentController::class, 'index'])->name('roleassignments.index');
+        Route::get('/role-assignments/create', [RoleAssignmentController::class, 'create'])->name('roleassignments.create');
+        Route::post('/role-assignments', [RoleAssignmentController::class, 'store'])->name('roleassignments.store');
+        Route::get('/role-assignments/{roleassignment}', [RoleAssignmentController::class, 'show'])->name('roleassignments.show');
+        Route::get('/role-assignments/{roleassignment}/edit', [RoleAssignmentController::class, 'edit'])->name('roleassignments.edit');
+        Route::addRoute(['PUT', 'POST', 'PATCH'], '/role-assignments/{roleassignment}', [RoleAssignmentController::class, 'update'])->name('roleassignments.update');
+        Route::delete('/role-assignments/{roleassignment}', [RoleAssignmentController::class, 'destroy'])->name('roleassignments.destroy');
     });
 
     Route::middleware(['auth', 'verified'])->group(function () {
@@ -141,4 +141,3 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
                 ->name('logout');
 });
-

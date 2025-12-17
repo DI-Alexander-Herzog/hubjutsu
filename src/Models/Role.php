@@ -26,9 +26,9 @@ class Role extends Base
         return $this->hasMany(RolePermission::class);
     }
 
-    public function userHubs()
+    public function roleAssignments()
     {
-        return $this->hasMany(UserHubRole::class, 'role_id', 'id');
+        return $this->hasMany(\App\Models\RoleAssignment::class, 'role_id', 'id');
     }
 
 }

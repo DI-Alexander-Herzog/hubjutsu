@@ -3,8 +3,8 @@
 
 namespace AHerzog\Hubjutsu\App\Auth;
 
-use AHerzog\Hubjutsu\Models\UserHubRole;
 use App\Models\Hub;
+use App\Models\RoleAssignment;
 use App\Models\User;
 
 class Permission {
@@ -73,11 +73,16 @@ class Permission {
 
     static function getPermissionForUserAndHub(User $user, Hub $hub) {
         $permissions = [];
-        UserHubRole::with('role.permissions')->where('user_id', $user->id)->where('hub_id', $hub->id)->get()->each(function($userHubRole) use (&$permissions) {
-            $userHubRole->role->permissions->each(function($permission) use (&$permissions) {
-                $permissions[$permission->name] = true;
+        RoleAssignment::with('role.permissions')
+            ->where('user_id', $user->id)
+            ->where('scope_type', $hub->getMorphClass())
+            ->where('scope_id', $hub->getKey())
+            ->get()
+            ->each(function ($assignment) use (&$permissions) {
+                $assignment->role->permissions->each(function ($permission) use (&$permissions) {
+                    $permissions[$permission->name] = true;
+                });
             });
-        });
 
         return $permissions;
     }

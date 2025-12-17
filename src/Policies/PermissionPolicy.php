@@ -10,7 +10,6 @@ use App\Models\Base;
 use App\Models\Hub;
 use App\Models\RolePermission;
 use App\Models\User;
-use App\Models\UserHubRole;
 
 class PermissionPolicy {
 
@@ -30,13 +29,13 @@ class PermissionPolicy {
             return null;
         }
 
-        return RolePermission::wherePermission($modelClass.'::'.$action)->whereHas('role', function($q) use ($user, $hub) {
-            $q->whereHas('userHubs', function($q) use ($user, $hub) {
-                $q->where('user_id', $user->id)->where('hub_id', $hub->id);
-            });
-        })->count();
-
-        return 1;
+        return RolePermission::wherePermission($modelClass.'::'.$action)
+            ->whereHas('role.roleAssignments', function ($query) use ($user, $hub) {
+                $query->where('user_id', $user->id)
+                    ->where('scope_type', $hub->getMorphClass())
+                    ->where('scope_id', $hub->getKey());
+            })
+            ->exists();
     }
     
 }

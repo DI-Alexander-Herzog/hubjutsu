@@ -3,6 +3,7 @@
 namespace AHerzog\Hubjutsu\Models;
 
 use AHerzog\Hubjutsu\DTO\Colors;
+use AHerzog\Hubjutsu\Models\Traits\HasRoleAssignments;
 use AHerzog\Hubjutsu\Models\Traits\MediaTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Base;
@@ -10,8 +11,9 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Hub extends Base
 {
-    use HasFactory; //HasTimestamp
+    use HasFactory;
     use MediaTrait;
+    use HasRoleAssignments;
 
     protected $fillable = [
         'created_at',
@@ -386,6 +388,11 @@ class Hub extends Base
 
     public function setLogoDark(Media $media) {
         $this->setMedia($media, 'logoDark');
+    }
+
+    public function conventions()
+    {
+        return $this->hasMany(\App\Models\Convention::class, 'hub_id', 'id');
     }
 
 }
