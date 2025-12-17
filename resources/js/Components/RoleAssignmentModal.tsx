@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import Modal from "@/Components/Modal";
+import FormSection from "@/Components/FormSection";
 import DataTable from "@/Components/DataTable";
 import type { Column } from "@/Components/DataTable";
 
@@ -33,10 +33,9 @@ type StackResponse = {
 	}>;
 };
 
-interface RoleAssignmentModalProps {
-	open: boolean;
-	onClose: () => void;
-	scope: ScopeConfig;
+interface RoleAssignmentSectionProps {
+	scope?: ScopeConfig;
+	disabled?: boolean;
 }
 
 const valueOrFallback = (value?: string | null, fallback?: string | null) => {
@@ -45,17 +44,18 @@ const valueOrFallback = (value?: string | null, fallback?: string | null) => {
 	return null;
 };
 
-export default function RoleAssignmentModal({
-	open,
-	onClose,
+export default function RoleAssignmentSection({
 	scope,
-}: RoleAssignmentModalProps) {
+	disabled = false,
+}: RoleAssignmentSectionProps) {
 	const [stackData, setStackData] = useState<StackResponse | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const hasScope = !!scope?.type && !!scope?.id;
+
 	useEffect(() => {
-		if (!open) return;
+		if (!hasScope) return;
 
 		setLoading(true);
 		setError(null);
@@ -63,8 +63,8 @@ export default function RoleAssignmentModal({
 		axios
 			.get(route("api.roleassignments.stack"), {
 				params: {
-					scope_type: scope.type,
-					scope_id: scope.id,
+					scope_type: scope!.type,
+					scope_id: scope!.id,
 				},
 			})
 			.then((response) => {
@@ -79,34 +79,22 @@ export default function RoleAssignmentModal({
 				);
 			})
 			.finally(() => setLoading(false));
-	}, [open, scope.type, scope.id]);
+	}, [hasScope, scope?.type, scope?.id]);
 
-	const scopeLabel = stackData?.scope?.label ?? scope.label ?? "";
-
-	const columns = useMemo<Column[]>(
-		() => [
+	const columns = useMemo<Column[]>(() => {
+		const baseColumns: Column[] = [
 			{
 				field: "user_id",
 				label: "User",
 				width: "220px",
 				frozen: true,
-				editor: {
-					type: "model",
-					model: "user",
-					labelField: "name",
-					with: ["push_tokens"],
-					columns: [
-						{ field: "name", label: "Name", width: "60%" },
-						{ field: "email", label: "E-Mail", width: "40%" },
-					],
-				},
 				formatter: (row) => (
 					<div className="flex flex-col">
 						<span className="font-medium text-gray-900 dark:text-gray-50">
 							{valueOrFallback(row.user?.name, row.user?.email) ??
 								`#${row.user_id}`}
 						</span>
-								{row.user?.email && (
+						{row.user?.email && (
 							<span className="text-xs text-gray-500">{row.user.email}</span>
 						)}
 					</div>
@@ -116,12 +104,6 @@ export default function RoleAssignmentModal({
 				field: "role_id",
 				label: "Role",
 				width: "160px",
-				editor: {
-					type: "model",
-					model: "role",
-					labelField: "name",
-					columns: [{ field: "name", label: "Role" }],
-				},
 				formatter: (row) => (
 					<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
 						{row.role?.name ?? `#${row.role_id}`}
@@ -139,29 +121,60 @@ export default function RoleAssignmentModal({
 					return date.toLocaleString();
 				},
 			},
-		],
-		[]
-	);
+		];
 
-	const filters = useMemo(
-		() => ({
+		if (!disabled) {
+			baseColumns[0].editor = {
+				type: "model",
+				model: "user",
+				labelField: "name",
+				with: ["push_tokens"],
+				columns: [
+					{ field: "name", label: "Name", width: "60%" },
+					{ field: "email", label: "E-Mail", width: "40%" },
+				],
+			};
+			baseColumns[1].editor = {
+				type: "model",
+				model: "role",
+				labelField: "name",
+				columns: [{ field: "name", label: "Role" }],
+			};
+		}
+
+		return baseColumns;
+	}, [disabled]);
+
+	const filters = useMemo(() => {
+		if (!scope) return {};
+		return {
 			scope_type: scope.type,
 			scope_id: scope.id,
-		}),
-		[scope.type, scope.id]
-	);
+		};
+	}, [scope]);
 
-	return (
-		<Modal
-			show={open}
-			onClose={onClose}
-			maxWidth="2xl"
-			title="Role assignments"
-			subtitle={
-				scopeLabel
-					? `${scopeLabel} • ${stackData?.scope?.type_label ?? ""}`
-					: stackData?.scope?.type_label
-			}
+	if (!hasScope) {
+		return (
+			<FormSection
+				title="Rollen"
+				subtitle="Rechtevergabe"
+				className="mt-6"
+			>
+				<p className="text-sm text-gray-500">
+					Die Rollenverwaltung steht zur Verfügung, sobald dieser Datensatz
+					gespeichert wurde.
+				</p>
+			</FormSection>
+		);
+	}
+
+	const scopeLabel = stackData?.scope?.label ?? scope?.label ?? "";
+
+	return (		
+		<FormSection
+			title="Rollen"
+			subtitle="Rechtevergabe auf diesem Scope"
+			className="mt-6"
 		>
 			<div className="space-y-4">
 				{error && (
@@ -182,7 +195,7 @@ export default function RoleAssignmentModal({
 						</div>
 						<div className="text-right">
 							<p className="text-xs uppercase tracking-wide text-gray-500">
-								Direct assignments
+								Direkte Zuordnungen
 							</p>
 							<p className="text-2xl font-semibold text-gray-900 dark:text-gray-50">
 								{stackData?.direct_count ?? "—"}
@@ -235,27 +248,32 @@ export default function RoleAssignmentModal({
 						</div>
 					) : (
 						<p className="text-sm text-gray-500">
-							No inherited roles for this scope.
+							Keine geerbten Rollen für diesen Scope.
 						</p>
 					)}
 				</div>
 
 				<div className="rounded-md border border-gray-200 p-1 dark:border-gray-700">
 					<DataTable
-						key={`${scope.type}:${scope.id}`}
+						key={`${scope!.type}:${scope!.id}:${disabled}`}
 						routemodel="role-assignment"
 						with={["user", "role"]}
 						columns={columns}
 						filters={filters}
 						height="360px"
 						defaultSortField={[["created_at", -1]]}
-						newRecord={{
-							scope_type: scope.type,
-							scope_id: scope.id,
-						}}
+						newRecord={
+							disabled
+								? false
+								: {
+										scope_type: scope!.type,
+										scope_id: scope!.id,
+								  }
+						}
+						disableDelete={disabled}
 					/>
 				</div>
 			</div>
-		</Modal>
+		</FormSection>
 	);
 }
