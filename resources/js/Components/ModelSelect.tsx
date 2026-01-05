@@ -22,6 +22,7 @@ interface ModelSelectProps {
 	className?: string;
 	value?: any;
 	model: string;
+	initialObject?: Record<string, any>;
 	labelField?: string;
 	valueField?: string;
 	placeholder?: string;
@@ -47,6 +48,7 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 	className = "",
 	value,
 	model,
+	initialObject,
 	labelField = "name",
 	valueField = "id",
 	placeholder = "Bitte auswählen…",
@@ -119,11 +121,18 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 		columns ??
 		[{ field: labelField, label: model, width: "100%" }];
 
+	const initialObjectLabel = initialObject
+		? initialObject[labelField] ?? initialObject.name
+		: null;
+
 	const selectedRow = data.find((row) => row[valueField] === resolvedValue);
 	const selectedLabel =
-		selectedRow?.[labelField] ??
-		fallbackLabel ??
-		(resolvedValue ?? "");
+		(
+			selectedRow?.[labelField] ??
+			fallbackLabel ??
+			
+			initialObjectLabel
+		).toString();
 
 	const handleSelect = (row: Record<string, any>) => {
 		onChange(returnObject ? row : row[valueField]);

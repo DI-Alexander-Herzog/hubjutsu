@@ -25,6 +25,10 @@ class Base extends Model {
                 $this->loadMissing($relation);
             }
         }
+        $withCount = $request->get('withCount', []);
+        foreach($withCount as $count) {
+            $this->withCount($count);
+        }
         return $this;
     }
 
