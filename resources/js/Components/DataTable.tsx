@@ -57,7 +57,7 @@ interface Row {
 interface DataTableAction {
 	label: string;
 	icon?: JSX.Element |  keyof typeof iconMap ;
-	onClick: (selectedRecords: Row[]) => void;
+	onClick: (selectedRecords: Row[], reload: () => void) => void;
 	variant?: "primary" | "secondary" | "danger" | "link";
 	disabled?: boolean | ((selectedRecords: Row[]) => boolean);
 }
@@ -1006,7 +1006,7 @@ const DataTable: React.FC<DataTableProps> = ({
 							return (
 								<ButtonComponent
 									key={idx}
-									onClick={() => action.onClick(selectedRecords)}
+									onClick={() => action.onClick(selectedRecords, loadLazyData)}
 									disabled={isDisabled}
 									className={classNames("text-xs flex items-center gap-2 px-2 py-1", isDisabled && 'opacity-50 cursor-not-allowed')}
 								>
