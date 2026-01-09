@@ -156,6 +156,11 @@ export default function Input({ className = '', label='', inputId = '', inputNam
             }
             props.step = props.step || 1;
         }
+        if (type == "date") {
+            if (value) {
+                value = DateTime.fromISO(value, { zone: "utc" }).setZone("Europe/Vienna").toFormat("yyyy-MM-dd");
+            }
+        }
 
         const typemap: Record<string, string> = {
             datetime: "datetime-local"

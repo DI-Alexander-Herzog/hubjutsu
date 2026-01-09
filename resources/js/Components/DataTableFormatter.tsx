@@ -27,7 +27,7 @@ const DataTableFormatter = {
 
         const checked = row[field];
         return <label className={"inline-flex items-center cursor-pointer align-middle"}>
-            <input type="checkbox" value="1" className="sr-only peer" defaultChecked={checked} />
+            <input type="checkbox" value="1" className="sr-only peer" checked={checked} readOnly/>
             <div className={
                 " relative w-9 h-5 bg-gray-200 " +
                 "rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white " + 
