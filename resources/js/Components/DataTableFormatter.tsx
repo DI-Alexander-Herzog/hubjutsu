@@ -56,6 +56,17 @@ const DataTableFormatter = {
             : JSON.stringify(row[field]);
     },
 
+    date: (row: Row, field: string) => {
+        if (!row[field]) return "";
+        const date = DateTime.fromISO(row[field], { zone: "utc" }).setZone(
+            "Europe/Vienna"
+        );
+
+        return date.isValid
+            ? date.toLocaleString(DateTime.DATE_MED)
+            : JSON.stringify(row[field]);
+    },
+
     base64image: (row: Row, field: string) => {
         if (!row[field]) return "";
 

@@ -31,6 +31,9 @@ export interface BooleanEditorConfig extends BaseEditorConfig {
     type: "boolean";
 }
 
+export interface DateEditorConfig extends BaseEditorConfig {
+    type: "date";
+}
 export interface DatetimeEditorConfig extends BaseEditorConfig {
     type: "datetime";
 }
@@ -57,6 +60,7 @@ export type EditorConfig =
     | SelectEditorConfig
     | NumberEditorConfig
     | BooleanEditorConfig
+	| DateEditorConfig
     | DatetimeEditorConfig
     | ModelEditorConfig
     | MediaEditorConfig;
@@ -143,14 +147,35 @@ const numberEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, c
 	/>
 );
 
-const datetimeEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, className }) => (
-	<input
+const datetimeEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, className }) => {
+	const { type: _ignoredType, ...editorPropertiesWithoutType } = column.editor_properties ?? {};
+	return <input
 		type="datetime-local"
 		defaultValue={
 			row[column.field]
 				? DateTime.fromISO(row[column.field], { zone: "utc" })
 					.setZone("Europe/Vienna")
 					.toFormat("yyyy-MM-dd'T'HH:mm:ss")
+				: ""
+		}
+		onKeyDown={(event) => onKeyDown(event)}
+		className={className}
+		{...editorPropertiesWithoutType}
+		onChange={(event) =>
+			onValueChange(event.target.value)
+		}
+	/>
+};
+
+
+const dateEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, className }) => (
+	<input
+		type="date"
+		defaultValue={
+			row[column.field]
+				? DateTime.fromISO(row[column.field], { zone: "utc" })
+					.setZone("Europe/Vienna")
+					.toFormat("yyyy-MM-dd")
 				: ""
 		}
 		onKeyDown={(event) => onKeyDown(event)}
@@ -705,6 +730,7 @@ export const ModelEditor: EditorRenderer = ({
 const editorMap: Record<string, EditorRenderer> = {
 	number: numberEditor,
 	datetime: datetimeEditor,
+	date: dateEditor,
 	select: selectEditor,
 	boolean: booleanEditor,
 	model: ModelEditor,
