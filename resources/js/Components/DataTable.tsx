@@ -9,7 +9,8 @@ import {
 	TrashIcon,
 	CheckIcon,
 	PlusIcon,
-	FunnelIcon
+	FunnelIcon,
+	EllipsisHorizontalIcon
 } from "@heroicons/react/20/solid";
 import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
 import classNames from "classnames";
@@ -75,6 +76,7 @@ interface DataTableProps {
 	useGlobalSearch?: boolean;
 	defaultSortField?: string | Array<[string, number]>;
 	actions?: DataTableAction[];
+	condensed?: boolean;
 }
 
 interface SearchState {
@@ -100,8 +102,10 @@ const DataTable: React.FC<DataTableProps> = ({
 	useGlobalSearch = true,
 	defaultSortField = undefined,
 	actions = [],
+	condensed = false,
 }) => {
 	const tableRef = useRef<HTMLTableElement>(null);
+	const actionMenuRef = useRef<HTMLDivElement>(null);
 
 	const { t } = useLaravelReactI18n();
 
@@ -138,6 +142,8 @@ const DataTable: React.FC<DataTableProps> = ({
 	const [totalRecords, setTotalRecords] = useState(0);
 	const [records, setRecords] = useState<Row[]>([]);
 	const [selectedRecords, setSelectedRecords] = useState<Row[]>([]);
+	const [actionMenuOpen, setActionMenuOpen] = useState(false);
+	const [pageInput, setPageInput] = useState("1");
 	const [error, setError] = useState<null | string | any>(null);
 	const [editingRecord, setEditingRecord] = useState<{ [key: number]: Row }>(
 		{}
@@ -192,6 +198,22 @@ const DataTable: React.FC<DataTableProps> = ({
 			return { ...prev, search: query, first: 0, page: 1 };
 		});
 	}, [query, useGlobalSearch]);
+
+	useEffect(() => {
+		setPageInput(String(searchState.page));
+	}, [searchState.page]);
+
+	useEffect(() => {
+		if (!actionMenuOpen) return;
+		const handleClick = (event: MouseEvent) => {
+			if (!actionMenuRef.current) return;
+			if (!actionMenuRef.current.contains(event.target as Node)) {
+				setActionMenuOpen(false);
+			}
+		};
+		document.addEventListener("click", handleClick);
+		return () => document.removeEventListener("click", handleClick);
+	}, [actionMenuOpen]);
 
 	const perPageList = [2, 10, 15, 20, 50, 100, 1000];
 	if (perPageList.indexOf(perPage) === -1) {
@@ -341,6 +363,21 @@ const DataTable: React.FC<DataTableProps> = ({
 			page: newPage,
 			first: (newPage - 1) * prev.rows,
 		}));
+	};
+
+	const totalPages = Math.max(1, Math.ceil(totalRecords / searchState.rows));
+
+	const commitPageInput = () => {
+		const parsed = Number(pageInput);
+		if (!Number.isFinite(parsed)) {
+			setPageInput(String(searchState.page));
+			return;
+		}
+		const next = Math.min(Math.max(Math.round(parsed), 1), totalPages);
+		setPageInput(String(next));
+		if (next !== searchState.page) {
+			onPageChange(next);
+		}
 	};
 
 	const focusEditor = (target: any, field: string) => {
@@ -759,7 +796,7 @@ const DataTable: React.FC<DataTableProps> = ({
 
 			{/* 📌 Paginierung */}
 			<div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 px-4 py-2 dark:border-gray-700 text-xs">
-				<div className="flex items-center gap-4">
+				<div className="flex items-center gap-2">
 
 					<div className="flex items-center gap-1">
 						<span className="text-gray-600 dark:text-gray-400">
@@ -790,231 +827,391 @@ const DataTable: React.FC<DataTableProps> = ({
 							<ChevronDoubleLeftIcon className="size-2" />
 						</SecondaryButton>
 
-						<SecondaryButton
-							onClick={() => onPageChange(Math.max(searchState.page - 1, 1))}
-							disabled={searchState.page === 1}
-							className="text-xs px-2 py-2"
-						>
-							<ChevronLeftIcon className="size-2" />
-						</SecondaryButton>
+						{condensed ? (
+							<div className="flex items-center gap-1">
+								<input
+									type="number"
+									min={1}
+									max={totalPages}
+									value={pageInput}
+									onChange={(e) => setPageInput(e.target.value)}
+									onBlur={commitPageInput}
+									onKeyDown={(event) => {
+										if (event.key === "Enter") {
+											commitPageInput();
+										}
+									}}
+									className="w-14 rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-primary focus:ring-primary"
+								/>
+								<span className="text-xs text-gray-400">/ {totalPages}</span>
+							</div>
+						) : (
+							<>
+								<SecondaryButton
+									onClick={() => onPageChange(Math.max(searchState.page - 1, 1))}
+									disabled={searchState.page === 1}
+									className="text-xs px-2 py-2"
+								>
+									<ChevronLeftIcon className="size-2" />
+								</SecondaryButton>
 
-						{(() => {
-							const totalPages = Math.ceil(totalRecords / searchState.rows);
-							const currentPage = searchState.page;
-							const pages = [];
+								{(() => {
+									const currentPage = searchState.page;
+									const pages = [];
 
-							pages.push(1);
+									pages.push(1);
 
-							let start = Math.max(2, currentPage - 1);
-							let end = Math.min(totalPages - 1, currentPage + 1);
+									let start = Math.max(2, currentPage - 1);
+									let end = Math.min(totalPages - 1, currentPage + 1);
 
-							// Adjust range for edge cases
-							if (currentPage <= 3) {
-								end = Math.min(totalPages - 1, 4);
-							} else if (currentPage >= totalPages - 2) {
-								start = Math.max(2, totalPages - 3);
-							}
+									// Adjust range for edge cases
+									if (currentPage <= 3) {
+										end = Math.min(totalPages - 1, 4);
+									} else if (currentPage >= totalPages - 2) {
+										start = Math.max(2, totalPages - 3);
+									}
 
-							if (start > 2) {
-								pages.push("...");
-							}
+									if (start > 2) {
+										pages.push("...");
+									}
 
-							for (let i = start; i <= end; i++) {
-								if (i > 1 && i < totalPages) {
-									pages.push(i);
-								}
-							}
+									for (let i = start; i <= end; i++) {
+										if (i > 1 && i < totalPages) {
+											pages.push(i);
+										}
+									}
 
-							if (end < totalPages - 1) {
-								pages.push("...");
-							}
+									if (end < totalPages - 1) {
+										pages.push("...");
+									}
 
-							if (totalPages > 1) {
-								pages.push(totalPages);
-							}
+									if (totalPages > 1) {
+										pages.push(totalPages);
+									}
 
-							return pages.map((page, index) => (
-								<React.Fragment key={index}>
-									{page === "..." ? (
-										<span className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">
-											...
-										</span>
-									) : (
-										<button
-											onClick={() => onPageChange(page as number)}
-											className={classNames(
-												"px-2 py-1 text-xs rounded border transition-all duration-200",
-												currentPage === page
-													? "bg-primary text-white border-primary"
-													: "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:text-gray-900 dark:hover:text-gray-100"
+									return pages.map((page, index) => (
+										<React.Fragment key={index}>
+											{page === "..." ? (
+												<span className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">
+													...
+												</span>
+											) : (
+												<button
+													onClick={() => onPageChange(page as number)}
+													className={classNames(
+														"px-2 py-1 text-xs rounded border transition-all duration-200",
+														currentPage === page
+															? "bg-primary text-white border-primary"
+															: "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:text-gray-900 dark:hover:text-gray-100"
+													)}
+												>
+													{page}
+												</button>
 											)}
-										>
-											{page}
-										</button>
-									)}
-								</React.Fragment>
-							));
-						})()}
+										</React.Fragment>
+									));
+								})()}
+
+								<SecondaryButton
+									onClick={() => onPageChange(searchState.page + 1)}
+									disabled={searchState.page >= totalPages}
+									className="text-xs px-2 py-2"
+								>
+									<ChevronRightIcon className="size-2" />
+								</SecondaryButton>
+							</>
+						)}
 
 						<SecondaryButton
-							onClick={() => onPageChange(searchState.page + 1)}
-							disabled={
-								searchState.page >= Math.ceil(totalRecords / searchState.rows)
-							}
-							className="text-xs px-2 py-2"
-						>
-							<ChevronRightIcon className="size-2" />
-						</SecondaryButton>
-
-						<SecondaryButton
-							onClick={() =>
-								onPageChange(Math.ceil(totalRecords / searchState.rows))
-							}
-							disabled={
-								searchState.page >= Math.ceil(totalRecords / searchState.rows)
-							}
+							onClick={() => onPageChange(totalPages)}
+							disabled={searchState.page >= totalPages}
 							className="text-xs px-2 py-2"
 						>
 							<ChevronDoubleRightIcon className="size-2" />
 						</SecondaryButton>
 					</nav>
 
-					<div className="flex items-center gap-4">
-						{columns.length > 0 && (
-							<SecondaryButton
-								onClick={() => setShowFilterPanel(!showFilterPanel)}
-								className={classNames(
-									"inline-flex items-center justify-center text-xs px-3 py-2 min-w-[100px]",
-									showFilterPanel
-										? "bg-primary "
-										: hasActiveFilters
-										? "bg-primary-50 dark:bg-primary-900 text-primary border-primary"
-										: "",
-									"gap-2 relative"
-								)}
-							>
-								<FunnelIcon aria-hidden="true" className="size-4 mr-1" />
-								Filter
-								{hasActiveFilters && (
-									<span className="ml-2 bg-red-500 text-white text-[10px] rounded-full px-1.5 min-w-[16px] h-4 flex items-center justify-center">
-										{Object.keys(activeFilters).length}
-									</span>
-								)}
-							</SecondaryButton>
-						)}
+					<div className="flex items-center gap-2">
+						{condensed ? (
+							<div className="relative" ref={actionMenuRef}>
+								<SecondaryButton
+									onClick={() => setActionMenuOpen((open) => !open)}
+									className="flex items-center gap-1 text-xs px-2 py-2"
+								>
+									<EllipsisHorizontalIcon className="size-4" />
+								</SecondaryButton>
+								{actionMenuOpen && (
+									<div className="absolute right-0 z-20 mt-2 w-48 rounded-md border border-gray-200 bg-white py-1 text-xs text-gray-700 shadow-lg">
+										{columns.length > 0 && (
+											<button
+												onClick={() => {
+													setShowFilterPanel(!showFilterPanel);
+													setActionMenuOpen(false);
+												}}
+												className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
+											>
+												<FunnelIcon className="size-4" />
+												<span>
+													Filter
+													{hasActiveFilters ? ` (${Object.keys(activeFilters).length})` : ""}
+												</span>
+											</button>
+										)}
+										<button
+											onClick={() => {
+												loadLazyData();
+												setActionMenuOpen(false);
+											}}
+											className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
+										>
+											<ArrowPathIcon className={classNames("size-4", { "animate-spin": loading })} />
+											<span>Reload</span>
+										</button>
 
-						<SecondaryButton
-							onClick={() => loadLazyData()}
-							className="flex items-center gap-2 text-xs px-2 py-2"
-						>
-							<ArrowPathIcon
-								aria-hidden="true"
-								className={classNames("size-2", { "animate-spin": loading })}
-							/>
-						</SecondaryButton>
-
-						{!disableDelete &&
-							selectedRecords.length > 0 &&
-							Object.keys(editingRecord).length === 0 && (
-								<DangerButton
-									onClick={() => {
-										if (
-											!confirm(
-												"Are you sure you want to delete the selected records?"
-											)
-										)
-											return;
-										// iterate through selected records and delete them
-										const deletedRecordIndex: number[] = [];
-										selectedRecords.forEach((record, idx) => {
-											const index = records.findIndex(
-												(r) => r[datakey] === record[datakey]
-											);
-											if (index !== -1) {
-												axios
-													.delete(
-														route("api.model.delete", {
-															model: routemodel,
-															id: record[datakey],
-														})
-													)
-													.then(() => {
-														// on success, remove record from records
-														setRecords((records) => {
+										{!disableDelete &&
+											selectedRecords.length > 0 &&
+											Object.keys(editingRecord).length === 0 && (
+												<button
+													onClick={() => {
+														if (
+															!confirm(
+																"Are you sure you want to delete the selected records?"
+															)
+														)
+															return;
+														selectedRecords.forEach((record) => {
 															const index = records.findIndex(
 																(r) => r[datakey] === record[datakey]
 															);
 															if (index !== -1) {
-																records.splice(index, 1);
+																axios
+																	.delete(
+																		route("api.model.delete", {
+																			model: routemodel,
+																			id: record[datakey],
+																		})
+																	)
+																	.then(() => {
+																		setRecords((records) => {
+																			const index = records.findIndex(
+																				(r) => r[datakey] === record[datakey]
+																			);
+																			if (index !== -1) {
+																				records.splice(index, 1);
+																			}
+																			return [...records];
+																		});
+																		toggleRowSelection(record, false);
+																		setTotalRecords((prev) => prev - 1);
+																	})
+																	.catch((error) => {
+																		setError(error);
+																	});
 															}
-															return [...records];
 														});
-														toggleRowSelection(record, false);
-														setTotalRecords((prev) => prev - 1);
-													})
-													.catch((error) => {
-														setError(error);
+														setActionMenuOpen(false);
+													}}
+													className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50"
+												>
+													<TrashIcon className="size-4" />
+													<span>Delete</span>
+												</button>
+											)}
+
+										{Object.keys(editingRecord).length > 0 && (
+											<button
+												onClick={() => {
+													Object.keys(editingRecord).forEach((id) => {
+														const row_ofs = records.findIndex(
+															(r) => r[datakey] === editingRecord[Number(id)][datakey]
+														);
+														if (row_ofs !== -1) saveRow(Number(id), row_ofs);
 													});
-											}
-										});
-									}}
-									className="text-xs flex items-center gap-2 px-2 py-1 "
+													setActionMenuOpen(false);
+												}}
+												className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
+											>
+												<CheckIcon className="size-4" />
+												<span>{t("Save")}</span>
+											</button>
+										)}
+
+										{newRecord !== false && (
+											<button
+												onClick={() => {
+													handleNewRecord();
+													setActionMenuOpen(false);
+												}}
+												className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
+											>
+												<PlusIcon className="size-4" />
+												<span>New</span>
+											</button>
+										)}
+
+										{actions?.length > 0 && actions.map((action, idx) => {
+											const isDisabled = (typeof action.disabled === "function" ? action.disabled(selectedRecords) : action.disabled) ?? selectedRecords.length === 0;
+											return (
+												<button
+													key={idx}
+													onClick={() => {
+														if (isDisabled) return;
+														action.onClick(selectedRecords, loadLazyData);
+														setActionMenuOpen(false);
+													}}
+													disabled={isDisabled}
+													className={classNames(
+														"flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50",
+														isDisabled && "cursor-not-allowed opacity-50"
+													)}
+												>
+													{action.icon && (
+														<span aria-hidden="true" className="size-4">
+															{typeof action.icon == "string" ? <IconLibrary name={action.icon} />: action.icon }
+														</span>
+													)}
+													<span>{action.label}</span>
+												</button>
+											);
+										})}
+									</div>
+								)}
+							</div>
+						) : (
+							<>
+								{columns.length > 0 && (
+									<SecondaryButton
+										onClick={() => setShowFilterPanel(!showFilterPanel)}
+										className={classNames(
+											"inline-flex items-center justify-center text-[11px] px-2 py-1 min-w-[88px]",
+											showFilterPanel
+												? "bg-primary "
+												: hasActiveFilters
+												? "bg-primary-50 dark:bg-primary-900 text-primary border-primary"
+												: "",
+											"gap-1 relative"
+										)}
+									>
+										<FunnelIcon aria-hidden="true" className="size-3" />
+										Filter
+										{hasActiveFilters && (
+											<span className="ml-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 min-w-[16px] h-4 flex items-center justify-center">
+												{Object.keys(activeFilters).length}
+											</span>
+										)}
+									</SecondaryButton>
+								)}
+
+								<SecondaryButton
+									onClick={() => loadLazyData()}
+									className="flex items-center gap-1 text-xs px-2 py-2"
 								>
-									<TrashIcon aria-hidden="true" className="size-4" />
-									<span>Delete</span>
-								</DangerButton>
-							)}
+									<ArrowPathIcon
+										aria-hidden="true"
+										className={classNames("size-2", { "animate-spin": loading })}
+									/>
+								</SecondaryButton>
 
-						{Object.keys(editingRecord).length > 0 && (
-							<PrimaryButton
-								onClick={() => {
-									// iterate through rows, check if editing is enabled and save row
-									Object.keys(editingRecord).forEach((id) => {
-										const row_ofs = records.findIndex(
-											(r) => r[datakey] === editingRecord[Number(id)][datakey]
-										);
-										if (row_ofs !== -1) saveRow(Number(id), row_ofs);
-									});
-								}}
-								className="flex items-center gap-2 text-xs px-2 py-1"
-							>
-								<CheckIcon aria-hidden="true" className="size-4" />
-								<span>{t("Save")}</span>
-							</PrimaryButton>
+								{!disableDelete &&
+									selectedRecords.length > 0 &&
+									Object.keys(editingRecord).length === 0 && (
+										<DangerButton
+											onClick={() => {
+												if (
+													!confirm(
+														"Are you sure you want to delete the selected records?"
+													)
+												)
+													return;
+												selectedRecords.forEach((record, idx) => {
+													const index = records.findIndex(
+														(r) => r[datakey] === record[datakey]
+													);
+													if (index !== -1) {
+														axios
+															.delete(
+																route("api.model.delete", {
+																	model: routemodel,
+																	id: record[datakey],
+																})
+															)
+															.then(() => {
+																setRecords((records) => {
+																	const index = records.findIndex(
+																		(r) => r[datakey] === record[datakey]
+																	);
+																	if (index !== -1) {
+																		records.splice(index, 1);
+																	}
+																	return [...records];
+																});
+																toggleRowSelection(record, false);
+																setTotalRecords((prev) => prev - 1);
+															})
+															.catch((error) => {
+																setError(error);
+															});
+													}
+												});
+											}}
+											className="text-xs flex items-center gap-2 px-2 py-1"
+										>
+											<TrashIcon aria-hidden="true" className="size-4" />
+											<span>Delete</span>
+										</DangerButton>
+									)}
+
+								{Object.keys(editingRecord).length > 0 && (
+									<PrimaryButton
+										onClick={() => {
+											Object.keys(editingRecord).forEach((id) => {
+												const row_ofs = records.findIndex(
+													(r) => r[datakey] === editingRecord[Number(id)][datakey]
+												);
+												if (row_ofs !== -1) saveRow(Number(id), row_ofs);
+											});
+										}}
+										className="flex items-center gap-2 text-xs px-2 py-1"
+									>
+										<CheckIcon aria-hidden="true" className="size-4" />
+										<span>{t("Save")}</span>
+									</PrimaryButton>
+								)}
+
+								{newRecord !== false && (
+									<PrimaryButton
+										onClick={handleNewRecord}
+										className="text-xs flex items-center gap-2 px-2 py-1"
+									>
+										<PlusIcon aria-hidden="true" className="size-4" />
+										<span>New</span>
+									</PrimaryButton>
+								)}
+
+								{actions?.length > 0 && actions.map((action, idx) => {
+									const isDisabled = (typeof action.disabled === "function" ? action.disabled(selectedRecords) : action.disabled) ?? selectedRecords.length === 0;
+									const ButtonComponent =
+										action.variant === "danger"
+											? DangerButton
+											: action.variant === "link"
+											? "button"
+											: action.variant === "secondary"
+											? SecondaryButton
+											: PrimaryButton;
+									return (
+										<ButtonComponent
+											key={idx}
+											onClick={() => action.onClick(selectedRecords, loadLazyData)}
+											disabled={isDisabled}
+											className={classNames("text-xs flex items-center gap-2 px-2 py-1", isDisabled && 'opacity-50 cursor-not-allowed')}
+										>
+											{action.icon && <span aria-hidden="true"  className="size-4">{typeof action.icon == "string" ? <IconLibrary name={action.icon} />: action.icon }</span>}
+											{action.label}
+										</ButtonComponent>
+									);
+								})}
+							</>
 						)}
-
-						{newRecord !== false && (
-							<PrimaryButton
-								onClick={handleNewRecord}
-								className="text-xs flex items-center gap-2 px-2 py-1"
-							>
-								<PlusIcon aria-hidden="true" className="size-4" />
-								<span>New</span>
-							</PrimaryButton>
-						)}
-
-						{actions?.length > 0 && actions.map((action, idx) => {
-							const isDisabled = (typeof action.disabled === "function" ? action.disabled(selectedRecords) : action.disabled) ?? selectedRecords.length === 0;
-							const ButtonComponent =
-								action.variant === "danger"
-									? DangerButton
-									: action.variant === "link"
-									? "button"
-									: action.variant === "secondary"
-									? SecondaryButton
-									: PrimaryButton;
-							return (
-								<ButtonComponent
-									key={idx}
-									onClick={() => action.onClick(selectedRecords, loadLazyData)}
-									disabled={isDisabled}
-									className={classNames("text-xs flex items-center gap-2 px-2 py-1", isDisabled && 'opacity-50 cursor-not-allowed')}
-								>
-									{action.icon && <span aria-hidden="true"  className="size-4">{typeof action.icon == "string" ? <IconLibrary name={action.icon} />: action.icon }</span>}
-									{action.label}
-								</ButtonComponent>
-							);
-						})}
 					</div>
 				</div>
 
