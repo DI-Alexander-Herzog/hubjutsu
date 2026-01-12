@@ -111,10 +111,40 @@ const DataTable: React.FC<DataTableProps> = ({
 
 	const { query } = useSearch();
 
+	const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+		const initial: Record<string, number> = {};
+		columns.forEach((col) => {
+			if (!col.width) return;
+			const parsed = parseInt(col.width, 10);
+			if (!Number.isNaN(parsed)) {
+				initial[col.field] = parsed;
+			}
+		});
+		return initial;
+	});
+
+	useEffect(() => {
+		setColumnWidths((prev) => {
+			const next = { ...prev };
+			columns.forEach((col) => {
+				if (next[col.field] !== undefined || !col.width) return;
+				const parsed = parseInt(col.width, 10);
+				if (!Number.isNaN(parsed)) {
+					next[col.field] = parsed;
+				}
+			});
+			return next;
+		});
+	}, [columns]);
+
 	const stickyLeft = (idx: number) => {
 		const widths = ["3rem"]; // checkbox column is always sticky
-		for (let i = 0; i < idx; i++)
-			if (columns[i].frozen) widths.push(columns[i].width ?? "180px");
+		for (let i = 0; i < idx; i++) {
+			if (columns[i].frozen) {
+				const width = columnWidths[columns[i].field];
+				widths.push(width ? `${width}px` : columns[i].width ?? "180px");
+			}
+		}
 		return `calc(${widths.join(" + ")})`;
 	};
 
@@ -365,6 +395,40 @@ const DataTable: React.FC<DataTableProps> = ({
 		}));
 	};
 
+	const getColumnWidth = (col: Column) => {
+		const width = columnWidths[col.field];
+		return width ? `${width}px` : col.width ?? "auto";
+	};
+
+	const isResizingRef = useRef(false);
+
+	const startResize = (event: React.MouseEvent<HTMLSpanElement>, field: string) => {
+		event.preventDefault();
+		event.stopPropagation();
+		isResizingRef.current = true;
+		const target = event.currentTarget.parentElement as HTMLElement | null;
+		const startWidth = target?.getBoundingClientRect().width ?? 0;
+		const startX = event.clientX;
+		const minWidth = 80;
+
+		const onMouseMove = (moveEvent: MouseEvent) => {
+			const delta = moveEvent.clientX - startX;
+			const nextWidth = Math.max(minWidth, Math.round(startWidth + delta));
+			setColumnWidths((prev) => ({ ...prev, [field]: nextWidth }));
+		};
+
+		const onMouseUp = () => {
+			window.removeEventListener("mousemove", onMouseMove);
+			window.removeEventListener("mouseup", onMouseUp);
+			window.setTimeout(() => {
+				isResizingRef.current = false;
+			}, 0);
+		};
+
+		window.addEventListener("mousemove", onMouseMove);
+		window.addEventListener("mouseup", onMouseUp);
+	};
+
 	const totalPages = Math.max(1, Math.ceil(totalRecords / searchState.rows));
 
 	const commitPageInput = () => {
@@ -578,7 +642,7 @@ const DataTable: React.FC<DataTableProps> = ({
 										<th
 											key={col.field}
 											style={{
-												width: col.width || "auto",
+												width: getColumnWidth(col),
 												...(col.frozen
 													? { left: stickyLeft(idx), zIndex: stickyZHead(idx) }
 													: {}),
@@ -594,6 +658,9 @@ const DataTable: React.FC<DataTableProps> = ({
 												!col.sortable
 													? undefined
 													: (e) => {
+															if (isResizingRef.current) {
+																return;
+															}
 															if (
 																(e.target as Element)?.closest(
 																	".filter-dropdown"
@@ -634,6 +701,12 @@ const DataTable: React.FC<DataTableProps> = ({
 											{col.frozen && (
 												<StickyRightDivider z={stickyZHead(idx) + 5} />
 											)}
+											<span
+												role="separator"
+												aria-orientation="vertical"
+												onMouseDown={(event) => startResize(event, col.field)}
+												className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/20"
+											/>
 										</th>
 									))}
 								</tr>
@@ -698,7 +771,7 @@ const DataTable: React.FC<DataTableProps> = ({
 														data-col={col.field}
 														key={col.field}
 														style={{
-															width: col.width || "auto",
+															width: getColumnWidth(col),
 															...stickyStyle,
 														}}
 														className={classNames(

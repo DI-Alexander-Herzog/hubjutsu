@@ -12,7 +12,7 @@ const DataTableDynamicFormatter = {
 				typeof linkroute === "function"
 					? linkroute(row)
 					: route(linkroute as any, [row]);
-			return <DataTableLink href={href}>{ DataTableFormatter.default(row, field) || "View"}</DataTableLink>;
+			return <DataTableLink href={href} title={ DataTableFormatter.default(row, field)}>{ DataTableFormatter.default(row, field) || "View"}</DataTableLink>;
 		};
 	},
 	model: (item:string) => {
