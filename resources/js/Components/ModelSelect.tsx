@@ -132,7 +132,7 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 			fallbackLabel ??
 			
 			initialObjectLabel
-		).toString();
+		)?.toString();
 
 	const handleSelect = (row: Record<string, any>) => {
 		onChange(returnObject ? row : row[valueField]);
