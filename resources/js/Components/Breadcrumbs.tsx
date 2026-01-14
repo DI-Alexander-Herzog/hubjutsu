@@ -15,7 +15,7 @@ type BreadcrumbsType = {
 
 export default function Breadcrumbs({items} : BreadcrumbsType ) {
     return (
-        <div className="container border-b border-gray-200 dark:border-gray-700">
+        <div className=" border-b border-gray-200 dark:border-gray-700">
             <div className=" mx-auto px-4 py-2">
                 <nav className="flex" aria-label="Breadcrumb">
                     <ol role="list" className="flex items-center space-x-1">
