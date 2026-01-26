@@ -1009,19 +1009,19 @@ const DataTable: React.FC<DataTableProps> = ({
 							<div className="relative" ref={actionMenuRef}>
 								<SecondaryButton
 									onClick={() => setActionMenuOpen((open) => !open)}
-									className="flex items-center gap-1 text-xs px-2 py-2"
+									className="flex items-center gap-1 text-xs px-1 py-1"
 								>
 									<EllipsisHorizontalIcon className="size-4" />
 								</SecondaryButton>
 								{actionMenuOpen && (
-									<div className="absolute right-0 z-20 mt-2 w-48 rounded-md border border-gray-200 bg-white py-1 text-xs text-gray-700 shadow-lg">
+									<div className="absolute bottom-0 right-0 z-20 mt-2 w-48 rounded-md border border-gray-200 bg-white py-1 text-xs text-gray-700 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
 										{columns.length > 0 && (
 											<button
 												onClick={() => {
 													setShowFilterPanel(!showFilterPanel);
 													setActionMenuOpen(false);
 												}}
-												className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
+												className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-100"
 											>
 												<FunnelIcon className="size-4" />
 												<span>
@@ -1035,7 +1035,7 @@ const DataTable: React.FC<DataTableProps> = ({
 												loadLazyData();
 												setActionMenuOpen(false);
 											}}
-											className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
+											className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-100"
 										>
 											<ArrowPathIcon className={classNames("size-4", { "animate-spin": loading })} />
 											<span>Reload</span>
@@ -1084,7 +1084,7 @@ const DataTable: React.FC<DataTableProps> = ({
 														});
 														setActionMenuOpen(false);
 													}}
-													className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50"
+													className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
 												>
 													<TrashIcon className="size-4" />
 													<span>Delete</span>
@@ -1102,8 +1102,8 @@ const DataTable: React.FC<DataTableProps> = ({
 													});
 													setActionMenuOpen(false);
 												}}
-												className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
-											>
+													className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-100"
+												>
 												<CheckIcon className="size-4" />
 												<span>{t("Save")}</span>
 											</button>
@@ -1115,7 +1115,7 @@ const DataTable: React.FC<DataTableProps> = ({
 													handleNewRecord();
 													setActionMenuOpen(false);
 												}}
-												className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
+												className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-100"
 											>
 												<PlusIcon className="size-4" />
 												<span>New</span>
@@ -1134,7 +1134,7 @@ const DataTable: React.FC<DataTableProps> = ({
 													}}
 													disabled={isDisabled}
 													className={classNames(
-														"flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50",
+														"flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-100",
 														isDisabled && "cursor-not-allowed opacity-50"
 													)}
 												>
@@ -1288,6 +1288,7 @@ const DataTable: React.FC<DataTableProps> = ({
 					</div>
 				</div>
 
+			{!condensed && 
 				<div className=" text-gray-600 dark:text-gray-400">
 					Displaying {1 + searchState.first} to{" "}
 					{searchState.first + searchState.rows < totalRecords
@@ -1295,6 +1296,7 @@ const DataTable: React.FC<DataTableProps> = ({
 						: totalRecords}{" "}
 					of {totalRecords} item{totalRecords !== 1 ? "s" : ""}
 				</div>
+			}
 			</div>
 		</div>
 	);

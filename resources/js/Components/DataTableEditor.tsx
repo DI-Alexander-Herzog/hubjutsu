@@ -545,7 +545,7 @@ export const ModelEditor: EditorRenderer = ({
 
         const r = triggerRef.current.getBoundingClientRect();
         setPos({
-            top: r.bottom + window.scrollY + 2,
+            top: r.top + window.scrollY - 2,
             left: r.left + window.scrollX,
             width: r.width,
         });
@@ -583,12 +583,13 @@ export const ModelEditor: EditorRenderer = ({
             <div
                 className="z-50 bg-white dark:bg-gray-800 border border-gray-300 
                            dark:border-gray-700 rounded-md shadow-xl
-                           max-h-[300px] overflow-auto text-sm"
+                           max-h-[300px] overflow-auto text-sm text-gray-900 dark:text-gray-100"
                 style={{
                     position: "absolute",
                     top: pos.top,
                     left: pos.left,
                     width: Math.max(pos.width * 2, 600),
+                    transform: "translateY(-100%)",
                 }}
 				ref={panelRef}
             >
@@ -693,10 +694,10 @@ export const ModelEditor: EditorRenderer = ({
 					bg-white dark:bg-gray-800
 					border border-gray-300 dark:border-gray-600
 					rounded-md
-					px-2 py-1
+					px-2 py-2
 					flex items-center justify-between
 					cursor-pointer
-					text-sm
+					text-xs
 					text-gray-900 dark:text-gray-100
 					hover:border-primary
 					focus:outline-none
@@ -710,7 +711,7 @@ export const ModelEditor: EditorRenderer = ({
 
 				<svg
 					className={`
-						w-4 h-4 ml-2 pointer-events-none text-gray-500 dark:text-gray-400
+						w-3 h-3 ml-2 pointer-events-none text-gray-500 dark:text-gray-400
 						transition-transform 
 						${open ? "rotate-180" : ""}
 					`}
