@@ -77,6 +77,8 @@ interface DataTableProps {
 	defaultSortField?: string | Array<[string, number]>;
 	actions?: DataTableAction[];
 	condensed?: boolean;
+	initialSelection?: "all" | ((records: Row[]) => Row[]);
+	onSelectionChange?: (records: Row[]) => void;
 }
 
 interface SearchState {
@@ -103,6 +105,8 @@ const DataTable: React.FC<DataTableProps> = ({
 	defaultSortField = undefined,
 	actions = [],
 	condensed = false,
+	initialSelection,
+	onSelectionChange,
 }) => {
 	const tableRef = useRef<HTMLTableElement>(null);
 	const actionMenuRef = useRef<HTMLDivElement>(null);
@@ -182,6 +186,18 @@ const DataTable: React.FC<DataTableProps> = ({
 	const [activeFilters, setActiveFilters] = useState<{ [field: string]: any }>(
 		{}
 	);
+	const updateSelectedRecords = (
+		updater: Row[] | ((prev: Row[]) => Row[])
+	) => {
+		setSelectedRecords((prev) => {
+			const next =
+				typeof updater === "function"
+					? (updater as (p: Row[]) => Row[])(prev)
+					: updater;
+			onSelectionChange?.(next);
+			return next;
+		});
+	};
 	const [searchState, setSearchState] = useState(() => {
 		const initialSort: Array<[string, number]> = [];
 		if (typeof defaultSortField === "string") {
@@ -258,7 +274,7 @@ const DataTable: React.FC<DataTableProps> = ({
 
 	const loadLazyData = () => {
 		setError(null);
-		setSelectedRecords([]);
+		updateSelectedRecords([]);
 		setEditingRecord({});
 
 		setLoading(true);
@@ -271,6 +287,13 @@ const DataTable: React.FC<DataTableProps> = ({
 				setLoading(false);
 				setRecords(response.data.data);
 				setTotalRecords(response.data.total);
+				if (initialSelection) {
+					const selection =
+						initialSelection === "all"
+							? response.data.data
+							: initialSelection(response.data.data);
+					updateSelectedRecords(selection);
+				}
 			})
 			.catch((error) => {
 				console.log(error);
@@ -535,7 +558,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		if (editingRecord[row[datakey]]) state = true;
 
 		if (state === undefined) {
-			setSelectedRecords((prev) =>
+			updateSelectedRecords((prev) =>
 				prev.findIndex((r) => r[datakey] === row[datakey]) !== -1
 					? prev.filter((r) => r[datakey] !== row[datakey])
 					: [...prev, row]
@@ -546,19 +569,19 @@ const DataTable: React.FC<DataTableProps> = ({
 				return;
 			}
 
-			setSelectedRecords((prev) => [
+			updateSelectedRecords((prev) => [
 				...prev.filter((r) => r[datakey] !== row[datakey]),
 				row,
 			]);
 		} else {
-			setSelectedRecords((prev) =>
+			updateSelectedRecords((prev) =>
 				prev.filter((r) => r[datakey] !== row[datakey])
 			);
 		}
 	};
 
 	const toggleSelectAll = () => {
-		setSelectedRecords(
+		updateSelectedRecords(
 			records.length === selectedRecords.length ? [] : [...records]
 		);
 	};
