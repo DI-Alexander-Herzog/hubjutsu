@@ -103,10 +103,18 @@ class HubjutsuApiController
     public function create(Request $request, string $model)
     {
         $modelObj = $this->getModelIfAllowed($model, null, 'create');
-        $modelObj->fill($request->only($modelObj->getFillable()));
+        $rules = method_exists($modelObj, 'getRules') ? $modelObj::getRules() : [];
+        $payload = $rules ? $request->validate($rules) : $request->only($modelObj->getFillable());
+        if ($rules) {
+            $payload = array_intersect_key($payload, array_flip($modelObj->getFillable()));
+        }
+        $modelObj->fill($payload);
         $modelObj->save();
         if (method_exists($modelObj, 'fillMedia')) {
             $modelObj->fillMedia($request->all());
+        }
+        if (method_exists($modelObj, 'postApiSave')) {
+            $modelObj->postApiSave($request);
         }
         $modelObj->refresh();
         return response()->json($modelObj->prepareForApi($request)->toArray());
@@ -115,12 +123,20 @@ class HubjutsuApiController
     public function update(Request $request, string $model, $id)
     {
         $modelObj = $this->getModelIfAllowed($model, $id, 'update');
-        $modelObj->fill($request->only($modelObj->getFillable()));
+        $rules = method_exists($modelObj, 'getRules') ? $modelObj::getRules() : [];
+        $payload = $rules ? $request->validate($rules) : $request->only($modelObj->getFillable());
+        if ($rules) {
+            $payload = array_intersect_key($payload, array_flip($modelObj->getFillable()));
+        }
+        $modelObj->fill($payload);
         
         if (method_exists($modelObj, 'fillMedia')) {
             $modelObj->fillMedia($request->all());
         }
         $modelObj->save();
+        if (method_exists($modelObj, 'postApiSave')) {
+            $modelObj->postApiSave($request);
+        }
         $modelObj->refresh();
         return response()->json($modelObj->prepareForApi($request)->toArray());
     }

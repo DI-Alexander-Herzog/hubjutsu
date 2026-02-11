@@ -11,6 +11,16 @@ use phpDocumentor\Reflection\DocBlock\Tags\Var_;
 
 class Base extends Model {    
 
+    public static function getRules(): array
+    {
+        return [];
+    }
+
+    public function postApiSave(Request $request): void
+    {
+        // Hook for API create/update operations.
+    }
+
     // doesn't do anything, only used for laoding extra data
     /**
      * @param Request $request 
