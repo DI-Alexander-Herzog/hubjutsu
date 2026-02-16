@@ -25,15 +25,150 @@ interface Props {
   maxFiles?: number;
 }
 
+type PreviewType = 'image' | 'video' | 'file';
+
 interface MultiUploadItem {
   id: string;
   fileName: string;
   preview: string | null;
+  previewType: PreviewType;
+  mimeType: string;
   tempPreview?: boolean;
   progress: number;
   status: 'pending' | 'uploading' | 'uploaded' | 'error';
   media?: Record<string, any> | null;
   error?: string | null;
+}
+
+const DEFAULT_MIME_TYPE = 'application/octet-stream';
+
+function normalizeMimeType(value: unknown): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : DEFAULT_MIME_TYPE;
+}
+
+function getMediaMimeType(media?: Record<string, any> | null): string {
+  return normalizeMimeType(media?.mimetype || media?.mime_type || media?.mime);
+}
+
+function getMediaUrl(media?: Record<string, any> | null): string | null {
+  if (!media) return null;
+  if (typeof media.url === 'string' && media.url) return media.url;
+  if (typeof media.src === 'string' && media.src) return media.src;
+  if (typeof media.original_url === 'string' && media.original_url) return media.original_url;
+  if (typeof media.path === 'string' && media.path) return media.path;
+
+  if (media.storage === 'public' && typeof media.filename === 'string' && media.filename) {
+    const filename = media.filename.startsWith('/') ? media.filename : `/${media.filename}`;
+    return `/storage${filename}`;
+  }
+
+  return null;
+}
+
+function resolvePreviewFromMedia(media?: Record<string, any> | null) {
+  if (!media || typeof media !== 'object') {
+    return null;
+  }
+
+  const hasMediaPayload = Boolean(
+    media.id ||
+      media.filename ||
+      media.url ||
+      media.src ||
+      media.original_url ||
+      media.path ||
+      media.thumbnail ||
+      media.mimetype ||
+      media.mime_type ||
+      media.mime
+  );
+
+  if (!hasMediaPayload) {
+    return null;
+  }
+
+  const mimeType = getMediaMimeType(media);
+  const mediaUrl = getMediaUrl(media);
+  const thumbnail = typeof media?.thumbnail === 'string' && media.thumbnail ? media.thumbnail : null;
+
+  if (mimeType.startsWith('image/')) {
+    return {
+      previewType: 'image' as const,
+      preview: thumbnail || mediaUrl,
+      mimeType,
+    };
+  }
+
+  if (mimeType.startsWith('video/') && mediaUrl) {
+    return {
+      previewType: 'video' as const,
+      preview: mediaUrl,
+      mimeType,
+    };
+  }
+
+  return {
+    previewType: 'file' as const,
+    preview: null,
+    mimeType,
+  };
+}
+
+function resolvePreviewFromFile(file: File) {
+  const mimeType = normalizeMimeType(file.type);
+
+  if (mimeType.startsWith('image/')) {
+    return {
+      previewType: 'image' as const,
+      preview: URL.createObjectURL(file),
+      mimeType,
+    };
+  }
+
+  if (mimeType.startsWith('video/')) {
+    return {
+      previewType: 'video' as const,
+      preview: URL.createObjectURL(file),
+      mimeType,
+    };
+  }
+
+  return {
+    previewType: 'file' as const,
+    preview: null,
+    mimeType,
+  };
+}
+
+function renderFilePreview({
+  previewType,
+  preview,
+  mimeType,
+  sizeClass,
+}: {
+  previewType: PreviewType;
+  preview: string | null;
+  mimeType: string;
+  sizeClass: string;
+}) {
+  if (previewType === 'image' && preview) {
+    return <img src={preview} className={`${sizeClass} rounded object-contain`} />;
+  }
+
+  if (previewType === 'video' && preview) {
+    return <video src={preview} className={`${sizeClass} rounded object-cover`} muted playsInline preload="metadata" />;
+  }
+
+  return (
+    <div
+      className={`${sizeClass} flex items-center justify-center rounded border border-secondary/30 bg-secondary/10 px-1 text-center`}
+      title={mimeType}
+    >
+      <span className="text-[9px] leading-tight text-secondary break-all">
+        {mimeType === DEFAULT_MIME_TYPE ? 'Datei' : mimeType}
+      </span>
+    </div>
+  );
 }
 
 const BaseMediaUpload = forwardRef<HTMLDivElement, Props>(function BaseMediaUpload(props, ref) {
@@ -58,21 +193,26 @@ function SingleMediaUpload({
   const { t } = useLaravelReactI18n();
   const [file, setFile] = useState<File | null>(null);
   const currentValue = attributes.value !== undefined ? attributes.value : useForm?.data?.[name];
-  const [preview, setPreview] = useState<string | null>(
-    isMediaMarkedForDeletion(currentValue) ? null : currentValue?.thumbnail || null
+  const initialPreviewState = isMediaMarkedForDeletion(currentValue)
+    ? null
+    : resolvePreviewFromMedia(currentValue);
+  const [preview, setPreview] = useState<string | null>(initialPreviewState?.preview ?? null);
+  const [previewType, setPreviewType] = useState<PreviewType | null>(initialPreviewState?.previewType ?? null);
+  const [previewMimeType, setPreviewMimeType] = useState<string>(
+    initialPreviewState?.mimeType ?? DEFAULT_MIME_TYPE
   );
   const [progress, setProgress] = useState<number>(0);
   const [err, setErr] = useState<string | null>(null);
 
-  const upload = async (file: File) => {
+  const upload = async (selectedFile: File) => {
     const chunkSize = 1024 * 512; // 512KB
 
     const uuid = uuidv4();
-    const totalChunks = Math.ceil(file.size / chunkSize);
-    const filename = file.name;
+    const totalChunks = Math.ceil(selectedFile.size / chunkSize);
+    const filename = selectedFile.name;
 
     for (let i = 0; i < totalChunks; i++) {
-      const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
+      const chunk = selectedFile.slice(i * chunkSize, (i + 1) * chunkSize);
       const form = new FormData();
       form.append('chunk', chunk);
       form.append('upload_id', uuid);
@@ -91,7 +231,10 @@ function SingleMediaUpload({
 
         if (res.data.done) {
           const result = res.data.media;
-          setPreview(result.thumbnail ?? null);
+          const uploadedPreview = resolvePreviewFromMedia(result);
+          setPreview(uploadedPreview?.preview ?? null);
+          setPreviewType(uploadedPreview?.previewType ?? null);
+          setPreviewMimeType(uploadedPreview?.mimeType ?? DEFAULT_MIME_TYPE);
           if (useForm) {
             useForm.setData((data: any) => ({ ...data, [name]: result }));
           }
@@ -108,14 +251,17 @@ function SingleMediaUpload({
   };
 
   const onDrop = (accepted: File[]) => {
-    const f = accepted[0];
-    if (!f) return;
+    const selectedFile = accepted[0];
+    if (!selectedFile) return;
 
-    setFile(f);
-    setPreview(f.type.startsWith('image/') ? URL.createObjectURL(f) : null);
+    setFile(selectedFile);
+    const droppedPreview = resolvePreviewFromFile(selectedFile);
+    setPreview(droppedPreview.preview);
+    setPreviewType(droppedPreview.previewType);
+    setPreviewMimeType(droppedPreview.mimeType);
     setProgress(0);
     setErr(null);
-    upload(f);
+    upload(selectedFile);
   };
 
   useEffect(() => {
@@ -123,15 +269,30 @@ function SingleMediaUpload({
     const value = useForm.data?.[name];
     if (isMediaMarkedForDeletion(value)) {
       setPreview(null);
+      setPreviewType(null);
+      setPreviewMimeType(DEFAULT_MIME_TYPE);
       setFile(null);
-    } else if (value?.thumbnail) {
-      setPreview(value.thumbnail);
+    } else if (value) {
+      const valuePreview = resolvePreviewFromMedia(value);
+      setPreview(valuePreview?.preview ?? null);
+      setPreviewType(valuePreview?.previewType ?? null);
+      setPreviewMimeType(valuePreview?.mimeType ?? DEFAULT_MIME_TYPE);
     }
   }, [useForm?.data?.[name]]);
+
+  useEffect(() => {
+    return () => {
+      if (preview && preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview);
+      }
+    };
+  }, [preview]);
 
   const handleRemove = () => {
     const marked = markMediaForDeletion(currentValue);
     setPreview(null);
+    setPreviewType(null);
+    setPreviewMimeType(DEFAULT_MIME_TYPE);
     setProgress(0);
     setErr(null);
     if (useForm) {
@@ -152,28 +313,34 @@ function SingleMediaUpload({
     <div className={`space-y-2 ${className}`}>
       {label && <label className="block font-semibold text-sm">{label}</label>}
 
-      {preview && <img src={preview} className="w-24 h-24 object-contain" />}
+      {previewType &&
+        renderFilePreview({
+          previewType,
+          preview,
+          mimeType: previewMimeType,
+          sizeClass: 'h-24 w-24',
+        })}
 
       <div
         {...getRootProps()}
-        className={`border border-dashed p-4 rounded cursor-pointer text-center ${
-          isDragActive ? 'bg-blue-50' : 'bg-white'
+        className={`border border-dashed border-secondary/40 p-4 rounded cursor-pointer text-center transition-colors ${
+          isDragActive ? 'bg-secondary/10' : 'bg-white dark:bg-gray-900'
         }`}
       >
         <input {...getInputProps()} />
-        <p>{isDragActive ? t('Drop file…') : t('Select or drag file here')}</p>
+        <p className="text-secondary">{isDragActive ? t('Drop file…') : t('Select or drag file here')}</p>
       </div>
 
       {progress > 0 && progress < 100 && (
-        <div className="w-full bg-gray-200 h-2 rounded">
-          <div className="bg-blue-600 h-2 rounded" style={{ width: `${progress}%` }} />
+        <div className="w-full h-2 rounded bg-secondary/20">
+          <div className="h-2 rounded bg-primary transition-all" style={{ width: `${progress}%` }} />
         </div>
       )}
 
-      {(preview || currentValue) && (
+      {(previewType || currentValue) && (
         <button
           type="button"
-          className="text-xs text-red-500 hover:text-red-600"
+          className="text-xs text-tertiary hover:text-tertiary/80"
           onClick={handleRemove}
         >
           {t('Remove file')}
@@ -258,20 +425,20 @@ function MultipleMediaUpload({
     setErr(message);
   };
 
-  const uploadFile = useCallback(async (itemId: string, file: File, previewUrl: string | null) => {
+  const uploadFile = useCallback(async (itemId: string, selectedFile: File, previewUrl: string | null) => {
     const chunkSize = 1024 * 512;
     const uploadId = uuidv4();
-    const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
+    const totalChunks = Math.max(1, Math.ceil(selectedFile.size / chunkSize));
 
     try {
       for (let index = 0; index < totalChunks; index++) {
-        const chunk = file.slice(index * chunkSize, (index + 1) * chunkSize);
+        const chunk = selectedFile.slice(index * chunkSize, (index + 1) * chunkSize);
         const form = new FormData();
         form.append('chunk', chunk);
         form.append('upload_id', uploadId);
         form.append('chunk_index', index.toString());
         form.append('total_chunks', totalChunks.toString());
-        form.append('filename', file.name);
+        form.append('filename', selectedFile.name);
 
         const response = await axios.post('/media/chunked-upload', form, {
           onUploadProgress: (event) => {
@@ -291,13 +458,16 @@ function MultipleMediaUpload({
 
         if (response.data?.done) {
           const uploaded = response.data.media;
+          const uploadedPreview = resolvePreviewFromMedia(uploaded);
           setItems((prev) =>
             prev.map((item) =>
               item.id === itemId
                 ? {
                     ...item,
                     media: uploaded,
-                    preview: uploaded?.thumbnail ?? item.preview,
+                    preview: uploadedPreview?.preview ?? null,
+                    previewType: uploadedPreview?.previewType ?? 'file',
+                    mimeType: uploadedPreview?.mimeType ?? DEFAULT_MIME_TYPE,
                     tempPreview: false,
                     progress: 100,
                     status: 'uploaded',
@@ -350,13 +520,15 @@ function MultipleMediaUpload({
       syncError(null);
     }
 
-    files.forEach((file) => {
-      const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+    files.forEach((selectedFile) => {
+      const localPreview = resolvePreviewFromFile(selectedFile);
       const newItem: MultiUploadItem = {
         id: uuidv4(),
-        fileName: file.name,
-        preview,
-        tempPreview: !!preview,
+        fileName: selectedFile.name,
+        preview: localPreview.preview,
+        previewType: localPreview.previewType,
+        mimeType: localPreview.mimeType,
+        tempPreview: !!localPreview.preview,
         progress: 0,
         status: 'pending',
         media: null,
@@ -364,7 +536,7 @@ function MultipleMediaUpload({
       };
 
       setItems((prev) => [...prev, newItem]);
-      uploadFile(newItem.id, file, preview);
+      uploadFile(newItem.id, selectedFile, localPreview.preview);
     });
   };
 
@@ -390,16 +562,16 @@ function MultipleMediaUpload({
 
       <div
         {...getRootProps()}
-        className={`border border-dashed p-4 rounded cursor-pointer text-center text-sm ${
-          isDragActive ? 'bg-blue-50' : 'bg-white'
+        className={`border border-dashed border-secondary/40 p-4 rounded cursor-pointer text-center text-sm transition-colors ${
+          isDragActive ? 'bg-secondary/10' : 'bg-white dark:bg-gray-900'
         }`}
       >
         <input {...getInputProps()} />
-        <p className="font-medium text-gray-700">
+        <p className="font-medium text-secondary">
           {isDragActive ? t('Dateien hier ablegen…') : t('Dateien auswählen oder hier ablegen')}
         </p>
         {maxFiles && (
-          <p className="text-xs text-gray-500">{t('Max. {{count}} Dateien', { count: maxFiles })}</p>
+          <p className="text-xs text-secondary/70">{t('Max. {{count}} Dateien', { count: maxFiles })}</p>
         )}
       </div>
 
@@ -411,17 +583,16 @@ function MultipleMediaUpload({
               className="flex items-center justify-between rounded border border-gray-200 px-3 py-2 text-sm dark:border-gray-700"
             >
               <div className="flex items-center gap-3">
-                {item.preview ? (
-                  <img src={item.preview} className="h-10 w-10 rounded object-cover" />
-                ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-100 text-xs text-gray-500">
-                    {item.fileName.slice(0, 2).toUpperCase()}
-                  </div>
-                )}
+                {renderFilePreview({
+                  previewType: item.previewType,
+                  preview: item.preview,
+                  mimeType: item.mimeType,
+                  sizeClass: 'h-10 w-10',
+                })}
                 <div>
                   <p className="font-medium text-gray-800 dark:text-gray-100">{item.fileName}</p>
                   {item.status === 'error' ? (
-                    <p className="text-xs text-red-500">{item.error}</p>
+                    <p className="text-xs text-tertiary">{item.error}</p>
                   ) : (
                     <p className="text-xs text-gray-500">
                       {item.status === 'uploaded'
@@ -433,7 +604,7 @@ function MultipleMediaUpload({
               </div>
               <button
                 type="button"
-                className="text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
+                className="text-xs text-tertiary hover:text-tertiary/80 disabled:opacity-50"
                 onClick={() => removeItem(item.id)}
                 disabled={item.status === 'uploading'}
               >
@@ -453,10 +624,13 @@ function MultipleMediaUpload({
 }
 
 function createUploadedItem(media: Record<string, any>): MultiUploadItem {
+  const mediaPreview = resolvePreviewFromMedia(media);
   return {
     id: uuidv4(),
     fileName: media?.name || media?.filename || 'Datei',
-    preview: media?.thumbnail ?? null,
+    preview: mediaPreview?.preview ?? null,
+    previewType: mediaPreview?.previewType ?? 'file',
+    mimeType: mediaPreview?.mimeType ?? DEFAULT_MIME_TYPE,
     progress: 100,
     status: 'uploaded',
     media,
