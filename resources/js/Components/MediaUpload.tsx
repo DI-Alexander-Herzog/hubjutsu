@@ -145,18 +145,41 @@ function renderFilePreview({
   preview,
   mimeType,
   sizeClass,
+  videoOverlay = 'center',
 }: {
   previewType: PreviewType;
   preview: string | null;
   mimeType: string;
   sizeClass: string;
+  videoOverlay?: 'center' | 'corner';
 }) {
   if (previewType === 'image' && preview) {
     return <img src={preview} className={`${sizeClass} rounded object-contain`} />;
   }
 
   if (previewType === 'video' && preview) {
-    return <video src={preview} className={`${sizeClass} rounded object-cover`} muted playsInline preload="metadata" />;
+    return (
+      <div className={`${sizeClass} relative overflow-hidden rounded bg-black`}>
+        <video
+          src={preview}
+          className="h-full w-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+        />
+        {videoOverlay === 'corner' ? (
+          <div className="pointer-events-none absolute bottom-0.5 right-1 text-[11px] leading-none text-white drop-shadow-sm">
+            ▶
+          </div>
+        ) : (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white">
+              ▶
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -313,39 +336,44 @@ function SingleMediaUpload({
     <div className={`space-y-2 ${className}`}>
       {label && <label className="block font-semibold text-sm">{label}</label>}
 
-      {previewType &&
-        renderFilePreview({
-          previewType,
-          preview,
-          mimeType: previewMimeType,
-          sizeClass: 'h-24 w-24',
-        })}
+      <div className="flex items-start gap-3">
+        {previewType &&
+          renderFilePreview({
+            previewType,
+            preview,
+            mimeType: previewMimeType,
+            sizeClass: 'h-24 w-24',
+          })}
 
-      <div
-        {...getRootProps()}
-        className={`border border-dashed border-secondary/40 p-4 rounded cursor-pointer text-center transition-colors ${
-          isDragActive ? 'bg-secondary/10' : 'bg-white dark:bg-gray-900'
-        }`}
-      >
-        <input {...getInputProps()} />
-        <p className="text-secondary">{isDragActive ? t('Drop file…') : t('Select or drag file here')}</p>
+        <div className="flex-1 space-y-2">
+          <div
+            {...getRootProps()}
+            className={`border border-dashed border-secondary/40 p-4 rounded cursor-pointer text-center transition-colors ${
+              isDragActive ? 'bg-secondary/10' : 'bg-white dark:bg-gray-900'
+            }`}
+          >
+            <input {...getInputProps()} />
+            <p className="text-secondary">{isDragActive ? t('Drop file…') : t('Select or drag file here')}</p>
+          </div>
+
+          {progress > 0 && progress < 100 && (
+            <div className="w-full h-2 rounded bg-secondary/20">
+              <div className="h-2 rounded bg-primary transition-all" style={{ width: `${progress}%` }} />
+            </div>
+          )}
+
+          {(previewType || currentValue) && (
+            <button
+              type="button"
+              className="text-xs text-tertiary hover:text-tertiary/80"
+              onClick={handleRemove}
+            >
+              {t('Remove file')}
+            </button>
+          )}
+        </div>
       </div>
 
-      {progress > 0 && progress < 100 && (
-        <div className="w-full h-2 rounded bg-secondary/20">
-          <div className="h-2 rounded bg-primary transition-all" style={{ width: `${progress}%` }} />
-        </div>
-      )}
-
-      {(previewType || currentValue) && (
-        <button
-          type="button"
-          className="text-xs text-tertiary hover:text-tertiary/80"
-          onClick={handleRemove}
-        >
-          {t('Remove file')}
-        </button>
-      )}
       {isMediaMarkedForDeletion(currentValue) && (
         <p className="text-xs italic text-gray-500">{t('File will be removed')}</p>
       )}
@@ -383,6 +411,8 @@ function MultipleMediaUpload({
   const [items, setItems] = useState<MultiUploadItem[]>(() =>
     extractInitialValue().map((media: any) => createUploadedItem(media))
   );
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [deleteOps, setDeleteOps] = useState<Record<string, any>[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const signatureRef = useRef<string>(
@@ -586,6 +616,21 @@ function MultipleMediaUpload({
     });
   };
 
+  const moveItemByDrop = (sourceId: string, targetId: string) => {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+
+    setItems((prev) => {
+      const sourceIndex = prev.findIndex((entry) => entry.id === sourceId);
+      const targetIndex = prev.findIndex((entry) => entry.id === targetId);
+      if (sourceIndex === -1 || targetIndex === -1) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleDrop,
     accept: accept ? { [accept]: [] } : undefined,
@@ -616,7 +661,34 @@ function MultipleMediaUpload({
           {items.map((item) => (
             <li
               key={item.id}
-              className="flex items-center justify-between rounded border border-gray-200 px-3 py-2 text-sm dark:border-gray-700"
+              draggable={item.status !== 'uploading'}
+              onDragStart={(event) => {
+                setDraggedItemId(item.id);
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', item.id);
+              }}
+              onDragOver={(event) => {
+                if (item.status === 'uploading') return;
+                event.preventDefault();
+                if (dragOverItemId !== item.id) {
+                  setDragOverItemId(item.id);
+                }
+                event.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const sourceId = event.dataTransfer.getData('text/plain') || draggedItemId || '';
+                moveItemByDrop(sourceId, item.id);
+                setDraggedItemId(null);
+                setDragOverItemId(null);
+              }}
+              onDragEnd={() => {
+                setDraggedItemId(null);
+                setDragOverItemId(null);
+              }}
+              className={`flex items-center justify-between rounded border px-3 py-2 text-sm dark:border-gray-700 ${
+                dragOverItemId === item.id ? 'border-primary bg-primary/5' : 'border-gray-200'
+              } ${item.status !== 'uploading' ? 'cursor-move' : ''}`}
             >
               <div className="flex items-center gap-3">
                 {renderFilePreview({
@@ -624,6 +696,7 @@ function MultipleMediaUpload({
                   preview: item.preview,
                   mimeType: item.mimeType,
                   sizeClass: 'h-10 w-10',
+                  videoOverlay: 'corner',
                 })}
                 <div>
                   <p className="font-medium text-gray-800 dark:text-gray-100">{item.fileName}</p>

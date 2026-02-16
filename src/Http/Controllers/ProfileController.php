@@ -49,9 +49,13 @@ class ProfileController extends Controller
 
         $media = Media::find($request->avatar['id'] ?? null);
         if ($request->user()->can('attach', $media)) {
+            if ($request->avatar[Media::DELETE_FLAG] ?? false) {
+                $media?->delete();
+                return Redirect::route('profile.edit');
+            }
             $request->user()->setAvatar($media);
         }
-        
+       
         return Redirect::route('profile.edit');
     }
 

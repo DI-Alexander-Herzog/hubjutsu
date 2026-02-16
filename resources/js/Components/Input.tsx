@@ -14,14 +14,15 @@ import { DateTime } from "luxon";
 
 
 
-export default function Input({ className = '', label='', inputId = '', inputName = '', useForm=undefined, type = "text", options=[], ...props }:{
+export default function Input({ className = '', label='', inputId = '', inputName = '', useForm=undefined, type = "text", options=[], isFirst: _isFirst = false, ...props }:{
     className?: string,
     label?: string,
     inputId?: string,
     inputName: string,
     useForm?: UseForm,
     type?: string,
-    options?: [value:string, label:string][]
+    options?: [value:string, label:string][],
+    isFirst?: boolean
     [key: string]: any
 }) {
 

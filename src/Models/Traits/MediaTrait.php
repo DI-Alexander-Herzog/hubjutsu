@@ -40,12 +40,9 @@ trait MediaTrait
                 continue;
             }
 
-            if (is_array($payload) && !empty($payload[Media::DELETE_FLAG])) {
-                $this->media($key)->delete();
-                continue;
-            }
+         
 
-            $media = $this->hydrateMedia($payload);
+            $media = $this->hydrateMedia($payload, $key);
             if (!$media) {
                 continue;
             }
@@ -91,7 +88,12 @@ trait MediaTrait
     }
 
 
-    public function setMedia(Media $media, $category="main", $sort=1) {
+    public function setMedia(mixed $media, $category="main", $sort=1) {
+        $media = $this->hydrateMedia($media, $category);
+        if (!$media) {
+            return;
+        }
+
         $existingRecord = $this->medias()->where('category', $category)->latest()->first();
         /** @var Media $media */
         if ($media->mediable) {
@@ -121,20 +123,7 @@ trait MediaTrait
                 continue;
             }
 
-            if (is_array($media) && !empty($media[Media::DELETE_FLAG])) {
-                if (!empty($media['id'])) {
-                    $toDelete = $this->medias()
-                        ->where('category', $category)
-                        ->whereKey($media['id'])
-                        ->first();
-                    if ($toDelete) {
-                        $toDelete->delete();
-                    }
-                }
-                continue;
-            }
-
-            $entryMedia = $this->hydrateMedia($media);
+            $entryMedia = $this->hydrateMedia($media, $category);
             if (!$entryMedia) {
                 continue;
             }
@@ -167,13 +156,30 @@ trait MediaTrait
         $media->save();
     }
 
-    protected function hydrateMedia(mixed $media): ?Media
+    protected function hydrateMedia(mixed $media, ?string $category = null): ?Media
     {
         if ($media instanceof Media) {
             return $media;
         }
 
         if (!is_array($media)) {
+            return null;
+        }
+
+        if (!empty($media[Media::DELETE_FLAG])) {
+            if ($category !== null) {
+                if (!empty($media['id'])) {
+                    $toDelete = $this->medias()
+                        ->where('category', $category)
+                        ->whereKey($media['id'])
+                        ->first();
+                    if ($toDelete) {
+                        $toDelete->delete();
+                    }
+                } else {
+                    $this->media($category)->delete();
+                }
+            }
             return null;
         }
 
