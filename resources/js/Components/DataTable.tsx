@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, JSX, useMemo } from "react";
+import React, { useEffect, useState, useRef, JSX, useMemo, useImperativeHandle, forwardRef } from "react";
 import axios from "axios";
 import {
 	ChevronLeftIcon,
@@ -81,6 +81,10 @@ interface DataTableProps {
 	onSelectionChange?: (records: Row[]) => void;
 }
 
+export interface DataTableRef {
+	refresh: () => void;
+}
+
 interface SearchState {
 	first: number;
 	rows: number;
@@ -91,7 +95,7 @@ interface SearchState {
 	with: string[];
 }
 
-const DataTable: React.FC<DataTableProps> = ({
+const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 	routemodel,
 	columns,
 	filters = {},
@@ -107,7 +111,7 @@ const DataTable: React.FC<DataTableProps> = ({
 	condensed = false,
 	initialSelection,
 	onSelectionChange,
-}) => {
+}, ref) => {
 	const tableRef = useRef<HTMLTableElement>(null);
 	const actionMenuRef = useRef<HTMLDivElement>(null);
 
@@ -301,6 +305,10 @@ const DataTable: React.FC<DataTableProps> = ({
 				setError(error.response?.data || error.message || error.toString() || "Error");
 			});
 	};
+
+	useImperativeHandle(ref, () => ({
+		refresh: () => loadLazyData(),
+	}));
 
 	// 📌 Sortierung
 	const handleSort = (field: string, event?: React.MouseEvent) => {
@@ -1323,7 +1331,7 @@ const DataTable: React.FC<DataTableProps> = ({
 			</div>
 		</div>
 	);
-};
+});
 
 
 
