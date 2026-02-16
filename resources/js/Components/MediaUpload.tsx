@@ -405,12 +405,15 @@ function MultipleMediaUpload({
   useEffect(() => {
     const medias = items
       .filter((item) => item.status === 'uploaded' && item.media && !isMediaMarkedForDeletion(item.media))
-      .map((item) => item.media as Record<string, any>);
+      .map((item, index) => ({
+        ...(item.media as Record<string, any>),
+        mediable_sort: index + 1,
+      }));
     const payload = [...medias, ...deleteOps];
     const signature = JSON.stringify(
       payload.map((media) =>
         media?.id
-          ? `${media.id}:${isMediaMarkedForDeletion(media) ? 'del' : 'keep'}`
+          ? `${media.id}:${isMediaMarkedForDeletion(media) ? 'del' : 'keep'}:${media.mediable_sort ?? ''}`
           : media?.filename ?? media?.name ?? ''
       )
     );
