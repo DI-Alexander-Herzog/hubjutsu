@@ -383,6 +383,7 @@ function MultipleMediaUpload({
   const [items, setItems] = useState<MultiUploadItem[]>(() =>
     extractInitialValue().map((media: any) => createUploadedItem(media))
   );
+  const [deleteOps, setDeleteOps] = useState<Record<string, any>[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const signatureRef = useRef<string>(
     JSON.stringify(extractInitialValue().map((media: any) => media?.id ?? media?.filename ?? media?.name ?? ''))
@@ -398,28 +399,34 @@ function MultipleMediaUpload({
     if (signature === signatureRef.current) return;
     signatureRef.current = signature;
     setItems(formValue.map((media: any) => createUploadedItem(media)));
+    setDeleteOps([]);
   }, [useForm?.data?.[name]]);
 
   useEffect(() => {
     const medias = items
       .filter((item) => item.status === 'uploaded' && item.media && !isMediaMarkedForDeletion(item.media))
       .map((item) => item.media as Record<string, any>);
+    const payload = [...medias, ...deleteOps];
     const signature = JSON.stringify(
-      medias.map((media) => media?.id ?? media?.filename ?? media?.name ?? '')
+      payload.map((media) =>
+        media?.id
+          ? `${media.id}:${isMediaMarkedForDeletion(media) ? 'del' : 'keep'}`
+          : media?.filename ?? media?.name ?? ''
+      )
     );
     if (signature !== signatureRef.current) {
       signatureRef.current = signature;
       if (useForm) {
         useForm.setData((data: any) => ({
           ...data,
-          [name]: medias,
+          [name]: payload,
         }));
       }
       onChange?.({
-        target: { name, value: medias },
+        target: { name, value: payload },
       } as unknown as SyntheticEvent);
     }
-  }, [items]);
+  }, [items, deleteOps]);
 
   const syncError = (message: string | null) => {
     setErr(message);
@@ -459,6 +466,9 @@ function MultipleMediaUpload({
         if (response.data?.done) {
           const uploaded = response.data.media;
           const uploadedPreview = resolvePreviewFromMedia(uploaded);
+          if (uploaded?.id) {
+            setDeleteOps((ops) => ops.filter((op) => op?.id !== uploaded.id));
+          }
           setItems((prev) =>
             prev.map((item) =>
               item.id === itemId
@@ -546,7 +556,30 @@ function MultipleMediaUpload({
       if (item?.tempPreview && item.preview) {
         URL.revokeObjectURL(item.preview);
       }
+      if (item?.media?.id) {
+        setDeleteOps((ops) => {
+          if (ops.some((op) => op?.id === item.media?.id)) {
+            return ops;
+          }
+          return [...ops, markMediaForDeletion(item.media)];
+        });
+      }
       return prev.filter((entry) => entry.id !== id);
+    });
+  };
+
+  const moveItem = (id: string, direction: 'up' | 'down') => {
+    setItems((prev) => {
+      const index = prev.findIndex((entry) => entry.id === id);
+      if (index === -1) return prev;
+
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
     });
   };
 
@@ -602,14 +635,34 @@ function MultipleMediaUpload({
                   )}
                 </div>
               </div>
-              <button
-                type="button"
-                className="text-xs text-tertiary hover:text-tertiary/80 disabled:opacity-50"
-                onClick={() => removeItem(item.id)}
-                disabled={item.status === 'uploading'}
-              >
-                {t('Entfernen')}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
+                  onClick={() => moveItem(item.id, 'up')}
+                  disabled={item.status === 'uploading' || items[0]?.id === item.id}
+                  title={t('Nach oben')}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
+                  onClick={() => moveItem(item.id, 'down')}
+                  disabled={item.status === 'uploading' || items[items.length - 1]?.id === item.id}
+                  title={t('Nach unten')}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="text-xs text-tertiary hover:text-tertiary/80 disabled:opacity-50"
+                  onClick={() => removeItem(item.id)}
+                  disabled={item.status === 'uploading'}
+                >
+                  {t('Entfernen')}
+                </button>
+              </div>
             </li>
           ))}
         </ul>

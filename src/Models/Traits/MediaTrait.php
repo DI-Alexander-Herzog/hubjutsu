@@ -2,7 +2,6 @@
 
 namespace  AHerzog\Hubjutsu\Models\Traits;
 
-use App\Models\Address;
 use App\Models\Media;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
@@ -11,36 +10,67 @@ use Str;
 trait MediaTrait
 {
 
-    
     public function fillableMedia(): array
     {
         return property_exists($this, 'fillableMedia') ? $this->fillableMedia  : [];
     }
 
+    public function fillableMediaList(): array
+    {
+        return property_exists($this, 'fillableMediaList') ? $this->fillableMediaList  : [];
+    }
+
     public function fillMedia(array $attributes)
     {
         foreach ($this->fillableMedia() as $key) {
-            
             $setter = Str::camel('set_'.$key);
             $snake = Str::snake($key);
-            
-            if (isset($attributes[$snake]) && method_exists($this, $setter)) {
-                $media = $attributes[$snake];
-                if (is_array($media) && !empty($media[Media::DELETE_FLAG])) {
-                    $this->media($key)->delete();
-                    continue;
-                }
-                 if (is_array($media)) {
-                    if (isset($media['id'])) {
-                        $data = $media;
-                        $media = Media::find($data['id']);
-                        $media->fill($data);
-                    } else {
-                        $media = new Media($media);
-                    }
-                }
-                $this->$setter($media);
+
+            if (!array_key_exists($snake, $attributes) || !method_exists($this, $setter)) {
+                continue;
             }
+
+            $payload = $attributes[$snake];
+
+            if (is_array($payload) && array_is_list($payload)) {
+                $payload = $payload[0] ?? null;
+            }
+
+            if ($payload === null) {
+                continue;
+            }
+
+            if (is_array($payload) && !empty($payload[Media::DELETE_FLAG])) {
+                $this->media($key)->delete();
+                continue;
+            }
+
+            $media = $this->hydrateMedia($payload);
+            if (!$media) {
+                continue;
+            }
+
+            $this->$setter($media);
+        }
+
+        foreach ($this->fillableMediaList() as $key) {
+            $setter = Str::camel('set_'.$key);
+            $snake = Str::snake($key);
+
+            if (!array_key_exists($snake, $attributes) || !method_exists($this, $setter)) {
+                continue;
+            }
+
+            $payload = $attributes[$snake];
+            if ($payload === null) {
+                continue;
+            }
+
+            if (!is_array($payload) || !array_is_list($payload)) {
+                $payload = [$payload];
+            }
+
+            $this->$setter($payload);
         }
     }
 
@@ -48,7 +78,7 @@ trait MediaTrait
         return $this->morphMany(Media::class, 'mediable');
     }
 
-    /** 
+    /**
      * @return MorphOne
      */
     public function media($category='main'): MorphOne
@@ -59,22 +89,9 @@ trait MediaTrait
             $query->where('category', $category);
         });
     }
-    
 
-    public function setMedia(Media|array $media, $category="main", $sort=1) {
-        if (is_array($media) && !empty($media[Media::DELETE_FLAG])) {
-            $this->media($category)->delete();
-            return;
-        }
-        if (is_array($media)) {
-            if (isset($media['id'])) {
-                $data = $media;
-                $media = Media::find($data['id']);
-                $media->fill($data);
-            } else {
-                $media = new Media($media);
-            }
-        }
+
+    public function setMedia(Media $media, $category="main", $sort=1) {
         $existingRecord = $this->medias()->where('category', $category)->latest()->first();
         /** @var Media $media */
         if ($media->mediable) {
@@ -90,11 +107,52 @@ trait MediaTrait
                 $existingRecord->delete();
             }
         }
-        
+
         $media->category = $category;
         $media->mediable_sort = $sort;
         $media->mediable()->associate($this);
         $media->save();
+    }
+
+    public function setMediaList(array $medias, $category="main", $sortStart=1): void
+    {
+        foreach ($medias as $idx => $media) {
+            if (!$media) {
+                continue;
+            }
+
+            if (is_array($media) && !empty($media[Media::DELETE_FLAG])) {
+                if (!empty($media['id'])) {
+                    $toDelete = $this->medias()
+                        ->where('category', $category)
+                        ->whereKey($media['id'])
+                        ->first();
+                    if ($toDelete) {
+                        $toDelete->delete();
+                    }
+                }
+                continue;
+            }
+
+            $entryMedia = $this->hydrateMedia($media);
+            if (!$entryMedia) {
+                continue;
+            }
+
+            if ($entryMedia->mediable) {
+                get_class($this) == get_class($entryMedia->mediable) || throw new \Exception("Media already has another mediable");
+                $this->getKey() == $entryMedia->mediable->getKey() || throw new \Exception("Media already has annother mediable");
+            }
+
+            $sort = is_array($media) && isset($media['mediable_sort'])
+                ? intval($media['mediable_sort'])
+                : $sortStart + $idx;
+
+            $entryMedia->category = $category;
+            $entryMedia->mediable_sort = $sort;
+            $entryMedia->mediable()->associate($this);
+            $entryMedia->save();
+        }
     }
 
     public function addMedia(Media $media, $category="main", $sort=1) {
@@ -109,5 +167,26 @@ trait MediaTrait
         $media->save();
     }
 
+    protected function hydrateMedia(mixed $media): ?Media
+    {
+        if ($media instanceof Media) {
+            return $media;
+        }
 
+        if (!is_array($media)) {
+            return null;
+        }
+
+        if (isset($media['id'])) {
+            $data = $media;
+            $mediaObj = Media::find($data['id']);
+            if (!$mediaObj) {
+                return null;
+            }
+            $mediaObj->fill($data);
+            return $mediaObj;
+        }
+
+        return new Media($media);
+    }
 }
