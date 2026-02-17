@@ -157,7 +157,6 @@ export default function ScreenCamRecorder(): JSX.Element {
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const camVideoRef = useRef<HTMLVideoElement | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
-  const previewWrapRef = useRef<HTMLDivElement | null>(null);
 
   const isRecordingRef = useRef<boolean>(false);
   const clickPulsesRef = useRef<ClickPulse[]>([]);
@@ -303,7 +302,7 @@ export default function ScreenCamRecorder(): JSX.Element {
 
   function startClickTracking(): void {
     if (!enableClickTracking || clickHandlerRef.current) return;
-    const target = previewWrapRef.current;
+    const target = previewRef.current;
     if (!target) return;
 
     const handler = (event: PointerEvent) => {
@@ -993,7 +992,6 @@ export default function ScreenCamRecorder(): JSX.Element {
 
       <div style={{ display: "flex", gap: 16, alignItems: "stretch", marginTop: 20 }}>
         <div
-          ref={previewWrapRef}
           style={{
             position: "relative",
             background: "#111",
