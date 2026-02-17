@@ -1,5 +1,12 @@
 import React, { useRef, useState } from "react";
 import axios from "axios";
+import Checkbox from "./Checkbox";
+import ColorInput from "./ColorInput";
+import InputLabel from "./InputLabel";
+import InputSelect from "./InputSelect";
+import InputText from "./InputText";
+import PrimaryButton from "./PrimaryButton";
+import SecondaryButton from "./SecondaryButton";
 
 type Mode = "screen_cam_mic" | "screen_mic" | "cam_mic" | "mic_only";
 type Quality = "standard" | "high" | "max";
@@ -842,64 +849,66 @@ export default function ScreenCamRecorder(): JSX.Element {
     <div style={{ maxWidth: 1180, margin: "0 auto" }}>
       <h2>Screen Recorder (TSX)</h2>
 
-      <select disabled={isRecording || isStarting} value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-        {MODES.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.label}
-          </option>
-        ))}
-      </select>
+      <div style={{ marginTop: 12, display: "flex", gap: 12, alignItems: "end", flexWrap: "wrap" }}>
+        <div style={{ minWidth: 240 }}>
+          <InputLabel value="Modus" />
+          <InputSelect
+            withEmpty={false}
+            disabled={isRecording || isStarting}
+            value={mode}
+            onChange={(e) => setMode(e.target.value as Mode)}
+            options={MODES.map((m) => [m.id, m.label])}
+            className="w-full"
+          />
+        </div>
 
-      <select
-        disabled={isRecording || isStarting}
-        value={quality}
-        onChange={(e) => setQuality(e.target.value as Quality)}
-        style={{ marginLeft: 12 }}
-      >
-        {Object.entries(QUALITY_PRESETS).map(([id, preset]) => (
-          <option key={id} value={id}>
-            Qualitaet: {preset.label}
-          </option>
-        ))}
-      </select>
+        <div style={{ minWidth: 180 }}>
+          <InputLabel value="Qualitaet" />
+          <InputSelect
+            withEmpty={false}
+            disabled={isRecording || isStarting}
+            value={quality}
+            onChange={(e) => setQuality(e.target.value as Quality)}
+            options={Object.entries(QUALITY_PRESETS).map(([id, preset]) => [id, `Qualitaet: ${preset.label}`])}
+            className="w-full"
+          />
+        </div>
 
-      <select
-        disabled={isRecording || isStarting}
-        value={camLayout}
-        onChange={(e) => setCamLayout(e.target.value as CamLayout)}
-        style={{ marginLeft: 12 }}
-      >
-        {CAM_LAYOUTS.map((layout) => (
-          <option key={layout.id} value={layout.id}>
-            Cam: {layout.label}
-          </option>
-        ))}
-      </select>
+        <div style={{ minWidth: 220 }}>
+          <InputLabel value="Cam Layout" />
+          <InputSelect
+            withEmpty={false}
+            disabled={isRecording || isStarting}
+            value={camLayout}
+            onChange={(e) => setCamLayout(e.target.value as CamLayout)}
+            options={CAM_LAYOUTS.map((layout) => [layout.id, `Cam: ${layout.label}`])}
+            className="w-full"
+          />
+        </div>
 
-      <label style={{ marginLeft: 12 }}>
-        <input
-          type="checkbox"
-          checked={systemAudio}
-          disabled={isRecording || isStarting}
-          onChange={(e) => setSystemAudio(e.target.checked)}
-        />
-        System Audio
-      </label>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <Checkbox
+            checked={systemAudio}
+            disabled={isRecording || isStarting}
+            onChange={(e) => setSystemAudio(e.target.checked)}
+          />
+          <span>System Audio</span>
+        </label>
+      </div>
 
       <div style={{ marginTop: 12, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          Background
-          <input
-            type="color"
+        <div style={{ minWidth: 220 }}>
+          <InputLabel value="Background" />
+          <ColorInput
             value={canvasBgColor}
             disabled={isRecording || isStarting}
-            onChange={(e) => setCanvasBgColor(e.target.value)}
+            onChange={setCanvasBgColor}
           />
-        </label>
+        </div>
 
         <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          Sek. Vorlauf
-          <input
+          <InputLabel value="Sek. Vorlauf" className="mb-0" />
+          <InputText
             type="number"
             min={0}
             max={10}
@@ -907,7 +916,7 @@ export default function ScreenCamRecorder(): JSX.Element {
             value={preRollSeconds}
             disabled={isRecording || isStarting}
             onChange={(e) => setPreRollSeconds(Number(e.target.value))}
-            style={{ width: 64 }}
+            className="w-20"
           />
         </label>
 
@@ -940,8 +949,7 @@ export default function ScreenCamRecorder(): JSX.Element {
         </label>
 
         <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <input
-            type="checkbox"
+          <Checkbox
             checked={enableClickTracking}
             disabled={isRecording || isStarting}
             onChange={(e) => setEnableClickTracking(e.target.checked)}
@@ -950,8 +958,7 @@ export default function ScreenCamRecorder(): JSX.Element {
         </label>
 
         <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <input
-            type="checkbox"
+          <Checkbox
             checked={enableTranscript}
             disabled={isRecording || isStarting}
             onChange={(e) => setEnableTranscript(e.target.checked)}
@@ -960,25 +967,29 @@ export default function ScreenCamRecorder(): JSX.Element {
         </label>
 
         <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          Sprache
-          <input
-            type="text"
+          <InputLabel value="Sprache" className="mb-0" />
+          <InputSelect
+            withEmpty={false}
             value={transcriptLang}
             disabled={isRecording || isStarting || !enableTranscript}
             onChange={(e) => setTranscriptLang(e.target.value)}
-            placeholder="de-DE"
-            style={{ width: 90 }}
+            options={[
+              ["de-DE", "de-DE"],
+              ["de-AT", "de-AT"],
+              ["en-US", "en-US"],
+            ]}
+            className="w-24"
           />
         </label>
       </div>
 
       <div style={{ marginTop: 12 }}>
         {!isRecording ? (
-          <button onClick={start} disabled={isStarting}>
+          <PrimaryButton onClick={start} disabled={isStarting}>
             {isStarting ? "Vorbereitung..." : "Start"}
-          </button>
+          </PrimaryButton>
         ) : (
-          <button onClick={stop}>Stop</button>
+          <SecondaryButton onClick={stop}>Stop</SecondaryButton>
         )}
       </div>
 
