@@ -81,6 +81,11 @@ class MediaRecordingController extends Controller
     {
         $request->validate([
             'last_index' => ['required','integer','min:0'],
+            'transcript_lang' => ['nullable', 'string', 'max:32'],
+            'transcript_interval_seconds' => ['nullable', 'integer', 'min:1', 'max:60'],
+            'transcript_entries' => ['nullable', 'array'],
+            'transcript_entries.*.seconds' => ['required_with:transcript_entries', 'numeric', 'min:0'],
+            'transcript_entries.*.text' => ['required_with:transcript_entries', 'string', 'max:2000'],
         ]);
 
         $rec = $this->loadOwnedRecordingOrFail($request, $uuid);
@@ -97,10 +102,58 @@ class MediaRecordingController extends Controller
             'last_chunk_index' => $lastIndex + 1,
         ]);
 
+        $entries = $request->input('transcript_entries', []);
+        if (is_array($entries) && count($entries) > 0) {
+            $this->storeTranscriptFiles(
+                $uuid,
+                (string) $request->input('transcript_lang', ''),
+                $request->has('transcript_interval_seconds')
+                    ? (int) $request->input('transcript_interval_seconds')
+                    : null,
+                $entries
+            );
+        }
+
         // Job wird gespeichert (DB queue), aber läuft nur wenn du queue:work startest
         ProcessRecording::dispatch($uuid);
 
         return response()->json(['ok' => true, 'status' => 'queued']);
+    }
+
+    private function storeTranscriptFiles(string $uuid, string $lang, ?int $intervalSeconds, array $entries): void
+    {
+        $disk = Storage::disk('recordings_private');
+        $baseDir = "recordings/{$uuid}";
+
+        $payload = [
+            'uuid' => $uuid,
+            'lang' => $lang,
+            'interval_seconds' => $intervalSeconds,
+            'saved_at' => now()->toIso8601String(),
+            'entries' => array_values($entries),
+        ];
+
+        $disk->put(
+            "{$baseDir}/transcript.json",
+            json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
+        );
+
+        $lines = [];
+        foreach ($entries as $entry) {
+            $seconds = (int) floor((float) ($entry['seconds'] ?? 0));
+            $text = (string) ($entry['text'] ?? '');
+            $lines[] = '['.$this->formatSeconds($seconds).'] '.$text;
+        }
+
+        $disk->put("{$baseDir}/transcript.txt", implode(PHP_EOL, $lines).PHP_EOL);
+    }
+
+    private function formatSeconds(int $seconds): string
+    {
+        $seconds = max(0, $seconds);
+        $mm = str_pad((string) floor($seconds / 60), 2, '0', STR_PAD_LEFT);
+        $ss = str_pad((string) ($seconds % 60), 2, '0', STR_PAD_LEFT);
+        return "{$mm}:{$ss}";
     }
 
     public function status(Request $request, string $uuid)

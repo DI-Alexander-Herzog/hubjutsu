@@ -1,17 +1,46 @@
 import React, { useRef, useState } from "react";
 import axios from "axios";
 
-type Mode =
-  | "screen_cam_mic"
-  | "screen_mic"
-  | "cam_mic"
-  | "mic_only";
+type Mode = "screen_cam_mic" | "screen_mic" | "cam_mic" | "mic_only";
 type Quality = "standard" | "high" | "max";
 type CamLayout =
   | "split_panel"
   | "overlay_top_center_circle"
   | "overlay_bottom_right_circle"
   | "overlay_bottom_left_circle";
+
+type ClickPulse = {
+  xNorm: number;
+  yNorm: number;
+  startedAt: number;
+};
+
+type TranscriptLine = {
+  seconds: number;
+  text: string;
+};
+
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: any) => void) | null;
+  onerror: ((event: any) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type InitResponse = {
+  uuid: string;
+  upload_token: string;
+  chunk_size_ms?: number;
+};
+
+type StatusResponse = {
+  status: "finished" | "processing" | "done" | "error";
+  mp4_url?: string;
+};
 
 const MODES: { id: Mode; label: string }[] = [
   { id: "screen_cam_mic", label: "Screen + Cam + Mic (Split)" },
@@ -36,18 +65,12 @@ const QUALITY_PRESETS: Record<
   max: { label: "Max", fps: 60, videoBps: 12_000_000, audioBps: 256_000 },
 };
 
-type InitResponse = {
-  uuid: string;
-  upload_token: string;
-  chunk_size_ms?: number;
-};
-
-type StatusResponse = {
-  status: "finished" | "processing" | "done" | "error";
-  mp4_url?: string;
-};
-
 const MAX_UPLOAD_PART_BYTES = 512 * 1024;
+const CLICK_PULSE_DURATION_MS = 650;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
 
 function pickMimeType(): string {
   const types = [
@@ -56,6 +79,17 @@ function pickMimeType(): string {
     "video/webm",
   ];
   return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+}
+
+function formatTimestamp(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  const mm = String(Math.floor(total / 60)).padStart(2, "0");
+  const ss = String(total % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
+function normalizeWs(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
 }
 
 async function waitForVideoReady(video: HTMLVideoElement): Promise<void> {
@@ -89,20 +123,20 @@ export default function ScreenCamRecorder(): JSX.Element {
   const [micGainLevel, setMicGainLevel] = useState<number>(1.0);
   const [systemGainLevel, setSystemGainLevel] = useState<number>(0.7);
   const [preRollSeconds, setPreRollSeconds] = useState<number>(3);
+  const [enableClickTracking, setEnableClickTracking] = useState<boolean>(true);
+  const [enableTranscript, setEnableTranscript] = useState<boolean>(true);
+  const [transcriptLang, setTranscriptLang] = useState<string>("de-DE");
+  const [transcriptLines, setTranscriptLines] = useState<TranscriptLine[]>([]);
+  const [liveFragment, setLiveFragment] = useState<string>("");
   const [status, setStatus] = useState<string>("idle");
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [isStarting, setIsStarting] = useState<boolean>(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [runtimeSeconds, setRuntimeSeconds] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
-  const mimeType = pickMimeType();
-
-  const recordingRef = useRef<{
-    uuid: string | null;
-    token: string | null;
-    chunkSizeMs: number;
-  }>({
+  const recordingRef = useRef<{ uuid: string | null; token: string | null; chunkSizeMs: number }>({
     uuid: null,
     token: null,
     chunkSizeMs: 1000,
@@ -123,6 +157,22 @@ export default function ScreenCamRecorder(): JSX.Element {
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const camVideoRef = useRef<HTMLVideoElement | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
+  const previewWrapRef = useRef<HTMLDivElement | null>(null);
+
+  const isRecordingRef = useRef<boolean>(false);
+  const clickPulsesRef = useRef<ClickPulse[]>([]);
+  const clickHandlerRef = useRef<((event: PointerEvent) => void) | null>(null);
+  const clickTargetRef = useRef<HTMLElement | null>(null);
+
+  const recordingStartedAtRef = useRef<number>(0);
+  const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const finalSegmentStartRef = useRef<number>(0);
+  const interimTranscriptRef = useRef<string>("");
+  const lastCommittedFinalTextRef = useRef<string>("");
+  const transcriptLinesRef = useRef<TranscriptLine[]>([]);
+  const runtimeTickRef = useRef<number | null>(null);
+
+  const mimeType = pickMimeType();
 
   async function apiInit(): Promise<InitResponse> {
     const res = await axios.post<InitResponse>("/media/recording/init");
@@ -142,8 +192,8 @@ export default function ScreenCamRecorder(): JSX.Element {
         headers: { "X-Upload-Token": token },
       });
     } catch (e: any) {
-      const status = e?.response?.status;
-      if (status === 413) {
+      const statusCode = e?.response?.status;
+      if (statusCode === 413) {
         throw new Error(`Upload 413 at chunk ${index} (${Math.round(blob.size / 1024)} KB)`);
       }
       throw e;
@@ -152,7 +202,6 @@ export default function ScreenCamRecorder(): JSX.Element {
 
   async function uploadBlobInParts(blob: Blob): Promise<void> {
     let offset = 0;
-
     while (offset < blob.size) {
       const part = blob.slice(offset, offset + MAX_UPLOAD_PART_BYTES);
       const index = chunkIndexRef.current++;
@@ -168,7 +217,7 @@ export default function ScreenCamRecorder(): JSX.Element {
   }
 
   async function runStartCountdown(seconds: number): Promise<void> {
-    const total = Math.max(0, Math.min(10, Math.floor(seconds || 0)));
+    const total = clamp(Math.floor(seconds || 0), 0, 10);
     for (let value = total; value >= 1; value--) {
       setCountdown(value);
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -182,7 +231,11 @@ export default function ScreenCamRecorder(): JSX.Element {
 
     await axios.post(
       `/media/recording/${uuid}/finish`,
-      { last_index: lastIndex },
+      {
+        last_index: lastIndex,
+        transcript_lang: transcriptLang,
+        transcript_entries: transcriptLinesRef.current,
+      },
       { headers: { "X-Upload-Token": token } }
     );
   }
@@ -201,6 +254,186 @@ export default function ScreenCamRecorder(): JSX.Element {
 
   function stopStream(stream: MediaStream | null): void {
     stream?.getTracks().forEach((t) => t.stop());
+  }
+
+  function appendTranscriptLine(seconds: number, text: string): void {
+    const cleanText = normalizeWs(text);
+    if (!cleanText) return;
+
+    const last = transcriptLinesRef.current[transcriptLinesRef.current.length - 1];
+    if (last && normalizeWs(last.text).toLowerCase() === cleanText.toLowerCase()) {
+      return;
+    }
+
+    const next = [
+      ...transcriptLinesRef.current,
+      { seconds: Math.max(0, Math.floor(seconds)), text: cleanText },
+    ];
+    transcriptLinesRef.current = next;
+    setTranscriptLines(next);
+  }
+
+  function flushPendingInterimTranscript(): void {
+    const pendingInterim = normalizeWs(interimTranscriptRef.current);
+    if (!pendingInterim && transcriptLinesRef.current.length > 0) return;
+    if (!pendingInterim) return;
+    appendTranscriptLine(finalSegmentStartRef.current, pendingInterim);
+    interimTranscriptRef.current = "";
+    setLiveFragment("");
+  }
+
+  function startRuntimeTicker(): void {
+    if (runtimeTickRef.current) window.clearInterval(runtimeTickRef.current);
+    runtimeTickRef.current = window.setInterval(() => {
+      const elapsedSeconds = Math.max(0, (performance.now() - recordingStartedAtRef.current) / 1000);
+      setRuntimeSeconds(elapsedSeconds);
+    }, 250);
+  }
+
+  function stopRuntimeTicker(freeze = false): void {
+    if (runtimeTickRef.current) {
+      window.clearInterval(runtimeTickRef.current);
+      runtimeTickRef.current = null;
+    }
+    if (freeze) {
+      const elapsedSeconds = Math.max(0, (performance.now() - recordingStartedAtRef.current) / 1000);
+      setRuntimeSeconds(elapsedSeconds);
+    }
+  }
+
+  function startClickTracking(): void {
+    if (!enableClickTracking || clickHandlerRef.current) return;
+    const target = previewWrapRef.current;
+    if (!target) return;
+
+    const handler = (event: PointerEvent) => {
+      if (!isRecordingRef.current) return;
+      if (typeof event.button === "number" && event.button !== 0) return;
+
+      const rect = target.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const xNorm = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+      const yNorm = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+      clickPulsesRef.current.push({ xNorm, yNorm, startedAt: performance.now() });
+    };
+
+    clickHandlerRef.current = handler;
+    clickTargetRef.current = target;
+    target.addEventListener("pointerdown", handler, true);
+  }
+
+  function stopClickTracking(): void {
+    const handler = clickHandlerRef.current;
+    const target = clickTargetRef.current;
+    if (handler && target) {
+      target.removeEventListener("pointerdown", handler, true);
+      clickHandlerRef.current = null;
+    }
+    clickTargetRef.current = null;
+    clickPulsesRef.current = [];
+  }
+
+  function stopSpeechRecognition(flushPendingInterim = false): void {
+    if (flushPendingInterim) {
+      flushPendingInterimTranscript();
+    }
+    try {
+      speechRecognitionRef.current?.stop();
+    } catch {
+      // no-op
+    }
+    speechRecognitionRef.current = null;
+  }
+
+  function startSpeechRecognition(): void {
+    if (!enableTranscript) return;
+
+    const ctor = ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) as
+      | (new () => SpeechRecognitionLike)
+      | undefined;
+
+    if (!ctor) {
+      setError((prev) => prev ?? "Web Speech API nicht verfuegbar (kein Transcript).");
+      return;
+    }
+
+    finalSegmentStartRef.current = 0;
+    interimTranscriptRef.current = "";
+    lastCommittedFinalTextRef.current = "";
+    transcriptLinesRef.current = [];
+    setTranscriptLines([]);
+    setLiveFragment("");
+
+    const recognition = new ctor();
+    recognition.lang = transcriptLang || "de-DE";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: any) => {
+      let committedFinal = false;
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const text = normalizeWs(result?.[0]?.transcript ?? "");
+        if (!text) continue;
+
+        if (result?.isFinal) {
+          if (text.toLowerCase() !== lastCommittedFinalTextRef.current.toLowerCase()) {
+            appendTranscriptLine(finalSegmentStartRef.current, text);
+            lastCommittedFinalTextRef.current = text;
+            const elapsedSeconds = Math.max(0, (performance.now() - recordingStartedAtRef.current) / 1000);
+            finalSegmentStartRef.current = elapsedSeconds;
+            committedFinal = true;
+          }
+        }
+      }
+
+      const interimParts: string[] = [];
+      for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result?.isFinal) continue;
+        const text = normalizeWs(result?.[0]?.transcript ?? "");
+        if (text) interimParts.push(text);
+      }
+
+      const interimLive = normalizeWs(interimParts.join(" "));
+      if (committedFinal && !interimLive) {
+        interimTranscriptRef.current = "";
+        setLiveFragment("");
+      } else if (interimLive) {
+        interimTranscriptRef.current = interimLive;
+        setLiveFragment(interimLive);
+      }
+    };
+
+    const tryRestart = () => {
+      if (!isRecordingRef.current || !enableTranscript) return;
+      window.setTimeout(() => {
+        if (!isRecordingRef.current || !enableTranscript) return;
+        try {
+          recognition.start();
+        } catch {
+          // no-op
+        }
+      }, 250);
+    };
+
+    recognition.onerror = () => {
+      tryRestart();
+    };
+
+    recognition.onend = () => {
+      tryRestart();
+    };
+
+    speechRecognitionRef.current = recognition;
+
+    try {
+      recognition.start();
+    } catch {
+      // no-op
+    }
   }
 
   async function getScreenStream(): Promise<MediaStream> {
@@ -323,12 +556,7 @@ export default function ScreenCamRecorder(): JSX.Element {
       ctx.drawImage(video, x, y, rw, rh);
     };
 
-    const drawCircleCover = (
-      video: HTMLVideoElement,
-      cx: number,
-      cy: number,
-      diameter: number
-    ) => {
+    const drawCircleCover = (video: HTMLVideoElement, cx: number, cy: number, diameter: number) => {
       const r = diameter / 2;
 
       ctx.save();
@@ -336,7 +564,6 @@ export default function ScreenCamRecorder(): JSX.Element {
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
-
       drawCover(video, cx - r, cy - r, diameter, diameter);
       ctx.restore();
 
@@ -347,6 +574,41 @@ export default function ScreenCamRecorder(): JSX.Element {
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
+    };
+
+    const drawClickPulses = () => {
+      if (!enableClickTracking || mode === "mic_only") return;
+
+      const now = performance.now();
+      clickPulsesRef.current = clickPulsesRef.current.filter(
+        (pulse) => now - pulse.startedAt <= CLICK_PULSE_DURATION_MS
+      );
+
+      const splitWidth = Math.floor(W * 0.75);
+
+      for (const pulse of clickPulsesRef.current) {
+        const t = clamp((now - pulse.startedAt) / CLICK_PULSE_DURATION_MS, 0, 1);
+        const x =
+          mode === "screen_cam_mic" && camLayout === "split_panel"
+            ? pulse.xNorm * splitWidth
+            : pulse.xNorm * W;
+        const y = pulse.yNorm * H;
+
+        const radius = 10 + 34 * t;
+        const alpha = 0.85 * (1 - t);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(250, 204, 21, ${alpha})`;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(250, 204, 21, ${Math.max(0.2, alpha)})`;
+        ctx.fill();
+        ctx.restore();
+      }
     };
 
     function render() {
@@ -389,6 +651,7 @@ export default function ScreenCamRecorder(): JSX.Element {
         drawContain(camVideo, 0, 0, W, H);
       }
 
+      drawClickPulses();
       rafRef.current = requestAnimationFrame(render);
     }
 
@@ -409,6 +672,13 @@ export default function ScreenCamRecorder(): JSX.Element {
       setError(null);
       setDownloadUrl(null);
       setStatus("init");
+      setRuntimeSeconds(0);
+      setTranscriptLines([]);
+      setLiveFragment("");
+      transcriptLinesRef.current = [];
+      finalSegmentStartRef.current = 0;
+      interimTranscriptRef.current = "";
+      lastCommittedFinalTextRef.current = "";
 
       const init = await apiInit();
       recordingRef.current = {
@@ -431,7 +701,6 @@ export default function ScreenCamRecorder(): JSX.Element {
       micStreamRef.current = micStream;
 
       const audioTrack = await mixAudio(micStream, systemAudio ? screenStream : null);
-
       const composed = await buildComposedStream(
         screenStream,
         camStream,
@@ -491,6 +760,15 @@ export default function ScreenCamRecorder(): JSX.Element {
       setStatus("countdown");
       await runStartCountdown(preRollSeconds);
 
+      recordingStartedAtRef.current = performance.now();
+      isRecordingRef.current = true;
+      startRuntimeTicker();
+
+      if (enableClickTracking) startClickTracking();
+      if (enableTranscript) {
+        startSpeechRecognition();
+      }
+
       rec.start(recordingRef.current.chunkSizeMs);
       setIsRecording(true);
       setIsStarting(false);
@@ -505,6 +783,12 @@ export default function ScreenCamRecorder(): JSX.Element {
   function stop(): void {
     const rec = recorderRef.current;
     if (!rec || rec.state === "inactive") return;
+
+    isRecordingRef.current = false;
+    stopClickTracking();
+    stopSpeechRecognition(true);
+    stopRuntimeTicker(true);
+
     rec.requestData();
     rec.stop();
     setIsRecording(false);
@@ -513,6 +797,10 @@ export default function ScreenCamRecorder(): JSX.Element {
   function cleanup(): void {
     setCountdown(null);
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+    stopClickTracking();
+    stopSpeechRecognition();
+    stopRuntimeTicker(false);
 
     stopStream(screenStreamRef.current);
     stopStream(camStreamRef.current);
@@ -552,14 +840,10 @@ export default function ScreenCamRecorder(): JSX.Element {
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto" }}>
+    <div style={{ maxWidth: 1180, margin: "0 auto" }}>
       <h2>Screen Recorder (TSX)</h2>
 
-      <select
-        disabled={isRecording || isStarting}
-        value={mode}
-        onChange={(e) => setMode(e.target.value as Mode)}
-      >
+      <select disabled={isRecording || isStarting} value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
         {MODES.map((m) => (
           <option key={m.id} value={m.id}>
             {m.label}
@@ -575,7 +859,7 @@ export default function ScreenCamRecorder(): JSX.Element {
       >
         {Object.entries(QUALITY_PRESETS).map(([id, preset]) => (
           <option key={id} value={id}>
-            Qualität: {preset.label}
+            Qualitaet: {preset.label}
           </option>
         ))}
       </select>
@@ -655,6 +939,38 @@ export default function ScreenCamRecorder(): JSX.Element {
           />
           <span>{Math.round(systemGainLevel * 100)}%</span>
         </label>
+
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={enableClickTracking}
+            disabled={isRecording || isStarting}
+            onChange={(e) => setEnableClickTracking(e.target.checked)}
+          />
+          Click Tracking
+        </label>
+
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={enableTranscript}
+            disabled={isRecording || isStarting}
+            onChange={(e) => setEnableTranscript(e.target.checked)}
+          />
+          Transcript
+        </label>
+
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          Sprache
+          <input
+            type="text"
+            value={transcriptLang}
+            disabled={isRecording || isStarting || !enableTranscript}
+            onChange={(e) => setTranscriptLang(e.target.value)}
+            placeholder="de-DE"
+            style={{ width: 90 }}
+          />
+        </label>
       </div>
 
       <div style={{ marginTop: 12 }}>
@@ -669,46 +985,90 @@ export default function ScreenCamRecorder(): JSX.Element {
 
       <p>Status: {status}</p>
       {error && <p style={{ color: "red" }}>{error}</p>}
-
       {downloadUrl && <p>Fertig verarbeitet. Video ist unten abspielbar.</p>}
 
       <video ref={screenVideoRef} style={{ display: "none" }} muted playsInline />
       <video ref={camVideoRef} style={{ display: "none" }} muted playsInline />
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
-      <div
-        style={{
-          position: "relative",
-          marginTop: 20,
-          background: "#111",
-          borderRadius: 12,
-          overflow: "hidden",
-          minHeight: 240,
-        }}
-      >
-        <video
-          ref={previewRef}
-          style={{ width: "100%", display: "block" }}
-          playsInline
-        />
-        {countdown !== null && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(0, 0, 0, 0.55)",
-              color: "#fff",
-              fontSize: 96,
-              fontWeight: 800,
-              lineHeight: 1,
-            }}
-          >
-            {countdown}
+      <div style={{ display: "flex", gap: 16, alignItems: "stretch", marginTop: 20 }}>
+        <div
+          ref={previewWrapRef}
+          style={{
+            position: "relative",
+            background: "#111",
+            borderRadius: 12,
+            overflow: "hidden",
+            minHeight: 240,
+            flex: 1,
+          }}
+        >
+          <video ref={previewRef} style={{ width: "100%", display: "block" }} playsInline />
+          {countdown !== null && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(0, 0, 0, 0.55)",
+                color: "#fff",
+                fontSize: 96,
+                fontWeight: 800,
+                lineHeight: 1,
+              }}
+            >
+              {countdown}
+            </div>
+          )}
+          {runtimeSeconds > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                right: 10,
+                bottom: 10,
+                background: "rgba(0, 0, 0, 0.65)",
+                color: "#fff",
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                fontSize: 12,
+                padding: "4px 8px",
+                borderRadius: 8,
+              }}
+            >
+              {formatTimestamp(runtimeSeconds)}
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            width: 320,
+            maxHeight: 420,
+            overflowY: "auto",
+            border: "1px solid #e5e7eb",
+            borderRadius: 12,
+            padding: 12,
+            background: "#fff",
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Transcript (Timestamps)</div>
+          <div style={{ marginBottom: 10, padding: 8, borderRadius: 8, background: "#f9fafb", fontSize: 13 }}>
+            <strong>LIVE:</strong> {liveFragment || "[...]"}
           </div>
-        )}
+          {transcriptLines.length === 0 ? (
+            <div style={{ opacity: 0.6, fontSize: 13 }}>Noch keine Eintraege.</div>
+          ) : (
+            transcriptLines.map((line, idx) => (
+              <div key={`${line.seconds}-${idx}`} style={{ marginBottom: 10, fontSize: 13, lineHeight: 1.35 }}>
+                <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "#6b7280" }}>
+                  {formatTimestamp(line.seconds)}
+                </div>
+                <div>{line.text}</div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

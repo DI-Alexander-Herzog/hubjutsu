@@ -5,6 +5,7 @@ namespace AHerzog\Hubjutsu;
 use AHerzog\Hubjutsu\App\Auth\Permission;
 use AHerzog\Hubjutsu\App\Menu\MenuManager;
 use AHerzog\Hubjutsu\Console\HubjutsuAppModelCommand;
+use AHerzog\Hubjutsu\Console\CleanupRecordingsCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuGenerateTypesCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuGitCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuMakeCommand;
@@ -62,7 +63,8 @@ class HubjutsuServiceProvider extends ServiceProvider
                 HubjutsuMakeCommand::class,
                 HubjutsuGenerateTypesCommand::class,
                 HubjutsuMakeComponentCommand::class,
-                HubjutsuAppModelCommand::class
+                HubjutsuAppModelCommand::class,
+                CleanupRecordingsCommand::class,
             ]);
         }
 
@@ -113,7 +115,8 @@ class HubjutsuServiceProvider extends ServiceProvider
             HubjutsuSetupCommand::class,
             HubjutsuGenerateTypesCommand::class,
             HubjutsuMakeComponentCommand::class,
-            HubjutsuAppModelCommand::class
+            HubjutsuAppModelCommand::class,
+            CleanupRecordingsCommand::class,
         ];
     }
 }

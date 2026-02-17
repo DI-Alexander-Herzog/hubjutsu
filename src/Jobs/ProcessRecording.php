@@ -92,6 +92,9 @@ class ProcessRecording implements ShouldQueue
         $mp4Path = "recordings/{$this->uuid}/output.mp4";
         $disk->put($mp4Path, file_get_contents($outMp4));
 
+        // Source chunks are no longer needed after successful render.
+        $disk->deleteDirectory("recordings/{$this->uuid}/chunks");
+
         $rec->update([
             'status' => 'done',
             'mp4_path' => $mp4Path,
