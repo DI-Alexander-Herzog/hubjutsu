@@ -74,6 +74,7 @@ const QUALITY_PRESETS: Record<
 
 const MAX_UPLOAD_PART_BYTES = 512 * 1024;
 const CLICK_PULSE_DURATION_MS = 650;
+const STOP_DELAY_MS = 1000;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -144,6 +145,7 @@ export default function ScreenCamRecorder(): JSX.Element {
   const [liveFragment, setLiveFragment] = useState<string>("");
   const [status, setStatus] = useState<string>("idle");
   const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [isStopping, setIsStopping] = useState<boolean>(false);
   const [isStarting, setIsStarting] = useState<boolean>(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [runtimeSeconds, setRuntimeSeconds] = useState<number>(0);
@@ -185,6 +187,7 @@ export default function ScreenCamRecorder(): JSX.Element {
   const transcriptLinesRef = useRef<TranscriptLine[]>([]);
   const runtimeTickRef = useRef<number | null>(null);
   const startCancelRequestedRef = useRef<boolean>(false);
+  const stopDelayTimerRef = useRef<number | null>(null);
 
   const mimeType = pickMimeType();
 
@@ -710,6 +713,7 @@ export default function ScreenCamRecorder(): JSX.Element {
     try {
       startCancelRequestedRef.current = false;
       setIsStarting(true);
+      setIsStopping(false);
       setError(null);
       setDownloadUrl(null);
       setStatus("init");
@@ -837,7 +841,7 @@ export default function ScreenCamRecorder(): JSX.Element {
     setStatus("idle");
   }
 
-  function stop(): void {
+  function executeStopNow(): void {
     const rec = recorderRef.current;
     if (!rec || rec.state === "inactive") return;
 
@@ -850,10 +854,29 @@ export default function ScreenCamRecorder(): JSX.Element {
     rec.requestData();
     rec.stop();
     setIsRecording(false);
+    setIsStopping(false);
+  }
+
+  function stop(): void {
+    const rec = recorderRef.current;
+    if (!rec || rec.state === "inactive" || isStopping) return;
+
+    setIsStopping(true);
+    setStatus("stopping");
+
+    stopDelayTimerRef.current = window.setTimeout(() => {
+      stopDelayTimerRef.current = null;
+      executeStopNow();
+    }, STOP_DELAY_MS);
   }
 
   function cleanup(): void {
     setCountdown(null);
+    setIsStopping(false);
+    if (stopDelayTimerRef.current) {
+      window.clearTimeout(stopDelayTimerRef.current);
+      stopDelayTimerRef.current = null;
+    }
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
     stopClickTracking();
@@ -1048,7 +1071,9 @@ export default function ScreenCamRecorder(): JSX.Element {
             )}
           </div>
         ) : (
-          <SecondaryButton onClick={stop}>Stop</SecondaryButton>
+          <SecondaryButton onClick={stop} disabled={isStopping}>
+            {isStopping ? "Stoppt..." : "Stop"}
+          </SecondaryButton>
         )}
       </div>
 
