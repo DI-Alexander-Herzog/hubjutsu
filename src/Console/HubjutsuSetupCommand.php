@@ -269,8 +269,11 @@ class HubjutsuSetupCommand extends Command
     
 
         $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Models/', app_path('Models'));
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Jobs/', app_path('Jobs'));
         $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Policies/', app_path('Policies'));
         $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/app/Services/', app_path('Services'));
+
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/config/', config_path());
 
         $this->copyIfNotContains(__DIR__.'/../../stubs/app/Models/User.php', app_path('Models'). '/User.php', 'AHerzog\Hubjutsu\Models\User');
         

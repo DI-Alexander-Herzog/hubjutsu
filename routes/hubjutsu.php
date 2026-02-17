@@ -93,6 +93,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::post('/media/upload', [MediaController::class, 'upload'])->name('media.upload');
     Route::post('/media/chunked-upload', [MediaController::class, 'chunkedUpload'])->name('media.chunked-upload');
+
+    Route::post('/media/recording/init', [MediaRecordingController::class, 'mediarecording.init']);
+    Route::post('/media/recording/{uuid}/chunk', [MediaRecordingController::class, 'mediarecording.chunk']);
+    Route::post('/media/recording/{uuid}/finish', [MediaRecordingController::class, 'mediarecording.finish']);
+    Route::get('/media/recording/{uuid}/status', [MediaRecordingController::class, 'mediarecording.status']);
+    Route::get('/media/recording/{uuid}/download', [MediaRecordingController::class, 'mediarecording.download']); // optional
+
 });
 
 Route::middleware('guest')->group(function () {
