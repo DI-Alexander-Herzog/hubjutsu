@@ -32,34 +32,52 @@ class ProcessRecording implements ShouldQueue
         if ($locked === 0) return;
 
         $disk = Storage::disk('recordings_private');
+        if (!$disk->exists("recordings/{$this->uuid}")) {
+            $disk->makeDirectory("recordings/{$this->uuid}/chunks");
+        }
 
         $chunkDir = $disk->path("recordings/{$this->uuid}/chunks");
         $workDir  = storage_path("app/tmp_recordings/{$this->uuid}");
         if (!is_dir($workDir)) mkdir($workDir, 0775, true);
 
-        $fileList = "{$workDir}/filelist.txt";
+        $inWebm   = "{$workDir}/input.webm";
         $outMp4   = "{$workDir}/output.mp4";
 
         $last = max(0, (int)$rec->last_chunk_index - 1);
 
-        $lines = [];
+        $out = @fopen($inWebm, 'wb');
+        if ($out === false) {
+            $rec->update(['status' => 'error', 'error_message' => 'Cannot create input.webm']);
+            return;
+        }
+
         for ($i = 0; $i <= $last; $i++) {
             $chunk = sprintf("%s/chunk_%06d.webm", $chunkDir, $i);
             if (!file_exists($chunk)) {
+                fclose($out);
                 $rec->update(['status'=>'error','error_message'=>"Missing chunk {$i}"]);
                 return;
             }
-            $lines[] = "file '" . str_replace("'", "'\\''", $chunk) . "'";
-        }
-        file_put_contents($fileList, implode(PHP_EOL, $lines) . PHP_EOL);
 
-        // Robust: concat demuxer + transcode -> mp4
+            $in = @fopen($chunk, 'rb');
+            if ($in === false) {
+                fclose($out);
+                $rec->update(['status' => 'error', 'error_message' => "Cannot read chunk {$i}"]);
+                return;
+            }
+
+            stream_copy_to_stream($in, $out);
+            fclose($in);
+        }
+        fclose($out);
+
+        // Transcode merged WebM stream to MP4
         $p = new Process([
             'ffmpeg','-y',
-            '-f','concat','-safe','0',
-            '-i', $fileList,
-            '-c:v','libx264','-preset','veryfast','-crf','23',
-            '-c:a','aac','-b:a','128k',
+            '-i', $inWebm,
+            '-c:v','libx264','-preset','medium','-crf','20',
+            '-pix_fmt','yuv420p',
+            '-c:a','aac','-b:a','192k',
             '-movflags','+faststart',
             $outMp4
         ]);

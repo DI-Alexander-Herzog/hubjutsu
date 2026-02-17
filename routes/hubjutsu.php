@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\MediaController;
+use App\Http\Controllers\MediaRecordingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\HubController;
@@ -94,11 +95,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/media/upload', [MediaController::class, 'upload'])->name('media.upload');
     Route::post('/media/chunked-upload', [MediaController::class, 'chunkedUpload'])->name('media.chunked-upload');
 
-    Route::post('/media/recording/init', [MediaRecordingController::class, 'mediarecording.init']);
-    Route::post('/media/recording/{uuid}/chunk', [MediaRecordingController::class, 'mediarecording.chunk']);
-    Route::post('/media/recording/{uuid}/finish', [MediaRecordingController::class, 'mediarecording.finish']);
-    Route::get('/media/recording/{uuid}/status', [MediaRecordingController::class, 'mediarecording.status']);
-    Route::get('/media/recording/{uuid}/download', [MediaRecordingController::class, 'mediarecording.download']); // optional
+    Route::name('mediarecording.')->prefix('media/recording')->group(function() {
+        Route::post('init', [MediaRecordingController::class, 'init'])->name('init');
+        Route::post('{uuid}/chunk', [MediaRecordingController::class, 'chunk'])->name('chunk');
+        Route::post('{uuid}/finish', [MediaRecordingController::class, 'finish'])->name('finish');
+        Route::get('{uuid}/status', [MediaRecordingController::class, 'status'])->name('status');
+        Route::get('{uuid}/download', [MediaRecordingController::class, 'download'])->name('download'); // optional
+    });
 
 });
 

@@ -110,7 +110,7 @@ class MediaRecordingController extends Controller
         return response()->json([
             'status' => $rec->status,
             'mp4_url' => $rec->status === 'done'
-                ? route('recording.download', ['uuid' => $uuid]) // wenn du download nutzt
+                ? route('mediarecording.download', ['uuid' => $uuid]) // wenn du download nutzt
                 : null,
             'error_message' => $rec->status === 'error' ? $rec->error_message : null,
         ]);
