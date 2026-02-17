@@ -99,6 +99,12 @@ function normalizeWs(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
+function normalizeTranscriptCompare(text: string): string {
+  return normalizeWs(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "");
+}
+
 async function waitForVideoReady(video: HTMLVideoElement): Promise<void> {
   if (video.readyState >= 1 && video.videoWidth > 0 && video.videoHeight > 0) return;
 
@@ -122,6 +128,7 @@ async function waitForVideoReady(video: HTMLVideoElement): Promise<void> {
 }
 
 export default function ScreenCamRecorder(): JSX.Element {
+  const START_CANCELLED_ERROR = "__start_cancelled__";
   const [mode, setMode] = useState<Mode>("screen_cam_mic");
   const [quality, setQuality] = useState<Quality>("high");
   const [camLayout, setCamLayout] = useState<CamLayout>("overlay_top_center_circle");
@@ -177,6 +184,7 @@ export default function ScreenCamRecorder(): JSX.Element {
   const lastCommittedFinalTextRef = useRef<string>("");
   const transcriptLinesRef = useRef<TranscriptLine[]>([]);
   const runtimeTickRef = useRef<number | null>(null);
+  const startCancelRequestedRef = useRef<boolean>(false);
 
   const mimeType = pickMimeType();
 
@@ -225,10 +233,22 @@ export default function ScreenCamRecorder(): JSX.Element {
   async function runStartCountdown(seconds: number): Promise<void> {
     const total = clamp(Math.floor(seconds || 0), 0, 10);
     for (let value = total; value >= 1; value--) {
+      if (startCancelRequestedRef.current) {
+        throw new Error(START_CANCELLED_ERROR);
+      }
       setCountdown(value);
       await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (startCancelRequestedRef.current) {
+        throw new Error(START_CANCELLED_ERROR);
+      }
     }
     setCountdown(null);
+  }
+
+  function assertStartNotCancelled(): void {
+    if (startCancelRequestedRef.current) {
+      throw new Error(START_CANCELLED_ERROR);
+    }
   }
 
   async function apiFinish(lastIndex: number): Promise<void> {
@@ -280,9 +300,23 @@ export default function ScreenCamRecorder(): JSX.Element {
   }
 
   function flushPendingInterimTranscript(): void {
-    const pendingInterim = normalizeWs(interimTranscriptRef.current);
+    const pendingInterim = normalizeWs(interimTranscriptRef.current || liveFragment);
     if (!pendingInterim && transcriptLinesRef.current.length > 0) return;
     if (!pendingInterim) return;
+
+    const pendingCmp = normalizeTranscriptCompare(pendingInterim);
+    const lastLine = transcriptLinesRef.current[transcriptLinesRef.current.length - 1];
+    const lastLineCmp = normalizeTranscriptCompare(lastLine?.text ?? "");
+    const lastFinalCmp = normalizeTranscriptCompare(lastCommittedFinalTextRef.current);
+    if (
+      pendingCmp &&
+      (pendingCmp === lastLineCmp || pendingCmp === lastFinalCmp)
+    ) {
+      interimTranscriptRef.current = "";
+      setLiveFragment("");
+      return;
+    }
+
     appendTranscriptLine(finalSegmentStartRef.current, pendingInterim);
     interimTranscriptRef.current = "";
     setLiveFragment("");
@@ -674,6 +708,7 @@ export default function ScreenCamRecorder(): JSX.Element {
 
   async function start(): Promise<void> {
     try {
+      startCancelRequestedRef.current = false;
       setIsStarting(true);
       setError(null);
       setDownloadUrl(null);
@@ -687,6 +722,7 @@ export default function ScreenCamRecorder(): JSX.Element {
       lastCommittedFinalTextRef.current = "";
 
       const init = await apiInit();
+      assertStartNotCancelled();
       recordingRef.current = {
         uuid: init.uuid,
         token: init.upload_token,
@@ -701,6 +737,7 @@ export default function ScreenCamRecorder(): JSX.Element {
       if (mode.includes("screen")) screenStream = await getScreenStream();
       if (mode.includes("cam")) camStream = await getCamStream();
       const micStream = await getMicStream();
+      assertStartNotCancelled();
 
       screenStreamRef.current = screenStream;
       camStreamRef.current = camStream;
@@ -713,6 +750,7 @@ export default function ScreenCamRecorder(): JSX.Element {
         audioTrack,
         QUALITY_PRESETS[quality].fps
       );
+      assertStartNotCancelled();
 
       composedStreamRef.current = composed;
 
@@ -765,6 +803,7 @@ export default function ScreenCamRecorder(): JSX.Element {
 
       setStatus("countdown");
       await runStartCountdown(preRollSeconds);
+      assertStartNotCancelled();
 
       recordingStartedAtRef.current = performance.now();
       isRecordingRef.current = true;
@@ -780,10 +819,22 @@ export default function ScreenCamRecorder(): JSX.Element {
       setIsStarting(false);
       setStatus("recording");
     } catch (e: any) {
-      setError(e?.message ?? "start failed");
+      if (e?.message === START_CANCELLED_ERROR) {
+        setError(null);
+        setStatus("idle");
+      } else {
+        setError(e?.message ?? "start failed");
+      }
       setIsStarting(false);
       cleanup();
     }
+  }
+
+  function cancelStart(): void {
+    if (!isStarting) return;
+    startCancelRequestedRef.current = true;
+    setCountdown(null);
+    setStatus("idle");
   }
 
   function stop(): void {
@@ -792,7 +843,8 @@ export default function ScreenCamRecorder(): JSX.Element {
 
     isRecordingRef.current = false;
     stopClickTracking();
-    stopSpeechRecognition(true);
+    flushPendingInterimTranscript();
+    stopSpeechRecognition(false);
     stopRuntimeTicker(true);
 
     rec.requestData();
@@ -985,9 +1037,16 @@ export default function ScreenCamRecorder(): JSX.Element {
 
       <div style={{ marginTop: 12 }}>
         {!isRecording ? (
-          <PrimaryButton onClick={start} disabled={isStarting}>
-            {isStarting ? "Vorbereitung..." : "Start"}
-          </PrimaryButton>
+          <div style={{ display: "flex", gap: 8 }}>
+            <PrimaryButton onClick={start} disabled={isStarting}>
+              {isStarting ? "Vorbereitung..." : "Start"}
+            </PrimaryButton>
+            {isStarting && (
+              <SecondaryButton onClick={cancelStart}>
+                Abbrechen
+              </SecondaryButton>
+            )}
+          </div>
         ) : (
           <SecondaryButton onClick={stop}>Stop</SecondaryButton>
         )}
