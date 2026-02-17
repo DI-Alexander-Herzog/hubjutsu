@@ -301,6 +301,7 @@ class HubjutsuSetupCommand extends Command
             // Routes...
             $this->copyIfNotContains(__DIR__.'/../../stubs/routes/web.php', base_path('routes/web.php'), "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsu.php';", true);
             $this->copyIfNotContains(__DIR__.'/../../stubs/routes/api.php', base_path('routes/api.php'), "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsuapi.php';", true);
+            $this->copyIfNotContains(__DIR__.'/../../stubs/routes/console.php', base_path('routes/console.php'), "require __DIR__ .'/../vendor/aherzog/hubjutsu/routes/hubjutsuconsole.php';", true);
             $filesystem->copyDirectory(__DIR__.'/../../stubs/tests/Feature', base_path('tests/Feature'));
 
             $this->replaceInFile('"vite build', '"tsc && VITE_CJS_TRACE=true vite build', base_path('package.json'));
@@ -348,6 +349,7 @@ class HubjutsuSetupCommand extends Command
 
             $this->components->info('Building node...');
             $this->runCommands([
+                'php artisan queue:table',
                 'php artisan migrate --force',
                 'php artisan ide-helper:generate',
                 'php artisan hubjutsu:generate:types',
@@ -357,6 +359,7 @@ class HubjutsuSetupCommand extends Command
             $this->runCommands(['php artisan db:seed HubjutsuSeeder --force']);
         } else {
             $this->runCommands([
+                'php artisan queue:table',
                 'php artisan migrate --force',
                 'php artisan hubjutsu:generate:types',
                 'npm run build'

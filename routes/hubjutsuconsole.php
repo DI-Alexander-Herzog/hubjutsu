@@ -1,0 +1,9 @@
+<?php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('queue:work --stop-when-empty --tries=3 --timeout=1800')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/queue.log'));
