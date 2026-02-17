@@ -441,7 +441,7 @@ function MultipleMediaUpload({
       }));
     const payload = [...medias, ...deleteOps];
     const signature = JSON.stringify(
-      payload.map((media) =>
+      payload.map((media: any) =>
         media?.id
           ? `${media.id}:${isMediaMarkedForDeletion(media) ? 'del' : 'keep'}:${media.mediable_sort ?? ''}`
           : media?.filename ?? media?.name ?? ''
