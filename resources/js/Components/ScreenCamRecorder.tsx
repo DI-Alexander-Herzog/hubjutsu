@@ -1,11 +1,9 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import Checkbox from "./Checkbox";
 import ColorInput from "./ColorInput";
 import InputLabel from "./InputLabel";
 import InputSelect from "./InputSelect";
 import InputText from "./InputText";
-import PrimaryButton from "./PrimaryButton";
 import SecondaryButton from "./SecondaryButton";
 
 type Mode = "screen_cam_mic" | "screen_mic" | "cam_mic" | "mic_only";
@@ -134,12 +132,9 @@ export default function ScreenCamRecorder(): JSX.Element {
   const [quality, setQuality] = useState<Quality>("high");
   const [camLayout, setCamLayout] = useState<CamLayout>("overlay_top_center_circle");
   const [canvasBgColor, setCanvasBgColor] = useState<string>("#ffffff");
-  const [systemAudio, setSystemAudio] = useState<boolean>(true);
   const [micGainLevel, setMicGainLevel] = useState<number>(1.0);
-  const [systemGainLevel, setSystemGainLevel] = useState<number>(0.7);
+  const [systemGainLevel, setSystemGainLevel] = useState<number>(0.5);
   const [preRollSeconds, setPreRollSeconds] = useState<number>(3);
-  const [enableClickTracking, setEnableClickTracking] = useState<boolean>(true);
-  const [enableTranscript, setEnableTranscript] = useState<boolean>(true);
   const [transcriptLang, setTranscriptLang] = useState<string>("de-DE");
   const [transcriptLines, setTranscriptLines] = useState<TranscriptLine[]>([]);
   const [liveFragment, setLiveFragment] = useState<string>("");
@@ -151,6 +146,10 @@ export default function ScreenCamRecorder(): JSX.Element {
   const [runtimeSeconds, setRuntimeSeconds] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [viewStep, setViewStep] = useState<"new" | "preview">("new");
+  const [isPreparingPreview, setIsPreparingPreview] = useState<boolean>(false);
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
+  const [screenPermissionDenied, setScreenPermissionDenied] = useState<boolean>(false);
 
   const recordingRef = useRef<{ uuid: string | null; token: string | null; chunkSizeMs: number }>({
     uuid: null,
@@ -188,8 +187,17 @@ export default function ScreenCamRecorder(): JSX.Element {
   const runtimeTickRef = useRef<number | null>(null);
   const startCancelRequestedRef = useRef<boolean>(false);
   const stopDelayTimerRef = useRef<number | null>(null);
+  const lastPreparedPreviewConfigRef = useRef<string>("");
 
   const mimeType = pickMimeType();
+  const previewConfigKey = [
+    mode,
+    quality,
+    camLayout,
+    canvasBgColor,
+    micGainLevel.toFixed(2),
+    systemGainLevel.toFixed(2),
+  ].join("|");
 
   async function apiInit(): Promise<InitResponse> {
     const res = await axios.post<InitResponse>("/media/recording/init");
@@ -345,7 +353,7 @@ export default function ScreenCamRecorder(): JSX.Element {
   }
 
   function startClickTracking(): void {
-    if (!enableClickTracking || clickHandlerRef.current) return;
+    if (clickHandlerRef.current) return;
     const target = previewRef.current;
     if (!target) return;
 
@@ -390,8 +398,6 @@ export default function ScreenCamRecorder(): JSX.Element {
   }
 
   function startSpeechRecognition(): void {
-    if (!enableTranscript) return;
-
     const ctor = ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) as
       | (new () => SpeechRecognitionLike)
       | undefined;
@@ -451,9 +457,9 @@ export default function ScreenCamRecorder(): JSX.Element {
     };
 
     const tryRestart = () => {
-      if (!isRecordingRef.current || !enableTranscript) return;
+      if (!isRecordingRef.current) return;
       window.setTimeout(() => {
-        if (!isRecordingRef.current || !enableTranscript) return;
+        if (!isRecordingRef.current) return;
         try {
           recognition.start();
         } catch {
@@ -482,7 +488,7 @@ export default function ScreenCamRecorder(): JSX.Element {
   async function getScreenStream(): Promise<MediaStream> {
     return navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: 30 },
-      audio: systemAudio,
+      audio: true,
     });
   }
 
@@ -531,7 +537,8 @@ export default function ScreenCamRecorder(): JSX.Element {
     screenStream: MediaStream | null,
     camStream: MediaStream | null,
     audioTrack: MediaStreamTrack | null,
-    fps: number
+    fps: number,
+    renderMode: Mode
   ): Promise<MediaStream> {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
@@ -620,7 +627,7 @@ export default function ScreenCamRecorder(): JSX.Element {
     };
 
     const drawClickPulses = () => {
-      if (!enableClickTracking || mode === "mic_only") return;
+      if (renderMode === "mic_only") return;
 
       const now = performance.now();
       clickPulsesRef.current = clickPulsesRef.current.filter(
@@ -632,7 +639,7 @@ export default function ScreenCamRecorder(): JSX.Element {
       for (const pulse of clickPulsesRef.current) {
         const t = clamp((now - pulse.startedAt) / CLICK_PULSE_DURATION_MS, 0, 1);
         const x =
-          mode === "screen_cam_mic" && camLayout === "split_panel"
+          renderMode === "screen_cam_mic" && camLayout === "split_panel"
             ? pulse.xNorm * splitWidth
             : pulse.xNorm * W;
         const y = pulse.yNorm * H;
@@ -658,7 +665,7 @@ export default function ScreenCamRecorder(): JSX.Element {
       ctx.fillStyle = canvasBgColor;
       ctx.fillRect(0, 0, W, H);
 
-      if (mode === "screen_cam_mic") {
+      if (renderMode === "screen_cam_mic") {
         if (camLayout === "split_panel") {
           const leftW = Math.floor(W * 0.75);
           drawContain(screenVideo, 0, 0, leftW, H);
@@ -686,11 +693,11 @@ export default function ScreenCamRecorder(): JSX.Element {
         }
       }
 
-      if (mode === "screen_mic" && screenStream) {
+      if (renderMode === "screen_mic" && screenStream) {
         drawContain(screenVideo, 0, 0, W, H);
       }
 
-      if (mode === "cam_mic" && camStream) {
+      if (renderMode === "cam_mic" && camStream) {
         drawContain(camVideo, 0, 0, W, H);
       }
 
@@ -703,14 +710,170 @@ export default function ScreenCamRecorder(): JSX.Element {
     const canvasStream = canvas.captureStream(fps);
     const tracks: MediaStreamTrack[] = [];
 
-    if (mode !== "mic_only") tracks.push(canvasStream.getVideoTracks()[0]);
+    if (renderMode !== "mic_only") tracks.push(canvasStream.getVideoTracks()[0]);
     if (audioTrack) tracks.push(audioTrack);
 
     return new MediaStream(tracks);
   }
 
+  function hasLiveTrack(stream: MediaStream | null, kind: "audio" | "video"): boolean {
+    if (!stream) return false;
+    const tracks = kind === "audio" ? stream.getAudioTracks() : stream.getVideoTracks();
+    return tracks.some((track) => track.readyState === "live");
+  }
+
+  async function ensurePreviewInputStreams(requestedMode: Mode): Promise<{
+    screenStream: MediaStream | null;
+    camStream: MediaStream | null;
+    micStream: MediaStream | null;
+    effectiveMode: Mode;
+  }> {
+    let screenStream = screenStreamRef.current;
+    let camStream = camStreamRef.current;
+    let micStream = micStreamRef.current;
+    let effectiveMode: Mode = requestedMode;
+
+    if (effectiveMode.includes("screen") && !hasLiveTrack(screenStream, "video")) {
+      try {
+        screenStream = await getScreenStream();
+        setScreenPermissionDenied(false);
+      } catch (e: any) {
+        const name = e?.name || e?.message;
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          setScreenPermissionDenied(true);
+          effectiveMode = "cam_mic";
+          setMode("cam_mic");
+          screenStream = null;
+        } else {
+          throw e;
+        }
+      }
+      screenStreamRef.current = screenStream;
+    }
+
+    if (effectiveMode.includes("cam") && !hasLiveTrack(camStream, "video")) {
+      camStream = await getCamStream();
+      camStreamRef.current = camStream;
+    }
+
+    if (!hasLiveTrack(micStream, "audio")) {
+      micStream = await getMicStream();
+      micStreamRef.current = micStream;
+    }
+
+    return {
+      screenStream: effectiveMode.includes("screen") ? screenStream : null,
+      camStream: effectiveMode.includes("cam") ? camStream : null,
+      micStream,
+      effectiveMode,
+    };
+  }
+
+  function cleanupComposedPreview(): void {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    stopStream(composedStreamRef.current);
+    composedStreamRef.current = null;
+    audioContextRef.current?.close();
+    audioContextRef.current = null;
+  }
+
+  async function attachPreviewStream(stream: MediaStream): Promise<void> {
+    let attempts = 0;
+    while (!previewRef.current && attempts < 10) {
+      attempts += 1;
+      await new Promise((resolve) => window.setTimeout(resolve, 25));
+    }
+
+    const video = previewRef.current;
+    if (!video) return;
+
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    video.srcObject = stream;
+    video.muted = true;
+    video.controls = false;
+
+    await new Promise((resolve) => window.setTimeout(resolve, 30));
+    try {
+      await video.play();
+    } catch {
+      await new Promise((resolve) => window.setTimeout(resolve, 80));
+      try {
+        await video.play();
+      } catch {
+        // no-op
+      }
+    }
+  }
+
+  async function preparePreview(): Promise<void> {
+    if (isRecording || isStarting || isPreparingPreview) return;
+
+    try {
+      setIsPreparingPreview(true);
+      const shouldReaskScreen = viewStep === "new" && screenPermissionDenied;
+      const requestedMode: Mode =
+        shouldReaskScreen && !mode.includes("screen") ? "screen_cam_mic" : mode;
+      if (shouldReaskScreen) {
+        setScreenPermissionDenied(false);
+        if (requestedMode !== mode) {
+          setMode(requestedMode);
+        }
+      }
+      if (viewStep === "new") {
+        setViewStep("preview");
+        await new Promise((resolve) => window.setTimeout(resolve, 50));
+      }
+      setError(null);
+      setDownloadUrl(null);
+      setStatus("preview_init");
+      setRuntimeSeconds(0);
+      setTranscriptLines([]);
+      setLiveFragment("");
+      transcriptLinesRef.current = [];
+      finalSegmentStartRef.current = 0;
+      interimTranscriptRef.current = "";
+      lastCommittedFinalTextRef.current = "";
+
+      const { screenStream, camStream, micStream, effectiveMode } = await ensurePreviewInputStreams(requestedMode);
+
+      cleanupComposedPreview();
+      const audioTrack = await mixAudio(micStream, screenStream);
+      const composed = await buildComposedStream(
+        screenStream,
+        camStream,
+        audioTrack,
+        QUALITY_PRESETS[quality].fps,
+        effectiveMode
+      );
+
+      composedStreamRef.current = composed;
+      await attachPreviewStream(composed);
+      setStatus("preview_ready");
+      lastPreparedPreviewConfigRef.current = previewConfigKey;
+    } catch (e: any) {
+      setError(e?.message ?? "preview failed");
+      setStatus("error");
+      cleanup();
+      setViewStep("new");
+    } finally {
+      setIsPreparingPreview(false);
+    }
+  }
+
   async function start(): Promise<void> {
     try {
+      if (!composedStreamRef.current) {
+        await preparePreview();
+      }
+      if (!composedStreamRef.current) {
+        return;
+      }
+
       startCancelRequestedRef.current = false;
       setIsStarting(true);
       setIsStopping(false);
@@ -734,39 +897,8 @@ export default function ScreenCamRecorder(): JSX.Element {
       };
 
       chunkIndexRef.current = 0;
-
-      let screenStream: MediaStream | null = null;
-      let camStream: MediaStream | null = null;
-
-      if (mode.includes("screen")) screenStream = await getScreenStream();
-      if (mode.includes("cam")) camStream = await getCamStream();
-      const micStream = await getMicStream();
+      const composed = composedStreamRef.current;
       assertStartNotCancelled();
-
-      screenStreamRef.current = screenStream;
-      camStreamRef.current = camStream;
-      micStreamRef.current = micStream;
-
-      const audioTrack = await mixAudio(micStream, systemAudio ? screenStream : null);
-      const composed = await buildComposedStream(
-        screenStream,
-        camStream,
-        audioTrack,
-        QUALITY_PRESETS[quality].fps
-      );
-      assertStartNotCancelled();
-
-      composedStreamRef.current = composed;
-
-      if (previewRef.current) {
-        previewRef.current.pause();
-        previewRef.current.removeAttribute("src");
-        previewRef.current.load();
-        previewRef.current.srcObject = composed;
-        previewRef.current.muted = true;
-        previewRef.current.controls = false;
-        await previewRef.current.play();
-      }
 
       const preset = QUALITY_PRESETS[quality];
       const rec = new MediaRecorder(composed, {
@@ -805,6 +937,7 @@ export default function ScreenCamRecorder(): JSX.Element {
         }
       };
 
+      setSettingsOpen(false);
       setStatus("countdown");
       await runStartCountdown(preRollSeconds);
       assertStartNotCancelled();
@@ -813,24 +946,27 @@ export default function ScreenCamRecorder(): JSX.Element {
       isRecordingRef.current = true;
       startRuntimeTicker();
 
-      if (enableClickTracking) startClickTracking();
-      if (enableTranscript) {
-        startSpeechRecognition();
-      }
+      startClickTracking();
+      startSpeechRecognition();
 
       rec.start(recordingRef.current.chunkSizeMs);
+      setSettingsOpen(false);
       setIsRecording(true);
       setIsStarting(false);
       setStatus("recording");
     } catch (e: any) {
       if (e?.message === START_CANCELLED_ERROR) {
         setError(null);
-        setStatus("idle");
+        setStatus("preview_ready");
       } else {
         setError(e?.message ?? "start failed");
+        setStatus("error");
       }
       setIsStarting(false);
-      cleanup();
+      if (e?.message !== START_CANCELLED_ERROR) {
+        cleanup();
+        setViewStep("new");
+      }
     }
   }
 
@@ -872,24 +1008,56 @@ export default function ScreenCamRecorder(): JSX.Element {
 
   function cleanup(): void {
     setCountdown(null);
+    setIsStarting(false);
     setIsStopping(false);
     if (stopDelayTimerRef.current) {
       window.clearTimeout(stopDelayTimerRef.current);
       stopDelayTimerRef.current = null;
     }
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-
     stopClickTracking();
     stopSpeechRecognition();
     stopRuntimeTicker(false);
 
+    cleanupComposedPreview();
     stopStream(screenStreamRef.current);
     stopStream(camStreamRef.current);
     stopStream(micStreamRef.current);
-    stopStream(composedStreamRef.current);
-    audioContextRef.current?.close();
-    audioContextRef.current = null;
+    screenStreamRef.current = null;
+    camStreamRef.current = null;
+    micStreamRef.current = null;
+    if (previewRef.current) {
+      previewRef.current.pause();
+      previewRef.current.srcObject = null;
+      previewRef.current.removeAttribute("src");
+      previewRef.current.load();
+    }
   }
+
+  function resetToNew(): void {
+    cleanup();
+    setViewStep("new");
+    setStatus("idle");
+    setRuntimeSeconds(0);
+    setError(null);
+    setDownloadUrl(null);
+    setSettingsOpen(false);
+    lastPreparedPreviewConfigRef.current = "";
+  }
+
+  useEffect(() => {
+    if (viewStep !== "preview") return;
+    if (isRecording || isStarting || isPreparingPreview) return;
+    if (!lastPreparedPreviewConfigRef.current) return;
+    if (lastPreparedPreviewConfigRef.current === previewConfigKey) return;
+
+    const timer = window.setTimeout(() => {
+      void preparePreview();
+    }, 200);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [previewConfigKey, viewStep, isRecording, isStarting, isPreparingPreview]);
 
   async function pollStatus(): Promise<void> {
     setStatus("processing");
@@ -920,229 +1088,494 @@ export default function ScreenCamRecorder(): JSX.Element {
     }, 2000);
   }
 
-  return (
-    <div style={{ maxWidth: 1180, margin: "0 auto" }}>
-      <h2>Screen Recorder (TSX)</h2>
-
-      <div style={{ marginTop: 12, display: "flex", gap: 12, alignItems: "end", flexWrap: "wrap" }}>
-        <div style={{ minWidth: 240 }}>
-          <InputLabel value="Modus" />
-          <InputSelect
-            withEmpty={false}
-            disabled={isRecording || isStarting}
-            value={mode}
-            onChange={(e) => setMode(e.target.value as Mode)}
-            options={MODES.map((m) => [m.id, m.label])}
-            className="w-full"
+  function renderQualityIcon(level: Quality): JSX.Element {
+    const bars = level === "standard" ? 1 : level === "high" ? 2 : 3;
+    return (
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 14 }}>
+        {[1, 2, 3].map((bar) => (
+          <span
+            key={bar}
+            style={{
+              width: 4,
+              height: bar * 4,
+              borderRadius: 2,
+              background: bar <= bars ? "#111827" : "#d1d5db",
+              display: "inline-block",
+            }}
           />
-        </div>
-
-        <div style={{ minWidth: 180 }}>
-          <InputLabel value="Qualitaet" />
-          <InputSelect
-            withEmpty={false}
-            disabled={isRecording || isStarting}
-            value={quality}
-            onChange={(e) => setQuality(e.target.value as Quality)}
-            options={Object.entries(QUALITY_PRESETS).map(([id, preset]) => [id, `Qualitaet: ${preset.label}`])}
-            className="w-full"
-          />
-        </div>
-
-        <div style={{ minWidth: 220 }}>
-          <InputLabel value="Cam Layout" />
-          <InputSelect
-            withEmpty={false}
-            disabled={isRecording || isStarting}
-            value={camLayout}
-            onChange={(e) => setCamLayout(e.target.value as CamLayout)}
-            options={CAM_LAYOUTS.map((layout) => [layout.id, `Cam: ${layout.label}`])}
-            className="w-full"
-          />
-        </div>
-
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <Checkbox
-            checked={systemAudio}
-            disabled={isRecording || isStarting}
-            onChange={(e) => setSystemAudio(e.target.checked)}
-          />
-          <span>System Audio</span>
-        </label>
+        ))}
       </div>
+    );
+  }
 
-      <div style={{ marginTop: 12, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ minWidth: 220 }}>
-          <InputLabel value="Background" />
-          <ColorInput
-            value={canvasBgColor}
-            disabled={isRecording || isStarting}
-            onChange={setCanvasBgColor}
-          />
-        </div>
+  function renderCamLayoutIcon(layout: CamLayout): JSX.Element {
+    const circleStyleBase = {
+      position: "absolute" as const,
+      width: 8,
+      height: 8,
+      borderRadius: "50%",
+      background: "#111827",
+      border: "1px solid #fff",
+    };
 
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <InputLabel value="Sek. Vorlauf" className="mb-0" />
-          <InputText
-            type="number"
-            min={0}
-            max={10}
-            step={1}
-            value={preRollSeconds}
-            disabled={isRecording || isStarting}
-            onChange={(e) => setPreRollSeconds(Number(e.target.value))}
-            className="w-20"
-          />
-        </label>
-
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          Mic Gain
-          <input
-            type="range"
-            min={0.4}
-            max={2}
-            step={0.05}
-            value={micGainLevel}
-            disabled={isRecording || isStarting}
-            onChange={(e) => setMicGainLevel(Number(e.target.value))}
-          />
-          <span>{micGainLevel.toFixed(2)}x</span>
-        </label>
-
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          System Gain
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={systemGainLevel}
-            disabled={isRecording || isStarting || !systemAudio}
-            onChange={(e) => setSystemGainLevel(Number(e.target.value))}
-          />
-          <span>{Math.round(systemGainLevel * 100)}%</span>
-        </label>
-
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Checkbox
-            checked={enableClickTracking}
-            disabled={isRecording || isStarting}
-            onChange={(e) => setEnableClickTracking(e.target.checked)}
-          />
-          Click Tracking
-        </label>
-
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Checkbox
-            checked={enableTranscript}
-            disabled={isRecording || isStarting}
-            onChange={(e) => setEnableTranscript(e.target.checked)}
-          />
-          Transcript
-        </label>
-
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <InputLabel value="Sprache" className="mb-0" />
-          <InputSelect
-            withEmpty={false}
-            value={transcriptLang}
-            disabled={isRecording || isStarting || !enableTranscript}
-            onChange={(e) => setTranscriptLang(e.target.value)}
-            options={[
-              ["de-DE", "de-DE"],
-              ["de-AT", "de-AT"],
-              ["en-US", "en-US"],
-            ]}
-            className="w-24"
-          />
-        </label>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        {!isRecording ? (
-          <div style={{ display: "flex", gap: 8 }}>
-            <PrimaryButton onClick={start} disabled={isStarting}>
-              {isStarting ? "Vorbereitung..." : "Start"}
-            </PrimaryButton>
-            {isStarting && (
-              <SecondaryButton onClick={cancelStart}>
-                Abbrechen
-              </SecondaryButton>
-            )}
-          </div>
-        ) : (
-          <SecondaryButton onClick={stop} disabled={isStopping}>
-            {isStopping ? "Stoppt..." : "Stop"}
-          </SecondaryButton>
+    return (
+      <div
+        style={{
+          position: "relative",
+          width: 26,
+          height: 16,
+          borderRadius: 3,
+          background: "#d1d5db",
+          overflow: "hidden",
+          border: "1px solid #9ca3af",
+        }}
+      >
+        {layout === "split_panel" && (
+          <>
+            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "72%", background: "#9ca3af" }} />
+            <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "28%", background: "#111827" }} />
+          </>
+        )}
+        {layout === "overlay_top_center_circle" && (
+          <span style={{ ...circleStyleBase, top: 1, left: 9 }} />
+        )}
+        {layout === "overlay_bottom_right_circle" && (
+          <span style={{ ...circleStyleBase, right: 1, bottom: 1 }} />
+        )}
+        {layout === "overlay_bottom_left_circle" && (
+          <span style={{ ...circleStyleBase, left: 1, bottom: 1 }} />
         )}
       </div>
+    );
+  }
 
-      <p>Status: {status}</p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {downloadUrl && <p>Fertig verarbeitet. Video ist unten abspielbar.</p>}
+  function renderModeIcon(currentMode: Mode): JSX.Element {
+    const screen = (
+      <span style={{ width: 12, height: 8, border: "1px solid #111827", borderRadius: 2, display: "inline-block" }} />
+    );
+    const cam = (
+      <span style={{ width: 10, height: 10, borderRadius: "50%", border: "1px solid #111827", display: "inline-block" }} />
+    );
+    const mic = (
+      <span style={{ width: 4, height: 10, borderRadius: 3, background: "#111827", display: "inline-block" }} />
+    );
 
+    if (currentMode === "mic_only") {
+      return <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>{mic}</span>;
+    }
+    if (currentMode === "cam_mic") {
+      return <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>{cam}{mic}</span>;
+    }
+    if (currentMode === "screen_mic") {
+      return <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>{screen}{mic}</span>;
+    }
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+        {screen}
+        {cam}
+        {mic}
+      </div>
+    );
+  }
+
+  const hasCamLayout = mode === "screen_cam_mic";
+
+  return (
+    <div style={{ maxWidth: 980, margin: "0 auto" }}>
       <video ref={screenVideoRef} style={{ display: "none" }} muted playsInline />
       <video ref={camVideoRef} style={{ display: "none" }} muted playsInline />
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
-      <div style={{ display: "flex", gap: 16, alignItems: "stretch", marginTop: 20 }}>
-        <div
-          style={{
-            position: "relative",
-            background: "#111",
-            borderRadius: 12,
-            overflow: "hidden",
-            minHeight: 240,
-            flex: 1,
-          }}
-        >
-          <video ref={previewRef} style={{ width: "100%", display: "block" }} playsInline />
-          {countdown !== null && (
+      <div style={{ position: "relative", marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 16, alignItems: "stretch", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 620px", minWidth: 0 }}>
+          <div
+            style={{
+              position: "relative",
+              background: "#000",
+              borderRadius: 16,
+              overflow: "hidden",
+              aspectRatio: "16 / 9",
+            }}
+          >
+            {viewStep === "new" ? (
+              <>
+                <video ref={previewRef} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} playsInline autoPlay muted />
+              </>
+            ) : (
+              <video ref={previewRef} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} playsInline autoPlay muted />
+            )}
+
+            {countdown !== null && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "rgba(0, 0, 0, 0.55)",
+                  color: "#fff",
+                  fontSize: 96,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                }}
+              >
+                {countdown}
+              </div>
+            )}
+            {runtimeSeconds > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  bottom: 10,
+                  background: "rgba(0, 0, 0, 0.65)",
+                  color: "#fff",
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  fontSize: 12,
+                  padding: "4px 8px",
+                  borderRadius: 8,
+                }}
+              >
+                {formatTimestamp(runtimeSeconds)}
+              </div>
+            )}
+            {status && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  left: 10,
+                  background: "rgba(0, 0, 0, 0.65)",
+                  color: "#fff",
+                  fontSize: 12,
+                  padding: "4px 8px",
+                  borderRadius: 8,
+                  textTransform: "capitalize",
+                }}
+              >
+                {status}
+              </div>
+            )}
+          </div>
+
+          {viewStep === "preview" && (
             <div
               style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "rgba(0, 0, 0, 0.55)",
-                color: "#fff",
-                fontSize: 96,
-                fontWeight: 800,
-                lineHeight: 1,
+                marginTop: 12,
+                background: "#101010",
+                borderRadius: 12,
+                padding: "12px 14px",
+                position: "relative",
               }}
             >
-              {countdown}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", columnGap: 24 }}>
+                <div style={{ justifySelf: "end" }}>
+                  {!isRecording && !isStarting && (
+                    <button
+                      type="button"
+                      onClick={() => setSettingsOpen((prev) => !prev)}
+                      disabled={isStarting}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "50%",
+                        border: "1px solid rgba(255,255,255,0.35)",
+                        background: "rgba(0,0,0,0.55)",
+                        color: "#fff",
+                        fontSize: 24,
+                        lineHeight: "1",
+                        cursor: "pointer",
+                      }}
+                      aria-label="Settings"
+                    >
+                      ⋯
+                    </button>
+                  )}
+                </div>
+                <div style={{ justifySelf: "center" }}>
+                  <button
+                    type="button"
+                    onClick={isRecording ? stop : isStarting ? cancelStart : start}
+                    disabled={isStopping || isPreparingPreview}
+                    style={{
+                      width: 74,
+                      height: 74,
+                      borderRadius: "50%",
+                      border: "3px solid #fff",
+                      background: "#fff",
+                      boxShadow: "0 3px 10px rgba(0,0,0,0.25)",
+                      cursor: isStopping ? "wait" : "pointer",
+                      position: "relative",
+                    }}
+                    aria-label={isRecording ? "Stop recording" : isStarting ? "Cancel start" : "Start recording"}
+                  >
+                    {(isRecording || isStarting) && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          inset: 20,
+                          borderRadius: 8,
+                          background: isStarting ? "#111827" : "#ef4444",
+                        }}
+                      />
+                    )}
+                  </button>
+                </div>
+                <div style={{ justifySelf: "start" }}>
+                  {!isRecording && (
+                    <button
+                      type="button"
+                      onClick={resetToNew}
+                      disabled={isStarting || isPreparingPreview}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "50%",
+                        border: "1px solid rgba(255,255,255,0.35)",
+                        background: "#ef4444",
+                        color: "#fff",
+                        fontSize: 20,
+                        fontWeight: 800,
+                        lineHeight: "1",
+                        cursor: "pointer",
+                      }}
+                      aria-label="Reset preview"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {settingsOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    bottom: 94,
+                    width: "min(860px, calc(100vw - 40px))",
+                    maxHeight: "75vh",
+                    overflowY: "auto",
+                    borderRadius: 12,
+                    border: "1px solid #e5e7eb",
+                    background: "#fff",
+                    padding: 14,
+                    boxShadow: "0 14px 40px rgba(0,0,0,0.25)",
+                    zIndex: 5,
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: 10 }}>Settings</div>
+                  <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+                    <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+                      <div>
+                        <InputLabel value="Art der Aufnahme" />
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+                          {MODES.map((m) => {
+                            const isScreenMode = m.id.includes("screen");
+                            const isDisabled = (isRecording || isStarting) || (screenPermissionDenied && isScreenMode);
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                disabled={isDisabled}
+                                onClick={() => setMode(m.id)}
+                                style={{
+                                  border: mode === m.id ? "2px solid #111827" : "1px solid #d1d5db",
+                                  background: mode === m.id ? "#f3f4f6" : "#fff",
+                                  borderRadius: 8,
+                                  padding: "6px 4px",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  cursor: isDisabled ? "not-allowed" : "pointer",
+                                  opacity: isDisabled ? 0.5 : 1,
+                                }}
+                              >
+                                {renderModeIcon(m.id)}
+                                <span style={{ textAlign: "center" }}>{m.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {screenPermissionDenied && (
+                          <div style={{ marginTop: 6, fontSize: 11, color: "#6b7280" }}>
+                            Screen-Modi deaktiviert (Freigabe verweigert).
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <InputLabel value="Qualitaet" />
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6 }}>
+                          {(Object.keys(QUALITY_PRESETS) as Quality[]).map((q) => (
+                            <button
+                              key={q}
+                              type="button"
+                              disabled={isRecording || isStarting}
+                              onClick={() => setQuality(q)}
+                              style={{
+                                border: quality === q ? "2px solid #111827" : "1px solid #d1d5db",
+                                background: quality === q ? "#f3f4f6" : "#fff",
+                                borderRadius: 8,
+                                padding: "6px 4px",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                gap: 4,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                              }}
+                            >
+                              {renderQualityIcon(q)}
+                              <span>{QUALITY_PRESETS[q].label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+                      <div>
+                        <InputLabel value="Cam Layout" />
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+                          {CAM_LAYOUTS.map((layout) => (
+                            <button
+                            key={layout.id}
+                            type="button"
+                            disabled={isRecording || isStarting || !hasCamLayout}
+                            onClick={() => setCamLayout(layout.id)}
+                            style={{
+                                border: camLayout === layout.id ? "2px solid #111827" : "1px solid #d1d5db",
+                                background: camLayout === layout.id ? "#f3f4f6" : "#fff",
+                                borderRadius: 8,
+                                padding: "6px 4px",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                              gap: 4,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: hasCamLayout ? "pointer" : "not-allowed",
+                              opacity: hasCamLayout ? 1 : 0.45,
+                            }}
+                          >
+                              {renderCamLayoutIcon(layout.id)}
+                              <span>{layout.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        {!hasCamLayout && (
+                          <div style={{ marginTop: 6, fontSize: 11, color: "#6b7280" }}>
+                            Nur bei Screen + Cam verfuegbar.
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <InputLabel value="Background" />
+                        <ColorInput
+                          value={canvasBgColor}
+                          disabled={isRecording || isStarting}
+                          onChange={setCanvasBgColor}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+                      <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <InputLabel value="Sek. Vorlauf" className="mb-0" />
+                        <InputText
+                          type="number"
+                          min={0}
+                          max={10}
+                          step={1}
+                          value={preRollSeconds}
+                          disabled={isRecording || isStarting}
+                          onChange={(e) => setPreRollSeconds(Number(e.target.value))}
+                          className="w-20"
+                        />
+                      </label>
+                      <div>
+                        <InputLabel value="Mikrofon Verstaerkung" />
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <input
+                            type="range"
+                            min={0.4}
+                            max={2}
+                            step={0.05}
+                            value={micGainLevel}
+                            disabled={isRecording || isStarting}
+                            onChange={(e) => setMicGainLevel(Number(e.target.value))}
+                          />
+                          <span>{micGainLevel.toFixed(2)}x</span>
+                        </div>
+                      </div>
+                      <div>
+                        <InputLabel value="Systemlautstaerke" />
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            value={systemGainLevel}
+                            disabled={isRecording || isStarting}
+                            onChange={(e) => setSystemGainLevel(Number(e.target.value))}
+                          />
+                          <span>{Math.round(systemGainLevel * 100)}%</span>
+                        </div>
+                      </div>
+                      <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <InputLabel value="Sprache" className="mb-0" />
+                        <InputSelect
+                          withEmpty={false}
+                          value={transcriptLang}
+                          disabled={isRecording || isStarting}
+                          onChange={(e) => setTranscriptLang(e.target.value)}
+                          options={[
+                            ["de-DE", "de-DE"],
+                            ["de-AT", "de-AT"],
+                            ["en-US", "en-US"],
+                          ]}
+                          className="w-24"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-          {runtimeSeconds > 0 && (
+          {viewStep !== "preview" && (
             <div
               style={{
-                position: "absolute",
-                right: 10,
-                bottom: 10,
-                background: "rgba(0, 0, 0, 0.65)",
-                color: "#fff",
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                fontSize: 12,
-                padding: "4px 8px",
-                borderRadius: 8,
+                marginTop: 12,
+                height: 98,
+                borderRadius: 12,
+                background: "#101010",
+                opacity: 0,
+                pointerEvents: "none",
               }}
-            >
-              {formatTimestamp(runtimeSeconds)}
-            </div>
+            />
           )}
         </div>
 
         <div
           style={{
-            width: 320,
-            maxHeight: 420,
+            width: 252,
+            maxHeight: 480,
             overflowY: "auto",
             border: "1px solid #e5e7eb",
             borderRadius: 12,
             padding: 12,
             background: "#fff",
+            flex: "1 1 280px",
+            visibility: status === "idle" ? "hidden" : "visible",
+            pointerEvents: status === "idle" ? "none" : "auto",
           }}
         >
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Transcript (Timestamps)</div>
@@ -1162,7 +1595,32 @@ export default function ScreenCamRecorder(): JSX.Element {
             ))
           )}
         </div>
+        </div>
+        {viewStep === "new" && (
+          <button
+            type="button"
+            onClick={preparePreview}
+            disabled={isPreparingPreview}
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 12,
+              border: 0,
+              borderRadius: 16,
+              background: "#000",
+              color: "#fff",
+              width: "100%",
+              height: "100%",
+              fontSize: 28,
+              fontWeight: 700,
+              cursor: isPreparingPreview ? "wait" : "pointer",
+            }}
+          >
+            {isPreparingPreview ? "Vorschau wird vorbereitet..." : "neues Recording"}
+          </button>
+        )}
       </div>
+
     </div>
   );
 }
