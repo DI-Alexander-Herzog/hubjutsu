@@ -11,6 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Exception\ProcessStartFailedException;
 
 class ProcessRecording implements ShouldQueue
 {
@@ -82,10 +83,27 @@ class ProcessRecording implements ShouldQueue
             $outMp4
         ]);
         $p->setTimeout($this->timeout);
-        $p->run();
+
+        try {
+            $p->run();
+        } catch (ProcessStartFailedException $e) {
+            // Happens when ffmpeg is not installed or not resolvable in PATH.
+            $rec->update([
+                'status' => 'error',
+                'error_message' => 'Error starting ffmpeg process: ' . $e->getMessage(),
+            ]);
+            return;
+        }
 
         if (!$p->isSuccessful()) {
-            $rec->update(['status'=>'error','error_message'=>$p->getErrorOutput()]);
+            $error = trim($p->getErrorOutput());
+            if ($error === '') {
+                $error = trim($p->getOutput());
+            }
+            if ($error === '') {
+                $error = 'ffmpeg failed with exit code ' . $p->getExitCode();
+            }
+            $rec->update(['status' => 'error', 'error_message' => 'Error in ffmpeg: ' . $error]);
             return;
         }
 
