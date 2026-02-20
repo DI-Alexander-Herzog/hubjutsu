@@ -40,6 +40,11 @@ class HubjutsuServiceProvider extends ServiceProvider
         Permission::addModel(\App\Models\Hub::class, __('Hub'));
         Permission::addModel(\App\Models\User::class, __('User'));
         Permission::addModel(\App\Models\Role::class, __('Role'));
+        Permission::addModel(\App\Models\LearningBundle::class, __('Learning Bundle'));
+        Permission::addModel(\App\Models\LearningCourse::class, __('Learning Course'));
+        Permission::addModel(\App\Models\LearningModule::class, __('Learning Module'));
+        Permission::addModel(\App\Models\LearningSection::class, __('Learning Section'));
+        Permission::addModel(\App\Models\LearningLection::class, __('Learning Lection'));
         
         
         // Default allow everything for now

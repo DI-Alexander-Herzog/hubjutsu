@@ -47,6 +47,11 @@ type StatusResponse = {
   mp4_url?: string;
 };
 
+type ScreenCamRecorderProps = {
+  onRecorded?: (payload: { uuid: string }) => void | Promise<void>;
+  onProcessed?: (payload: { uuid: string; mp4Url: string }) => void | Promise<void>;
+};
+
 const MODES: { id: Mode; label: string }[] = [
   { id: "screen_cam_mic", label: "Screen + Cam + Mic (Split)" },
   { id: "screen_mic", label: "Screen + Mic" },
@@ -126,7 +131,10 @@ async function waitForVideoReady(video: HTMLVideoElement): Promise<void> {
   });
 }
 
-export default function ScreenCamRecorder(): JSX.Element {
+export default function ScreenCamRecorder({
+  onRecorded,
+  onProcessed,
+}: ScreenCamRecorderProps = {}): JSX.Element {
   const START_CANCELLED_ERROR = "__start_cancelled__";
   const [mode, setMode] = useState<Mode>("screen_cam_mic");
   const [quality, setQuality] = useState<Quality>("high");
@@ -940,6 +948,9 @@ export default function ScreenCamRecorder(): JSX.Element {
           setStatus("finishing");
           await waitForPendingUploads();
           await apiFinish(chunkIndexRef.current - 1);
+          if (onRecorded && recordingRef.current.uuid) {
+            await onRecorded({ uuid: recordingRef.current.uuid });
+          }
           if (recordingRef.current.uuid) {
             pollStatus(recordingRef.current.uuid);
           }
@@ -1086,6 +1097,7 @@ export default function ScreenCamRecorder(): JSX.Element {
         statusPollIntervalRef.current = null;
         setDownloadUrl(res.mp4_url);
         setStatus("done");
+        setSettingsOpen(false);
 
         if (previewRef.current) {
           previewRef.current.pause();
@@ -1197,6 +1209,23 @@ export default function ScreenCamRecorder(): JSX.Element {
   }
 
   const hasCamLayout = mode === "screen_cam_mic";
+  const isDonePlayback = status === "done" && !!downloadUrl;
+
+  async function handleShare(): Promise<void> {
+    if (!downloadUrl) return;
+    const uuid = recordingRef.current.uuid ?? "";
+    try {
+      if (onProcessed) {
+        await onProcessed({ uuid, mp4Url: downloadUrl });
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(downloadUrl);
+      }
+    } catch (e: any) {
+      setError(e?.message ?? "teilen fehlgeschlagen");
+    }
+  }
 
   return (
     <div style={{ maxWidth: 980, margin: "0 auto" }}>
@@ -1290,7 +1319,7 @@ export default function ScreenCamRecorder(): JSX.Element {
             >
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", columnGap: 24 }}>
                 <div style={{ justifySelf: "end" }}>
-                  {!isRecording && !isStarting && (
+                  {!isRecording && !isStarting && !isDonePlayback && (
                     <button
                       type="button"
                       onClick={() => setSettingsOpen((prev) => !prev)}
@@ -1315,7 +1344,7 @@ export default function ScreenCamRecorder(): JSX.Element {
                 <div style={{ justifySelf: "center" }}>
                   <button
                     type="button"
-                    onClick={isRecording ? stop : isStarting ? cancelStart : start}
+                    onClick={isDonePlayback ? handleShare : isRecording ? stop : isStarting ? cancelStart : start}
                     disabled={isStopping || isPreparingPreview}
                     style={{
                       width: 74,
@@ -1327,9 +1356,34 @@ export default function ScreenCamRecorder(): JSX.Element {
                       cursor: isStopping ? "wait" : "pointer",
                       position: "relative",
                     }}
-                    aria-label={isRecording ? "Stop recording" : isStarting ? "Cancel start" : "Start recording"}
+                    aria-label={
+                      isDonePlayback
+                        ? "Teilen"
+                        : isRecording
+                          ? "Stop recording"
+                          : isStarting
+                            ? "Cancel start"
+                            : "Start recording"
+                    }
                   >
-                    {(isRecording || isStarting) && (
+                    {isDonePlayback && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          inset: 18,
+                          borderRadius: 8,
+                          color: "#111827",
+                          display: "grid",
+                          placeItems: "center",
+                          fontSize: 24,
+                          fontWeight: 700,
+                          lineHeight: 1,
+                        }}
+                      >
+                        ⇪
+                      </span>
+                    )}
+                    {(isRecording || isStarting) && !isDonePlayback && (
                       <span
                         style={{
                           position: "absolute",
@@ -1359,15 +1413,15 @@ export default function ScreenCamRecorder(): JSX.Element {
                         lineHeight: "1",
                         cursor: "pointer",
                       }}
-                      aria-label="Reset preview"
+                      aria-label="Neues Recording"
                     >
-                      ×
+                      ↻
                     </button>
                   )}
                 </div>
               </div>
 
-              {settingsOpen && (
+              {settingsOpen && !isDonePlayback && (
                 <div
                   style={{
                     position: "absolute",

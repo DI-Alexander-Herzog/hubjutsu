@@ -16,6 +16,11 @@ use App\Http\Controllers\MediaController;
 use App\Http\Controllers\MediaRecordingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Settings\SettingsController;
+use App\Http\Controllers\Settings\LearningBundleController;
+use App\Http\Controllers\Settings\LearningCourseController;
+use App\Http\Controllers\Settings\LearningModuleController;
+use App\Http\Controllers\Settings\LearningSectionController;
+use App\Http\Controllers\Settings\LearningLectionController;
 use App\Http\Controllers\HubController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermissionController;
@@ -81,6 +86,10 @@ Route::name('admin.')->prefix('admin')->group(function() {
 
 Route::get('/', [HomeController::class, 'welcome'])->name('welcome');
 
+Route::get('/media/recording/{uuid}/download-signed', [MediaRecordingController::class, 'downloadSigned'])
+    ->middleware(['signed', 'throttle:30,1'])
+    ->name('mediarecording.download.signed');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -92,6 +101,13 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [HomeController::class, 'dashboard'])->name('dashboard');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::name('settings.')->prefix('settings')->group(function () {
+        Route::get('/learning-bundles', [LearningBundleController::class, 'index'])->name('learningbundles.index');
+        Route::get('/learning-courses', [LearningCourseController::class, 'index'])->name('learningcourses.index');
+        Route::get('/learning-modules', [LearningModuleController::class, 'index'])->name('learningmodules.index');
+        Route::get('/learning-sections', [LearningSectionController::class, 'index'])->name('learningsections.index');
+        Route::get('/learning-lections', [LearningLectionController::class, 'index'])->name('learninglections.index');
+    });
     Route::post('/media/upload', [MediaController::class, 'upload'])->name('media.upload');
     Route::post('/media/chunked-upload', [MediaController::class, 'chunkedUpload'])->name('media.chunked-upload');
 

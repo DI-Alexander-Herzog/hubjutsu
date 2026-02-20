@@ -6,6 +6,7 @@ use App\Models\MediaRecording;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class MediaRecordingController extends Controller
@@ -163,7 +164,11 @@ class MediaRecordingController extends Controller
         return response()->json([
             'status' => $rec->status,
             'mp4_url' => $rec->status === 'done'
-                ? route('mediarecording.download', ['uuid' => $uuid]) // wenn du download nutzt
+                ? URL::temporarySignedRoute(
+                    'mediarecording.download.signed',
+                    now()->addHours(24),
+                    ['uuid' => $uuid]
+                )
                 : null,
             'error_message' => $rec->status === 'error' ? $rec->error_message : null,
         ]);
@@ -172,6 +177,18 @@ class MediaRecordingController extends Controller
     public function download(Request $request, string $uuid)
     {
         $rec = $this->loadOwnedRecordingOrFail($request, $uuid);
+
+        if ($rec->status !== 'done' || !$rec->mp4_path) abort(404);
+
+        return Storage::disk('recordings_private')->download(
+            $rec->mp4_path,
+            "recording_{$uuid}.mp4"
+        );
+    }
+
+    public function downloadSigned(Request $request, string $uuid)
+    {
+        $rec = MediaRecording::where('uuid', $uuid)->firstOrFail();
 
         if ($rec->status !== 'done' || !$rec->mp4_path) abort(404);
 

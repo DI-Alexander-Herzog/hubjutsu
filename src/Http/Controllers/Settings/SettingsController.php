@@ -4,6 +4,11 @@ namespace AHerzog\Hubjutsu\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Hub;
+use App\Models\LearningBundle;
+use App\Models\LearningCourse;
+use App\Models\LearningLection;
+use App\Models\LearningModule;
+use App\Models\LearningSection;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -48,6 +53,29 @@ class SettingsController extends Controller {
                         'subtitle' => sprintf(__('%d roles'), Role::count()),
                     ]
                 ]
+            ],
+            [
+                'label' => __('LMS'),
+                'settings' => [
+                    [
+                        'label' => __('Learning Bundles'),
+                        'description' => __('Manage learning bundles.'),
+                        'icon' => 'book-open',
+                        'href' => route('settings.learningbundles.index'),
+                        'color' => 'primary',
+                        'initials' => 'LB',
+                        'subtitle' => sprintf(__('%d bundles'), LearningBundle::count()),
+                    ],
+                    [
+                        'label' => __('Learning Courses'),
+                        'description' => __('Manage learning courses.'),
+                        'icon' => 'academic-cap',
+                        'href' => route('settings.learningcourses.index'),
+                        'color' => 'secondary',
+                        'initials' => 'LC',
+                        'subtitle' => sprintf(__('%d courses'), LearningCourse::count()),
+                    ]
+                ],
             ]
         ];
     }
