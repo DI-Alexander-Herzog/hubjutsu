@@ -188,6 +188,7 @@ export default function ScreenCamRecorder(): JSX.Element {
   const startCancelRequestedRef = useRef<boolean>(false);
   const stopDelayTimerRef = useRef<number | null>(null);
   const lastPreparedPreviewConfigRef = useRef<string>("");
+  const statusPollIntervalRef = useRef<number | null>(null);
 
   const mimeType = pickMimeType();
   const previewConfigKey = [
@@ -286,6 +287,22 @@ export default function ScreenCamRecorder(): JSX.Element {
       return res.data;
     } catch {
       return null;
+    }
+  }
+
+  async function apiStatusByUuid(uuid: string): Promise<StatusResponse | null> {
+    try {
+      const res = await axios.get<StatusResponse>(`/media/recording/${uuid}/status`);
+      return res.data;
+    } catch {
+      return null;
+    }
+  }
+
+  function stopStatusPolling(): void {
+    if (statusPollIntervalRef.current) {
+      window.clearInterval(statusPollIntervalRef.current);
+      statusPollIntervalRef.current = null;
     }
   }
 
@@ -562,12 +579,11 @@ export default function ScreenCamRecorder(): JSX.Element {
       await waitForVideoReady(camVideo);
     }
 
-    const baseVideo = screenStream ? screenVideo : camStream ? camVideo : null;
-    const baseW = baseVideo?.videoWidth || 1280;
-    const baseH = baseVideo?.videoHeight || 720;
+    const targetW = 1920;
+    const targetH = 1080;
 
-    canvas.width = baseW;
-    canvas.height = baseH;
+    canvas.width = targetW;
+    canvas.height = targetH;
 
     const W = canvas.width;
     const H = canvas.height;
@@ -578,7 +594,7 @@ export default function ScreenCamRecorder(): JSX.Element {
       dy: number,
       dw: number,
       dh: number
-    ) => {
+    ): { x: number; y: number; w: number; h: number } => {
       const vw = video.videoWidth || 1;
       const vh = video.videoHeight || 1;
       const scale = Math.min(dw / vw, dh / vh);
@@ -587,6 +603,7 @@ export default function ScreenCamRecorder(): JSX.Element {
       const x = dx + (dw - rw) / 2;
       const y = dy + (dh - rh) / 2;
       ctx.drawImage(video, x, y, rw, rh);
+      return { x, y, w: rw, h: rh };
     };
 
     const drawCover = (
@@ -634,14 +651,9 @@ export default function ScreenCamRecorder(): JSX.Element {
         (pulse) => now - pulse.startedAt <= CLICK_PULSE_DURATION_MS
       );
 
-      const splitWidth = Math.floor(W * 0.75);
-
       for (const pulse of clickPulsesRef.current) {
         const t = clamp((now - pulse.startedAt) / CLICK_PULSE_DURATION_MS, 0, 1);
-        const x =
-          renderMode === "screen_cam_mic" && camLayout === "split_panel"
-            ? pulse.xNorm * splitWidth
-            : pulse.xNorm * W;
+        const x = pulse.xNorm * W;
         const y = pulse.yNorm * H;
 
         const radius = 10 + 34 * t;
@@ -667,15 +679,13 @@ export default function ScreenCamRecorder(): JSX.Element {
 
       if (renderMode === "screen_cam_mic") {
         if (camLayout === "split_panel") {
-          const leftW = Math.floor(W * 0.75);
+          const gap = Math.max(10, Math.round(W * 0.01));
+          const leftW = Math.round((W - gap) * 0.72);
+          const rightW = W - gap - leftW;
           drawContain(screenVideo, 0, 0, leftW, H);
-
-          const bubbleW = W - leftW - 32;
-          const bubbleH = Math.floor((bubbleW * 9) / 16);
-          drawCover(camVideo, leftW + 16, 16, bubbleW, bubbleH);
+          drawContain(camVideo, leftW + gap, 0, rightW, H);
         } else {
           drawContain(screenVideo, 0, 0, W, H);
-
           const diameter = Math.min(W, H) * 0.1955;
           const margin = Math.max(12, diameter * 0.2);
           const cx =
@@ -875,6 +885,7 @@ export default function ScreenCamRecorder(): JSX.Element {
       }
 
       startCancelRequestedRef.current = false;
+      stopStatusPolling();
       setIsStarting(true);
       setIsStopping(false);
       setError(null);
@@ -897,6 +908,7 @@ export default function ScreenCamRecorder(): JSX.Element {
       };
 
       chunkIndexRef.current = 0;
+      pendingUploadsRef.current.clear();
       const composed = composedStreamRef.current;
       assertStartNotCancelled();
 
@@ -928,7 +940,9 @@ export default function ScreenCamRecorder(): JSX.Element {
           setStatus("finishing");
           await waitForPendingUploads();
           await apiFinish(chunkIndexRef.current - 1);
-          pollStatus();
+          if (recordingRef.current.uuid) {
+            pollStatus(recordingRef.current.uuid);
+          }
         } catch (e: any) {
           setError(e?.message ?? "finish failed");
           setStatus("error");
@@ -1059,15 +1073,17 @@ export default function ScreenCamRecorder(): JSX.Element {
     };
   }, [previewConfigKey, viewStep, isRecording, isStarting, isPreparingPreview]);
 
-  async function pollStatus(): Promise<void> {
+  async function pollStatus(uuid: string): Promise<void> {
     setStatus("processing");
+    stopStatusPolling();
 
-    const interval = setInterval(async () => {
-      const res = await apiStatus();
+    const interval = window.setInterval(async () => {
+      const res = await apiStatusByUuid(uuid);
       if (!res) return;
 
       if (res.status === "done" && res.mp4_url) {
-        clearInterval(interval);
+        window.clearInterval(interval);
+        statusPollIntervalRef.current = null;
         setDownloadUrl(res.mp4_url);
         setStatus("done");
 
@@ -1082,10 +1098,12 @@ export default function ScreenCamRecorder(): JSX.Element {
       }
 
       if (res.status === "error") {
-        clearInterval(interval);
+        window.clearInterval(interval);
+        statusPollIntervalRef.current = null;
         setStatus("error");
       }
     }, 2000);
+    statusPollIntervalRef.current = interval;
   }
 
   function renderQualityIcon(level: Quality): JSX.Element {
