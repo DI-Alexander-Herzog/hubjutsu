@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DataTable from '@/Components/DataTable';
 import { DataTableFormatter } from '@/Components/DataTableFormatter';
+import DataTableLink from '@/Components/DataTableLink';
 
 export default function LearningCourseIndex() {
     return (
@@ -13,14 +14,22 @@ export default function LearningCourseIndex() {
         >
             <DataTable
                 routemodel="learning_course"
-                with={['bundles']}
-                defaultSortField={[["sort", 1], ["name", 1]]}
+                with={['cover', 'bundles']}
+                defaultSortField={[["name", 1]]}
                 newRecord={{
                     name: '',
                     active: true,
-                    sort: 0,
                 }}
                 columns={[
+                    {
+                        field: 'cover',
+                        label: 'Cover',
+                        sortable: false,
+                        filter: false,
+                        width: '100px',
+                        editor: { type: 'media', accept: 'image/*' },
+                        formatter: DataTableFormatter.media,
+                    },
                     {
                         field: 'name',
                         label: 'Name',
@@ -29,6 +38,11 @@ export default function LearningCourseIndex() {
                         frozen: true,
                         width: '220px',
                         editor: 'text',
+                        formatter: (row: any) => (
+                            <DataTableLink href={route('settings.learningcourses.show', row)}>
+                                {row.name}
+                            </DataTableLink>
+                        ),
                     },
                     {
                         field: 'bundles',
@@ -38,14 +52,6 @@ export default function LearningCourseIndex() {
                         width: '260px',
                         formatter: (row: any) =>
                             (row.bundles || []).map((bundle: any) => bundle.name).join(', '),
-                    },
-                    {
-                        field: 'slug',
-                        label: 'Slug',
-                        sortable: true,
-                        filter: true,
-                        width: '220px',
-                        editor: 'text',
                     },
                     {
                         field: 'description',
@@ -63,14 +69,6 @@ export default function LearningCourseIndex() {
                         width: '100px',
                         editor: 'boolean',
                         formatter: DataTableFormatter.boolean,
-                    },
-                    {
-                        field: 'sort',
-                        label: 'Sort',
-                        sortable: true,
-                        filter: true,
-                        width: '100px',
-                        editor: { type: 'number', min: 0 },
                     },
                 ]}
             />

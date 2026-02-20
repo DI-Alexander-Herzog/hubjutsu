@@ -33,6 +33,21 @@ class LearningModule extends Base
         'course',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (LearningModule $module) {
+            if (!empty($module->sort) && intval($module->sort) !== 0) {
+                return;
+            }
+
+            $module->sort = static::query()
+                ->where('learning_course_id', $module->learning_course_id)
+                ->when($module->exists, fn ($q) => $q->whereKeyNot($module->getKey()))
+                ->count() + 1;
+            $module->sort *= 10;
+        });
+    }
+
     public function course(): BelongsTo
     {
         return $this->belongsTo(LearningCourse::class, 'learning_course_id');

@@ -9,6 +9,6 @@ class LearningSectionController extends Controller
 {
     public function index()
     {
-        return Inertia::render('LearningSection/Index');
+        return Inertia::render('Admin/Learning/Section/Index');
     }
 }

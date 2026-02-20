@@ -103,7 +103,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::name('settings.')->prefix('settings')->group(function () {
         Route::get('/learning-bundles', [LearningBundleController::class, 'index'])->name('learningbundles.index');
+        Route::get('/learning-bundles/{learningbundle}', [LearningBundleController::class, 'show'])->name('learningbundles.show');
+        Route::get('/learning-bundles/{learningbundle}/edit', [LearningBundleController::class, 'edit'])->name('learningbundles.edit');
         Route::get('/learning-courses', [LearningCourseController::class, 'index'])->name('learningcourses.index');
+        Route::get('/learning-courses/{learningcourse}', [LearningCourseController::class, 'show'])->name('learningcourses.show');
+        Route::get('/learning-courses/{learningcourse}/edit', [LearningCourseController::class, 'edit'])->name('learningcourses.edit');
         Route::get('/learning-modules', [LearningModuleController::class, 'index'])->name('learningmodules.index');
         Route::get('/learning-sections', [LearningSectionController::class, 'index'])->name('learningsections.index');
         Route::get('/learning-lections', [LearningLectionController::class, 'index'])->name('learninglections.index');

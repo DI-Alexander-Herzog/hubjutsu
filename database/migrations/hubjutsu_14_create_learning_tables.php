@@ -32,7 +32,6 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('active')->default(true);
-            $table->unsignedInteger('sort')->default(0);
         });
 
         Schema::create('learning_bundle_learning_course', function (Blueprint $table) {
@@ -47,6 +46,8 @@ return new class extends Migration
                 ->constrained('learning_courses')
                 ->cascadeOnUpdate()
                 ->cascadeOnDelete();
+            $table->unsignedInteger('sort')->default(0);
+             
 
             $table->unique(['learning_bundle_id', 'learning_course_id'], 'learning_bundle_course_unique');
         });

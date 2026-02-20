@@ -30,6 +30,13 @@ class LearningBundle extends Base
     protected static function booted(): void
     {
         static::saving(function (LearningBundle $bundle) {
+            if (empty($bundle->sort) || intval($bundle->sort) === 0) {
+                $bundle->sort = static::query()
+                    ->when($bundle->exists, fn ($q) => $q->whereKeyNot($bundle->getKey()))
+                    ->count() + 1;
+                $bundle->sort *= 10;
+            }
+
             if (!$bundle->slug && $bundle->name) {
                 $bundle->slug = \Str::slug($bundle->name);
             }
@@ -43,6 +50,6 @@ class LearningBundle extends Base
             'learning_bundle_learning_course',
             'learning_bundle_id',
             'learning_course_id'
-        )->withTimestamps()->orderBy('sort');
+        )->withPivot('sort')->withTimestamps()->orderByPivot('sort');
     }
 }

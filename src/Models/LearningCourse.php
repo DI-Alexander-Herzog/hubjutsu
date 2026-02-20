@@ -2,16 +2,19 @@
 
 namespace AHerzog\Hubjutsu\Models;
 
+use AHerzog\Hubjutsu\Models\Traits\MediaTrait;
 use App\Models\Base;
 use App\Models\LearningBundle;
+use App\Models\Media;
 use App\Models\LearningModule;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class LearningCourse extends Base
 {
-    use HasFactory;
+    use HasFactory, MediaTrait;
 
     protected $fillable = [
         'created_at',
@@ -22,7 +25,6 @@ class LearningCourse extends Base
         'slug',
         'description',
         'active',
-        'sort',
     ];
 
     protected $casts = [
@@ -31,6 +33,11 @@ class LearningCourse extends Base
 
     protected $with = [
         'bundles',
+        'cover',
+    ];
+
+    protected $fillableMedia = [
+        'cover',
     ];
 
     protected static function booted(): void
@@ -49,11 +56,21 @@ class LearningCourse extends Base
             'learning_bundle_learning_course',
             'learning_course_id',
             'learning_bundle_id'
-        )->withTimestamps()->orderBy('name');
+        )->withPivot('sort')->withTimestamps()->orderByPivot('sort');
     }
 
     public function modules(): HasMany
     {
         return $this->hasMany(LearningModule::class)->orderBy('sort');
+    }
+
+    public function cover(): MorphOne
+    {
+        return $this->media('cover');
+    }
+
+    public function setCover(Media $media): void
+    {
+        $this->setMedia($media, 'cover', 1);
     }
 }

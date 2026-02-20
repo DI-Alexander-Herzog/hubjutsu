@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DataTable from '@/Components/DataTable';
 import { DataTableFormatter } from '@/Components/DataTableFormatter';
+import DataTableLink from '@/Components/DataTableLink';
 
 export default function LearningBundleIndex() {
     return (
@@ -28,14 +29,11 @@ export default function LearningBundleIndex() {
                         frozen: true,
                         width: '240px',
                         editor: 'text',
-                    },
-                    {
-                        field: 'slug',
-                        label: 'Slug',
-                        sortable: true,
-                        filter: true,
-                        width: '220px',
-                        editor: 'text',
+                        formatter: (row: any) => (
+                            <DataTableLink href={route('settings.learningbundles.show', row)}>
+                                {row.name}
+                            </DataTableLink>
+                        ),
                     },
                     {
                         field: 'description',

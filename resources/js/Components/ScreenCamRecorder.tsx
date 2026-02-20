@@ -197,6 +197,9 @@ export default function ScreenCamRecorder({
   const stopDelayTimerRef = useRef<number | null>(null);
   const lastPreparedPreviewConfigRef = useRef<string>("");
   const statusPollIntervalRef = useRef<number | null>(null);
+  const abortRecordingRequestedRef = useRef<boolean>(false);
+  const shareCopiedTimerRef = useRef<number | null>(null);
+  const [shareCopiedNotice, setShareCopiedNotice] = useState<boolean>(false);
 
   const mimeType = pickMimeType();
   const previewConfigKey = [
@@ -917,6 +920,7 @@ export default function ScreenCamRecorder({
 
       chunkIndexRef.current = 0;
       pendingUploadsRef.current.clear();
+      abortRecordingRequestedRef.current = false;
       const composed = composedStreamRef.current;
       assertStartNotCancelled();
 
@@ -944,6 +948,19 @@ export default function ScreenCamRecorder({
       };
 
       rec.onstop = async () => {
+        if (abortRecordingRequestedRef.current) {
+          abortRecordingRequestedRef.current = false;
+          cleanup();
+          setViewStep("new");
+          setStatus("idle");
+          setRuntimeSeconds(0);
+          setError(null);
+          setDownloadUrl(null);
+          setSettingsOpen(false);
+          lastPreparedPreviewConfigRef.current = "";
+          return;
+        }
+
         try {
           setStatus("finishing");
           await waitForPendingUploads();
@@ -999,7 +1016,7 @@ export default function ScreenCamRecorder({
     if (!isStarting) return;
     startCancelRequestedRef.current = true;
     setCountdown(null);
-    setStatus("idle");
+    setStatus("preview_ready");
   }
 
   function executeStopNow(): void {
@@ -1033,6 +1050,7 @@ export default function ScreenCamRecorder({
 
   function cleanup(): void {
     setCountdown(null);
+    setIsRecording(false);
     setIsStarting(false);
     setIsStopping(false);
     if (stopDelayTimerRef.current) {
@@ -1059,6 +1077,7 @@ export default function ScreenCamRecorder({
   }
 
   function resetToNew(): void {
+    stopStatusPolling();
     cleanup();
     setViewStep("new");
     setStatus("idle");
@@ -1066,7 +1085,51 @@ export default function ScreenCamRecorder({
     setError(null);
     setDownloadUrl(null);
     setSettingsOpen(false);
+    setShareCopiedNotice(false);
+    if (shareCopiedTimerRef.current) {
+      window.clearTimeout(shareCopiedTimerRef.current);
+      shareCopiedTimerRef.current = null;
+    }
     lastPreparedPreviewConfigRef.current = "";
+  }
+
+  function abortAction(): void {
+    setSettingsOpen(false);
+
+    if (isDonePlayback || status === "processing") {
+      resetToNew();
+      return;
+    }
+
+    if (isStarting) {
+      if (status === "countdown") {
+        cancelStart();
+      } else {
+        resetToNew();
+      }
+      return;
+    }
+
+    if (isRecording || isStopping) {
+      abortRecordingRequestedRef.current = true;
+      if (stopDelayTimerRef.current) {
+        window.clearTimeout(stopDelayTimerRef.current);
+        stopDelayTimerRef.current = null;
+      }
+      const rec = recorderRef.current;
+      if (rec && rec.state !== "inactive") {
+        isRecordingRef.current = false;
+        stopClickTracking();
+        stopSpeechRecognition(true);
+        stopRuntimeTicker(false);
+        rec.stop();
+      } else {
+        resetToNew();
+      }
+      return;
+    }
+
+    resetToNew();
   }
 
   useEffect(() => {
@@ -1221,6 +1284,14 @@ export default function ScreenCamRecorder({
       }
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(downloadUrl);
+        setShareCopiedNotice(true);
+        if (shareCopiedTimerRef.current) {
+          window.clearTimeout(shareCopiedTimerRef.current);
+        }
+        shareCopiedTimerRef.current = window.setTimeout(() => {
+          setShareCopiedNotice(false);
+          shareCopiedTimerRef.current = null;
+        }, 1600);
       }
     } catch (e: any) {
       setError(e?.message ?? "teilen fehlgeschlagen");
@@ -1370,17 +1441,20 @@ export default function ScreenCamRecorder({
                       <span
                         style={{
                           position: "absolute",
-                          inset: 18,
+                          inset: 16,
                           borderRadius: 8,
                           color: "#111827",
                           display: "grid",
                           placeItems: "center",
-                          fontSize: 24,
-                          fontWeight: 700,
-                          lineHeight: 1,
                         }}
                       >
-                        ⇪
+                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden="true">
+                          <path d="M7 12L17 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                          <path d="M7 12L17 17" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                          <circle cx="6" cy="12" r="2.5" fill="currentColor" />
+                          <circle cx="18" cy="7" r="2.5" fill="currentColor" />
+                          <circle cx="18" cy="17" r="2.5" fill="currentColor" />
+                        </svg>
                       </span>
                     )}
                     {(isRecording || isStarting) && !isDonePlayback && (
@@ -1396,11 +1470,11 @@ export default function ScreenCamRecorder({
                   </button>
                 </div>
                 <div style={{ justifySelf: "start" }}>
-                  {!isRecording && (
+                  {status !== "countdown" && (
                     <button
                       type="button"
-                      onClick={resetToNew}
-                      disabled={isStarting || isPreparingPreview}
+                      onClick={abortAction}
+                      disabled={isPreparingPreview}
                       style={{
                         width: 44,
                         height: 44,
@@ -1408,18 +1482,38 @@ export default function ScreenCamRecorder({
                         border: "1px solid rgba(255,255,255,0.35)",
                         background: "#ef4444",
                         color: "#fff",
-                        fontSize: 20,
+                        fontSize: 22,
                         fontWeight: 800,
                         lineHeight: "1",
                         cursor: "pointer",
                       }}
-                      aria-label="Neues Recording"
+                      aria-label="Abbrechen"
                     >
-                      ↻
+                      ×
                     </button>
                   )}
                 </div>
               </div>
+
+              {shareCopiedNotice && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    bottom: 92,
+                    background: "rgba(17, 24, 39, 0.95)",
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    pointerEvents: "none",
+                  }}
+                >
+                  URL kopiert
+                </div>
+              )}
 
               {settingsOpen && !isDonePlayback && (
                 <div
