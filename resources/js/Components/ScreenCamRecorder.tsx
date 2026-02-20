@@ -78,6 +78,8 @@ const QUALITY_PRESETS: Record<
 const MAX_UPLOAD_PART_BYTES = 512 * 1024;
 const CLICK_PULSE_DURATION_MS = 650;
 const STOP_DELAY_MS = 1000;
+const STOP_UPLOAD_DRAIN_QUIET_MS = 700;
+const STOP_UPLOAD_DRAIN_TIMEOUT_MS = 12000;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -169,6 +171,8 @@ export default function ScreenCamRecorder({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const rafRef = useRef<number | null>(null);
   const pendingUploadsRef = useRef<Set<Promise<void>>>(new Set());
+  const lastDataAvailableAtRef = useRef<number>(0);
+  const stopRequestedAtRef = useRef<number>(0);
 
   const screenStreamRef = useRef<MediaStream | null>(null);
   const camStreamRef = useRef<MediaStream | null>(null);
@@ -251,6 +255,31 @@ export default function ScreenCamRecorder({
     const pending = Array.from(pendingUploadsRef.current);
     if (!pending.length) return;
     await Promise.all(pending);
+  }
+
+  async function waitForUploadDrainAfterStop(): Promise<void> {
+    const drainStartedAt = performance.now();
+
+    while (true) {
+      await waitForPendingUploads();
+
+      const now = performance.now();
+      const lastActivityAt = Math.max(stopRequestedAtRef.current, lastDataAvailableAtRef.current);
+      const quietForMs = now - lastActivityAt;
+
+      if (
+        pendingUploadsRef.current.size === 0 &&
+        quietForMs >= STOP_UPLOAD_DRAIN_QUIET_MS
+      ) {
+        return;
+      }
+
+      if (now - drainStartedAt >= STOP_UPLOAD_DRAIN_TIMEOUT_MS) {
+        return;
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, 80));
+    }
   }
 
   async function runStartCountdown(seconds: number): Promise<void> {
@@ -920,6 +949,8 @@ export default function ScreenCamRecorder({
 
       chunkIndexRef.current = 0;
       pendingUploadsRef.current.clear();
+      lastDataAvailableAtRef.current = 0;
+      stopRequestedAtRef.current = 0;
       abortRecordingRequestedRef.current = false;
       const composed = composedStreamRef.current;
       assertStartNotCancelled();
@@ -935,6 +966,7 @@ export default function ScreenCamRecorder({
 
       rec.ondataavailable = (e: BlobEvent) => {
         if (!e.data.size) return;
+        lastDataAvailableAtRef.current = performance.now();
         const upload = uploadBlobInParts(e.data)
           .catch((err) => {
             setError(err?.message ?? "chunk upload failed");
@@ -963,7 +995,7 @@ export default function ScreenCamRecorder({
 
         try {
           setStatus("finishing");
-          await waitForPendingUploads();
+          await waitForUploadDrainAfterStop();
           await apiFinish(chunkIndexRef.current - 1);
           if (onRecorded && recordingRef.current.uuid) {
             await onRecorded({ uuid: recordingRef.current.uuid });
@@ -1029,6 +1061,7 @@ export default function ScreenCamRecorder({
     stopSpeechRecognition(false);
     stopRuntimeTicker(true);
 
+    stopRequestedAtRef.current = performance.now();
     rec.requestData();
     rec.stop();
     setIsRecording(false);

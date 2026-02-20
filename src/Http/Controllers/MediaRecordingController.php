@@ -97,10 +97,11 @@ class MediaRecordingController extends Controller
         }
 
         $lastIndex = (int)$request->input('last_index');
+        $nextExpectedIndex = max((int) $rec->last_chunk_index, $lastIndex + 1);
 
         $rec->update([
             'status' => 'finished',
-            'last_chunk_index' => $lastIndex + 1,
+            'last_chunk_index' => $nextExpectedIndex,
         ]);
 
         $entries = $request->input('transcript_entries', []);
