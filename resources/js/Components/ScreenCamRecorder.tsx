@@ -167,12 +167,14 @@ export default function ScreenCamRecorder({
     chunkSizeMs: 1000,
   });
 
-  const chunkIndexRef = useRef<number>(0);
+  const segmentIndexRef = useRef<number>(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const rafRef = useRef<number | null>(null);
   const pendingUploadsRef = useRef<Set<Promise<void>>>(new Set());
   const lastDataAvailableAtRef = useRef<number>(0);
   const stopRequestedAtRef = useRef<number>(0);
+  const uploadFailedRef = useRef<boolean>(false);
+  const stopDueToUploadErrorRef = useRef<boolean>(false);
 
   const screenStreamRef = useRef<MediaStream | null>(null);
   const camStreamRef = useRef<MediaStream | null>(null);
@@ -220,12 +222,23 @@ export default function ScreenCamRecorder({
     return res.data;
   }
 
-  async function apiUploadChunk(index: number, blob: Blob): Promise<void> {
+  async function apiUploadPart(
+    segmentIndex: number,
+    partIndex: number,
+    blob: Blob,
+    isLastPart: boolean,
+    totalParts: number
+  ): Promise<void> {
     const { uuid, token } = recordingRef.current;
     if (!uuid || !token) throw new Error("missing uuid/token");
 
     const fd = new FormData();
-    fd.append("index", String(index));
+    fd.append("segment_index", String(segmentIndex));
+    fd.append("part_index", String(partIndex));
+    if (isLastPart) {
+      fd.append("is_last_part", "1");
+      fd.append("total_parts", String(totalParts));
+    }
     fd.append("chunk", blob);
 
     try {
@@ -235,18 +248,50 @@ export default function ScreenCamRecorder({
     } catch (e: any) {
       const statusCode = e?.response?.status;
       if (statusCode === 413) {
-        throw new Error(`Upload 413 at chunk ${index} (${Math.round(blob.size / 1024)} KB)`);
+        throw new Error(
+          `Upload 413 at segment ${segmentIndex}, part ${partIndex} (${Math.round(blob.size / 1024)} KB)`
+        );
+      }
+      if (statusCode === 422) {
+        throw new Error(`Upload 422 at segment ${segmentIndex}, part ${partIndex}`);
       }
       throw e;
     }
   }
 
-  async function uploadBlobInParts(blob: Blob): Promise<void> {
+  function stopRecordingAfterUploadFailure(message: string): void {
+    if (uploadFailedRef.current) return;
+    uploadFailedRef.current = true;
+    stopDueToUploadErrorRef.current = true;
+    isRecordingRef.current = false;
+    setError(message);
+    setStatus("error");
+    setIsStopping(false);
+    setIsRecording(false);
+    stopClickTracking();
+    stopSpeechRecognition(true);
+    stopRuntimeTicker(true);
+
+    const rec = recorderRef.current;
+    if (rec && rec.state !== "inactive") {
+      try {
+        rec.stop();
+      } catch {
+        // no-op
+      }
+    }
+  }
+
+  async function uploadBlobInParts(segmentIndex: number, blob: Blob): Promise<void> {
+    const totalParts = Math.max(1, Math.ceil(blob.size / MAX_UPLOAD_PART_BYTES));
     let offset = 0;
-    while (offset < blob.size) {
+    for (let partIndex = 0; partIndex < totalParts; partIndex++) {
+      if (uploadFailedRef.current) {
+        throw new Error("upload aborted after previous failure");
+      }
       const part = blob.slice(offset, offset + MAX_UPLOAD_PART_BYTES);
-      const index = chunkIndexRef.current++;
-      await apiUploadChunk(index, part);
+      const isLastPart = partIndex === totalParts - 1;
+      await apiUploadPart(segmentIndex, partIndex, part, isLastPart, totalParts);
       offset += MAX_UPLOAD_PART_BYTES;
     }
   }
@@ -947,10 +992,12 @@ export default function ScreenCamRecorder({
         chunkSizeMs: init.chunk_size_ms ?? 1000,
       };
 
-      chunkIndexRef.current = 0;
+      segmentIndexRef.current = 0;
       pendingUploadsRef.current.clear();
       lastDataAvailableAtRef.current = 0;
       stopRequestedAtRef.current = 0;
+      uploadFailedRef.current = false;
+      stopDueToUploadErrorRef.current = false;
       abortRecordingRequestedRef.current = false;
       const composed = composedStreamRef.current;
       assertStartNotCancelled();
@@ -966,11 +1013,12 @@ export default function ScreenCamRecorder({
 
       rec.ondataavailable = (e: BlobEvent) => {
         if (!e.data.size) return;
+        if (uploadFailedRef.current) return;
+        const segmentIndex = segmentIndexRef.current++;
         lastDataAvailableAtRef.current = performance.now();
-        const upload = uploadBlobInParts(e.data)
+        const upload = uploadBlobInParts(segmentIndex, e.data)
           .catch((err) => {
-            setError(err?.message ?? "chunk upload failed");
-            throw err;
+            stopRecordingAfterUploadFailure(err?.message ?? "chunk upload failed");
           })
           .finally(() => {
             pendingUploadsRef.current.delete(upload);
@@ -980,6 +1028,17 @@ export default function ScreenCamRecorder({
       };
 
       rec.onstop = async () => {
+        if (stopDueToUploadErrorRef.current) {
+          stopDueToUploadErrorRef.current = false;
+          cleanup();
+          setViewStep("new");
+          setRuntimeSeconds(0);
+          setDownloadUrl(null);
+          setSettingsOpen(false);
+          lastPreparedPreviewConfigRef.current = "";
+          return;
+        }
+
         if (abortRecordingRequestedRef.current) {
           abortRecordingRequestedRef.current = false;
           cleanup();
@@ -996,7 +1055,7 @@ export default function ScreenCamRecorder({
         try {
           setStatus("finishing");
           await waitForUploadDrainAfterStop();
-          await apiFinish(chunkIndexRef.current - 1);
+          await apiFinish(Math.max(0, segmentIndexRef.current - 1));
           if (onRecorded && recordingRef.current.uuid) {
             await onRecorded({ uuid: recordingRef.current.uuid });
           }

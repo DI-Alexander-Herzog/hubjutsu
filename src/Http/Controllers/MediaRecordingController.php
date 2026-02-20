@@ -5,6 +5,7 @@ use App\Jobs\ProcessRecording;
 use App\Models\MediaRecording;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -49,8 +50,17 @@ class MediaRecordingController extends Controller
 
     public function chunk(Request $request, string $uuid)
     {
+        if ($request->has('index')) {
+            return response()->json([
+                'message' => 'Legacy field "index" is no longer supported. Use segment_index + part_index.',
+            ], 422);
+        }
+
         $request->validate([
-            'index' => ['required','integer','min:0'],
+            'segment_index' => ['required','integer','min:0'],
+            'part_index' => ['required','integer','min:0'],
+            'is_last_part' => ['nullable', 'boolean'],
+            'total_parts' => ['nullable', 'integer', 'min:1'],
             'chunk' => ['required','file','max:51200'], // 50MB
         ]);
 
@@ -61,21 +71,144 @@ class MediaRecordingController extends Controller
             abort(409, 'Recording not accepting chunks.');
         }
 
-        $idx = (int)$request->input('index');
+        $segmentIndex = (int)$request->input('segment_index');
+        $partIndex = (int)$request->input('part_index');
+        $isLastPart = filter_var(
+            $request->input('is_last_part', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+        $totalParts = $request->has('total_parts') ? (int)$request->input('total_parts') : null;
 
-        // Optional strict ordering: require idx == last_chunk_index
-        // if ($idx !== (int)$rec->last_chunk_index) abort(409, 'Out of order chunk.');
+        $disk = Storage::disk('recordings_private');
+        $segmentPadded = sprintf('%06d', $segmentIndex);
+        $partPadded = sprintf('%06d', $partIndex);
+        $partDir = "recordings/{$uuid}/parts/seg_{$segmentPadded}";
+        $partName = "part_{$partPadded}.bin";
 
-        $dir = "recordings/{$uuid}/chunks";
-        $name = sprintf("chunk_%06d.webm", $idx);
+        $stored = $disk->putFileAs($partDir, $request->file('chunk'), $partName);
+        if ($stored === false) {
+            Log::error('recording part upload failed', [
+                'uuid' => $uuid,
+                'segment_index' => $segmentIndex,
+                'part_index' => $partIndex,
+                'total_parts' => $totalParts,
+            ]);
+            abort(500, 'Failed to store upload part.');
+        }
 
-        Storage::disk('recordings_private')->putFileAs($dir, $request->file('chunk'), $name);
+        $assembled = false;
+        if ($isLastPart) {
+            if ($totalParts === null || $totalParts < 1) {
+                return response()->json([
+                    'message' => 'total_parts is required when is_last_part=true',
+                ], 422);
+            }
 
-        // store "next expected index"
-        $rec->last_chunk_index = max((int)$rec->last_chunk_index, $idx + 1);
-        $rec->save();
+            $assembled = $this->assembleSegmentOrFail(
+                $disk,
+                $uuid,
+                $segmentIndex,
+                $totalParts
+            );
 
-        return response()->json(['ok' => true]);
+            if ($assembled) {
+                $rec->last_chunk_index = max((int)$rec->last_chunk_index, $segmentIndex + 1);
+                $rec->save();
+            }
+        }
+
+        return response()->json(['ok' => true, 'assembled' => $assembled]);
+    }
+
+    private function assembleSegmentOrFail($disk, string $uuid, int $segmentIndex, int $totalParts): bool
+    {
+        $segmentPadded = sprintf('%06d', $segmentIndex);
+        $partsDirRel = "recordings/{$uuid}/parts/seg_{$segmentPadded}";
+        $chunkDirRel = "recordings/{$uuid}/chunks";
+        $chunkFinalRel = "{$chunkDirRel}/chunk_{$segmentPadded}.webm";
+        $chunkTempRel = "{$chunkFinalRel}.part";
+
+        $partsDir = $disk->path($partsDirRel);
+        $chunkDir = $disk->path($chunkDirRel);
+        if (!is_dir($chunkDir) && !@mkdir($chunkDir, 0775, true) && !is_dir($chunkDir)) {
+            Log::error('recording chunk assembly: cannot create chunks dir', [
+                'uuid' => $uuid,
+                'segment_index' => $segmentIndex,
+                'total_parts' => $totalParts,
+            ]);
+            abort(500, 'Failed to create chunks directory.');
+        }
+
+        $chunkFinalPath = $disk->path($chunkFinalRel);
+        if (file_exists($chunkFinalPath)) {
+            return true;
+        }
+
+        $chunkTempPath = $disk->path($chunkTempRel);
+        $out = @fopen($chunkTempPath, 'wb');
+        if ($out === false) {
+            Log::error('recording chunk assembly: cannot open temp file', [
+                'uuid' => $uuid,
+                'segment_index' => $segmentIndex,
+                'total_parts' => $totalParts,
+                'temp_path' => $chunkTempPath,
+            ]);
+            abort(500, 'Cannot create segment temp file.');
+        }
+
+        try {
+            for ($i = 0; $i < $totalParts; $i++) {
+                $partPath = sprintf('%s/part_%06d.bin', $partsDir, $i);
+                if (!file_exists($partPath) || !is_readable($partPath)) {
+                    throw new \RuntimeException("Missing part {$i}");
+                }
+
+                $in = @fopen($partPath, 'rb');
+                if ($in === false) {
+                    throw new \RuntimeException("Cannot read part {$i}");
+                }
+
+                stream_copy_to_stream($in, $out);
+                fclose($in);
+            }
+        } catch (\RuntimeException $e) {
+            fclose($out);
+            @unlink($chunkTempPath);
+            Log::warning('recording chunk assembly failed', [
+                'uuid' => $uuid,
+                'segment_index' => $segmentIndex,
+                'total_parts' => $totalParts,
+                'error' => $e->getMessage(),
+            ]);
+            abort(409, $e->getMessage());
+        } catch (\Throwable $e) {
+            fclose($out);
+            @unlink($chunkTempPath);
+            Log::error('recording chunk assembly I/O error', [
+                'uuid' => $uuid,
+                'segment_index' => $segmentIndex,
+                'total_parts' => $totalParts,
+                'error' => $e->getMessage(),
+            ]);
+            abort(500, 'Segment assembly failed.');
+        }
+
+        fclose($out);
+
+        if (!@rename($chunkTempPath, $chunkFinalPath)) {
+            @unlink($chunkTempPath);
+            Log::error('recording chunk assembly rename failed', [
+                'uuid' => $uuid,
+                'segment_index' => $segmentIndex,
+                'total_parts' => $totalParts,
+                'temp_path' => $chunkTempPath,
+                'final_path' => $chunkFinalPath,
+            ]);
+            abort(500, 'Failed to finalize assembled segment.');
+        }
+
+        $disk->deleteDirectory($partsDirRel);
+        return true;
     }
 
     public function finish(Request $request, string $uuid)
