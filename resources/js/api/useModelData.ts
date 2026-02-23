@@ -14,6 +14,7 @@ interface UseModelDataOptions<K extends ModelKey> {
 	with?: string[];
 	order?: Array<[string, number]> | string[];
 	search?: string;
+	init?: string;
 	limit?: number;
 	auto?: boolean; // ob beim Mount automatisch laden
 }
@@ -27,7 +28,7 @@ export function useModelData<K extends ModelKey>(
 	options: UseModelDataOptions<K> = {},
 	key = "id"
 ) {
-	const { filter = {}, with: withs = [], order = [], search, limit = 999, auto = true } = options;
+	const { filter = {}, with: withs = [], order = [], search, init, limit = 999, auto = true } = options;
 
 	const [data, setData] = useState<ModelType<K>[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -39,14 +40,14 @@ export function useModelData<K extends ModelKey>(
 		try {
 			setLoading(true);
 			setError(null);
-			const res = await api.search({ filter, order, search, limit });
+			const res = await api.search({ filter, order, search, init, limit });
 			setData(res.data);
 		} catch (err) {
 			setError(err);
 		} finally {
 			setLoading(false);
 		}
-	}, [model, JSON.stringify(filter), JSON.stringify(order), search, limit]);
+	}, [model, JSON.stringify(filter), JSON.stringify(order), search, init, limit]);
 
 	useEffect(() => {
 		if (auto) reload();

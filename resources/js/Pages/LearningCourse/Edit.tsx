@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import LearningCourseForm from './Form';
+import CourseStructureEditor from './CourseStructureEditor';
 
 export default function LearningCourseEdit({ learning_course }: { learning_course: any }) {
     return (
@@ -12,6 +13,10 @@ export default function LearningCourseEdit({ learning_course }: { learning_cours
             ]}
         >
             <LearningCourseForm learning_course={learning_course} disabled={false} />
+            <CourseStructureEditor
+                learningCourseId={learning_course?.id}
+                initialModules={learning_course?.modules || []}
+            />
         </AuthenticatedLayout>
     );
 }

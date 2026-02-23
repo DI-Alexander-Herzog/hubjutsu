@@ -1,0 +1,23 @@
+{
+    "datatable.show": "Zeige:",
+    "datatable.reload": "Neu laden",
+    "datatable.new": "Neu",
+    "datatable.filter": "Filter",
+    "datatable.delete": "Löschen",
+    "datatable.delete_confirm": "Möchtest du die ausgewählten Einträge wirklich löschen?",
+    "datatable.displaying": "Zeige",
+    "datatable.to": "bis",
+    "datatable.of": "von",
+    "datatable.item": "Eintrag",
+    "datatable.items": "Einträgen",
+    "datatable.add_filter": "Filter hinzufügen",
+    "datatable.choose_field": "Feld wählen...",
+    "datatable.cancel": "Abbrechen",
+    "datatable.yes": "Ja",
+    "datatable.no": "Nein",
+    "datatable.start_date": "Startdatum",
+    "datatable.end_date": "Enddatum",
+    "datatable.apply": "Anwenden",
+    "datatable.clear_all": "Alle löschen",
+    "datatable.selected": "ausgewählt"
+}

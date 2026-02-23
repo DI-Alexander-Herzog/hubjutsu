@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import ColorInput from "./ColorInput";
-import InputLabel from "./InputLabel";
-import InputSelect from "./InputSelect";
-import InputText from "./InputText";
-import SecondaryButton from "./SecondaryButton";
+import ColorInput from "@/Components/ColorInput";
+import InputLabel from "@/Components/InputLabel";
+import InputSelect from "@/Components/InputSelect";
+import InputText from "@/Components/InputText";
+import NeutralButton from "@/Components/NeutralButton";
 
 type Mode = "screen_cam_mic" | "screen_mic" | "cam_mic" | "mic_only";
 type Quality = "standard" | "high" | "max";

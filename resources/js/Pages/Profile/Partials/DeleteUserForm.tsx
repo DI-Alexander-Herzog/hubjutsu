@@ -1,7 +1,7 @@
 import { useState } from "react";
 import DangerButton from "@hubjutsu/Components/DangerButton";
 import Modal from "@hubjutsu/Components/Modal";
-import SecondaryButton from "@hubjutsu/Components/SecondaryButton";
+import NeutralButton from "@hubjutsu/Components/NeutralButton";
 import { useForm } from "@inertiajs/react";
 import FormSection from "@hubjutsu/Components/FormSection";
 import Input from "@hubjutsu/Components/Input";

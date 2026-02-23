@@ -20,6 +20,7 @@ export class ModelAPI<K extends ModelKey> {
 		with: withs = [],
 		order = [],
 		search,
+		init,
 		limit = 999,
 	}: {
 		filter?: Record<
@@ -33,6 +34,7 @@ export class ModelAPI<K extends ModelKey> {
 		with?: string[];
 		order?: Array<[string, number]> | string[];
 		search?: string;
+		init?: string;
 		limit?: number;
 	} = {}): Promise<{ data: ModelType<K>[]; total?: number }> {
 		const filtersArray = Object.entries(filter).map(([field, value]) => {
@@ -64,6 +66,7 @@ export class ModelAPI<K extends ModelKey> {
 				: [],
 			with: [...this.defaultWith, ...withs],
 			search,
+			init,
 		};
 
 		const res = await axios.get<{ data: ModelType<K>[]; total?: number }>(

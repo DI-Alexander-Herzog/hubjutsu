@@ -97,6 +97,38 @@ class HubjutsuSetupCommand extends Command
         return true;
     }
 
+    protected function mergeJsonTranslations(string $sourceDirectory, string $targetDirectory): void
+    {
+        $filesystem = $this->getFilesystem();
+        $filesystem->ensureDirectoryExists($targetDirectory);
+
+        foreach ($filesystem->glob($sourceDirectory . '/*.json') as $sourceFile) {
+            $targetFile = $targetDirectory . '/' . basename($sourceFile);
+
+            $sourceData = json_decode(file_get_contents($sourceFile), true);
+            if (!is_array($sourceData)) {
+                $sourceData = [];
+            }
+
+            $targetData = [];
+            if ($filesystem->exists($targetFile)) {
+                $decoded = json_decode(file_get_contents($targetFile), true);
+                if (is_array($decoded)) {
+                    $targetData = $decoded;
+                }
+            }
+
+            // Keep app-specific overrides and only add missing package keys.
+            $merged = $targetData + $sourceData;
+            ksort($merged);
+
+            file_put_contents(
+                $targetFile,
+                json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . PHP_EOL
+            );
+        }
+    }
+
     protected function installStatefulApi() {
         $bootstrapApp = file_get_contents(base_path('bootstrap/app.php'));
         if (!Str::contains($bootstrapApp, '->statefulApi()')) {
@@ -207,6 +239,7 @@ class HubjutsuSetupCommand extends Command
 
             $this->components->info('Running artisan commands...');
             $this->runCommands(['php artisan lang:publish']);
+            $this->mergeJsonTranslations(__DIR__.'/../../resources/lang', base_path('lang'));
             $this->runCommands(['php artisan install:api --without-migration-prompt']);
             $this->runCommands(['php artisan vendor:publish --tag="log-viewer-config"']);
             $this->runCommands(['php artisan vendor:publish --tag=log-viewer-assets --force']);
@@ -215,6 +248,7 @@ class HubjutsuSetupCommand extends Command
         }
 
         $filesystem = new Filesystem();
+        $this->mergeJsonTranslations(__DIR__.'/../../resources/lang', base_path('lang'));
         foreach($filesystem->glob(__DIR__ . '/../../database/migrations/*.php') as $file) {
             if ($filesystem->glob(database_path('migrations/*_'.basename($file)))) {
                 $this->output->info('Migration already exists: '.basename($file));

@@ -5,6 +5,7 @@ namespace AHerzog\Hubjutsu\Http\Controllers\Api;
 use AHerzog\Hubjutsu\Models\Base;
 use Exception;
 use Gate;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Request;
 use Log;
@@ -52,7 +53,19 @@ class HubjutsuApiController
         $offset = intval($request->get('first'));
         $page =  floor($offset / $paginatePerPage) + 1;
 
-        $queryBuilder = $modelObj->newModelQuery();
+        $init = trim((string) $request->get('init', ''));
+        $initQueryMethod = 'initQuery';
+        if ($init !== '') {
+            $customInitQueryMethod = 'initQuery' . Str::studly($init);
+            if (method_exists($modelObj, $customInitQueryMethod)) {
+                $initQueryMethod = $customInitQueryMethod;
+            }
+        }
+
+        $queryBuilder = $modelObj->{$initQueryMethod}();
+        if (!($queryBuilder instanceof Builder)) {
+            throw new \Exception('Invalid init query builder');
+        }
 
         foreach($request->get('multiSortMeta', []) as $sort) {
             $queryBuilder->orderBy($sort[0], $sort[1] > 0 ? 'asc' : 'desc');

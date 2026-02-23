@@ -5,10 +5,11 @@ import {
 	PlusIcon,
 } from "@heroicons/react/20/solid";
 
-import PrimaryButton from "./PrimaryButton";
-import SecondaryButton from "./SecondaryButton";
-import DangerButton from "./DangerButton";
-import InputText from "./InputText";
+import PrimaryButton from "@/Components/PrimaryButton";
+import NeutralButton from "@/Components/NeutralButton";
+import DangerButton from "@/Components/DangerButton";
+import InputText from "@/Components/InputText";
+import { useLaravelReactI18n } from "laravel-react-i18n";
 
 const formatDate = (dateString?: string): string => {
 	if (!dateString) return "";
@@ -21,18 +22,6 @@ const formatDate = (dateString?: string): string => {
 			year: "numeric",
 		})
 		.replace(/\//g, "-");
-};
-
-const formatDateRange = (value: any): string => {
-	if (!value || typeof value !== "object") return "";
-
-	const { start, end } = value;
-
-	if (start && end) {
-		return `${formatDate(start)} to ${formatDate(end)}`;
-	}
-
-	return start ? formatDate(start) : formatDate(end);
 };
 
 interface FilterOption {
@@ -216,24 +205,8 @@ class FilterConfigService {
 	}
 
 	static getPlaceholder(column: Column): string {
-		const fieldName = column.field.toLowerCase();
 		const label = column.label || column.field;
-
-		if (fieldName.includes("email") || fieldName.includes("mail"))
-			return `Search ${label}...`;
-		if (fieldName.includes("name"))
-			return `Search by ${label.toLowerCase()}...`;
-		if (fieldName.includes("_id") || fieldName.includes("id"))
-			return `Enter ${label}...`;
-		if (
-			fieldName.includes("amount") ||
-			fieldName.includes("price") ||
-			fieldName.includes("cost")
-		) {
-			return `Enter ${label.toLowerCase()}...`;
-		}
-
-		return `Filter ${label.toLowerCase()}...`;
+		return `${label}...`;
 	}
 
 	static getDefaultMatchMode(
@@ -270,6 +243,11 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 	isVisible,
 	onToggle,
 }) => {
+	const { t } = useLaravelReactI18n();
+	const tr = (key: string, fallback: string) => {
+		const translated = t(key);
+		return translated === key ? fallback : translated;
+	};
 	const [showFieldSelector, setShowFieldSelector] = useState(false);
 	const [selectedField, setSelectedField] = useState<string | null>(null);
 	const [inputValue, setInputValue] = useState<string>("");
@@ -353,16 +331,22 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 				{Object.entries(activeFilters).map(([field, filter]) => {
 					const column = filterableColumns.find((col) => col.field === field);
 
-					if (
-						filter.matchMode === "dateRange" ||
-						(filter.matchMode === "BETWEEN" && Array.isArray(filter.value))
-					) {
-						const displayValue =
-							filter.matchMode === "dateRange"
-								? formatDateRange(filter.value)
-								: `${formatDate(filter.value[0])} to ${formatDate(
-										filter.value[1]
-								  )}`;
+						if (
+							filter.matchMode === "dateRange" ||
+							(filter.matchMode === "BETWEEN" && Array.isArray(filter.value))
+						) {
+							const displayValue = (() => {
+								if (filter.matchMode === "dateRange") {
+									const start = formatDate(filter.value?.start);
+									const end = formatDate(filter.value?.end);
+									if (start && end) return `${start} ${tr("datatable.to", "to")} ${end}`;
+									return start || end;
+								}
+
+								return `${formatDate(filter.value[0])} ${tr("datatable.to", "to")} ${formatDate(
+									filter.value[1]
+								)}`;
+							})();
 
 						return (
 							<div
@@ -375,19 +359,19 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 								<span className="font-normal text-[0.7rem]">
 									{displayValue}
 								</span>
-								<SecondaryButton
+								<NeutralButton
 									onClick={() => onClearFilter(field)}
 									className="!p-0 !bg-transparent hover:!bg-gray-200 dark:hover:!bg-gray-700 ml-1"
 								>
 									<XMarkIconSmall className="h-3 w-3" />
-								</SecondaryButton>
+								</NeutralButton>
 							</div>
 						);
 					}
 
 					const displayValue = Array.isArray(filter.value)
-						? `${filter.value.length} selected`
-						: filter.value?.toString();
+							? `${filter.value.length} ${tr("datatable.selected", "selected")}`
+							: filter.value?.toString();
 
 					return (
 						<div
@@ -398,18 +382,18 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 								{column?.label || field}
 							</span>
 							<span className="font-normal text-[0.7rem]">{displayValue}</span>
-							<SecondaryButton
+							<NeutralButton
 								onClick={() => onClearFilter(field)}
 								className="!p-0 !bg-transparent hover:!bg-gray-200 dark:hover:!bg-gray-700 ml-1"
 							>
 								<XMarkIconSmall className="h-3 w-3" />
-							</SecondaryButton>
+							</NeutralButton>
 						</div>
 					);
 				})}
 
 				{!selectedField && !showFieldSelector && (
-					<SecondaryButton
+					<NeutralButton
 						onClick={() => setShowFieldSelector(true)}
 						disabled={availableFields.length === 0}
 						className={classNames(
@@ -420,8 +404,8 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 						)}
 					>
 						<PlusIcon aria-hidden="true" className="size-4 absolute left-3" />
-						<span className="ml-5">Add Filter</span>
-					</SecondaryButton>
+							<span className="ml-5">{tr("datatable.add_filter", "Add Filter")}</span>
+					</NeutralButton>
 				)}
 
 				{!selectedField && showFieldSelector && (
@@ -435,19 +419,19 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 							className="text-xs px-2 py-1 min-w-[120px] border-gray-300 rounded-md"
 							autoFocus
 						>
-							<option value="">Choose field...</option>
+								<option value="">{tr("datatable.choose_field", "Choose field...")}</option>
 							{availableFields.map((column) => (
 								<option key={column.field} value={column.field}>
 									{column.label || column.field}
 								</option>
 							))}
 						</select>
-						<SecondaryButton
+						<NeutralButton
 							onClick={() => setShowFieldSelector(false)}
 							className="!px-1.5 !py-1 text-xs"
 						>
-							Cancel
-						</SecondaryButton>
+								{tr("datatable.cancel", "Cancel")}
+						</NeutralButton>
 					</div>
 				)}
 
@@ -473,13 +457,13 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 												onClick={() => handleFilterApply(true, "=")}
 												className="!px-2 !py-1 text-xs !bg-green-500 hover:!bg-green-600"
 											>
-												Yes
+													{tr("datatable.yes", "Yes")}
 											</PrimaryButton>
 											<DangerButton
 												onClick={() => handleFilterApply(false, "=")}
 												className="!px-2 !py-1 text-xs"
 											>
-												No
+													{tr("datatable.no", "No")}
 											</DangerButton>
 										</>
 									);
@@ -519,17 +503,17 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 													onChange={(e: ChangeEvent<HTMLInputElement>) =>
 														handleDateRangeChange("start", e.target.value)
 													}
-													placeholder="Start date"
+														placeholder={tr("datatable.start_date", "Start date")}
 													className="!px-2 !py-1 text-xs min-w-[100px]"
 												/>
-												<span className="text-xs text-gray-500">to</span>
+													<span className="text-xs text-gray-500">{tr("datatable.to", "to")}</span>
 												<InputText
 													type="date"
 													value={tempDateRangeFilter.end || ""}
 													onChange={(e: ChangeEvent<HTMLInputElement>) =>
 														handleDateRangeChange("end", e.target.value)
 													}
-													placeholder="End date"
+														placeholder={tr("datatable.end_date", "End date")}
 													className="!px-2 !py-1 text-xs min-w-[100px]"
 												/>
 												<PrimaryButton
@@ -540,14 +524,14 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 														!tempDateRangeFilter.end
 													}
 												>
-													Apply
+														{tr("datatable.apply", "Apply")}
 												</PrimaryButton>
-												<SecondaryButton
+												<NeutralButton
 													onClick={handleCancelDateRangeFilter}
 													className="!px-2 !py-1 text-xs"
 												>
-													Cancel
-												</SecondaryButton>
+														{tr("datatable.cancel", "Cancel")}
+												</NeutralButton>
 											</div>
 										</>
 									);
@@ -595,17 +579,17 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 													className="!px-2 !py-1 text-xs"
 													disabled={!inputValue.trim()}
 												>
-													Apply
+													{tr("datatable.apply", "Apply")}
 												</PrimaryButton>
-												<SecondaryButton
+												<NeutralButton
 													onClick={() => {
 														setSelectedField(null);
 														setInputValue("");
 													}}
 													className="!px-2 !py-1 text-xs"
 												>
-													Cancel
-												</SecondaryButton>
+													{tr("datatable.cancel", "Cancel")}
+												</NeutralButton>
 											</div>
 										</>
 									);
@@ -616,19 +600,19 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 
 				<div className="ml-auto flex items-center gap-1">
 					{hasActiveFilters && (
-						<SecondaryButton
+						<NeutralButton
 							onClick={onClearAllFilters}
 							className="!px-1.5 !py-1 text-[0.6rem] text-red-500 dark:text-red-400 border-red-500 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
 						>
-							Clear All
-						</SecondaryButton>
+								{tr("datatable.clear_all", "Clear All")}
+						</NeutralButton>
 					)}
-					<SecondaryButton
+					<NeutralButton
 						onClick={onToggle}
 						className="!p-1 !bg-transparent hover:!bg-gray-100 dark:hover:!bg-gray-700"
 					>
 						<XMarkIconSmall className="h-3 w-3" />
-					</SecondaryButton>
+					</NeutralButton>
 				</div>
 			</div>
 		</div>

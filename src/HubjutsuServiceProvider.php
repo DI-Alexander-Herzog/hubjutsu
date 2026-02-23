@@ -28,6 +28,7 @@ class HubjutsuServiceProvider extends ServiceProvider
         /*
          * Optional methods to load your package assets
          */
+        $this->loadJsonTranslationsFrom(__DIR__.'/../resources/lang');
         // $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'hubjutsu-setup');
         // $this->loadViewsFrom(__DIR__.'/../resources/views', 'hubjutsu-setup');
         //$this->loadMigrationsFrom(__DIR__.'/../database/migrations');

@@ -80,5 +80,13 @@ class Base extends Model {
         return $query;
     }
 
+    /**
+     * Initialize the base query for API search.
+     * Models can add named variants with methods like initQueryFooBar().
+     */
+    public function initQuery(): Builder
+    {
+        return $this->newModelQuery();
+    }
 
 }

@@ -4,7 +4,7 @@ import { ButtonHTMLAttributes } from 'react';
 type ButtonSize = 'small' | 'default' | 'large';
 type ButtonDisplay = 'solid' | 'outline';
 
-type DangerButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type NeutralButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
     size?: ButtonSize;
     display?: ButtonDisplay;
 };
@@ -15,30 +15,33 @@ const sizeClasses: Record<ButtonSize, string> = {
     large: 'px-5 py-3 text-base',
 };
 
-export default function DangerButton({
+export default function NeutralButton({
+    type = 'button',
     className = '',
     disabled,
     children,
     size = 'default',
     display = 'solid',
     ...props
-}: DangerButtonProps) {
+}: NeutralButtonProps) {
     return (
         <button
             {...props}
+            type={type}
             className={
                 classNames(
-                    'inline-flex items-center rounded-md font-semibold tracking-widest transition ease-in-out duration-150',
-                    'focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800',
+                    'inline-flex items-center rounded-md font-semibold tracking-widest shadow-sm transition ease-in-out duration-150',
+                    'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800',
                     display === 'outline'
                         ? [
-                            'border border-red-600 text-red-600 bg-transparent dark:border-red-400 dark:text-red-400',
-                            'hover:bg-red-50 dark:hover:bg-red-900/20',
-                            'active:bg-red-100 dark:active:bg-red-900/30',
+                            'border border-gray-300 text-gray-700 bg-transparent dark:border-gray-500 dark:text-gray-300',
+                            'hover:bg-gray-50 dark:hover:bg-gray-700',
+                            'active:bg-gray-100 dark:active:bg-gray-600',
                         ]
                         : [
-                            'bg-red-600 border border-transparent text-white',
-                            'hover:bg-red-500 active:bg-red-700',
+                            'bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-300',
+                            'hover:bg-gray-50 dark:hover:bg-gray-700',
+                            'active:bg-gray-100 dark:active:bg-gray-600',
                         ],
                     sizeClasses[size],
                     {

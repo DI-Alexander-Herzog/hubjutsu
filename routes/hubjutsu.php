@@ -108,6 +108,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/learning-courses', [LearningCourseController::class, 'index'])->name('learningcourses.index');
         Route::get('/learning-courses/{learningcourse}', [LearningCourseController::class, 'show'])->name('learningcourses.show');
         Route::get('/learning-courses/{learningcourse}/edit', [LearningCourseController::class, 'edit'])->name('learningcourses.edit');
+        Route::post('/learning-courses/{learningcourse}/import-structure', [LearningCourseController::class, 'importStructure'])->name('learningcourses.import_structure');
         Route::get('/learning-modules', [LearningModuleController::class, 'index'])->name('learningmodules.index');
         Route::get('/learning-sections', [LearningSectionController::class, 'index'])->name('learningsections.index');
         Route::get('/learning-lections', [LearningLectionController::class, 'index'])->name('learninglections.index');

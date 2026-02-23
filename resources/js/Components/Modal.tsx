@@ -5,9 +5,9 @@ import {
 	Transition,
 	TransitionChild,
 } from "@headlessui/react";
-import SecondaryButton from "./SecondaryButton";
-import DangerButton from "./DangerButton";
-import PrimaryButton from "./PrimaryButton";
+import NeutralButton from "@/Components/NeutralButton";
+import DangerButton from "@/Components/DangerButton";
+import PrimaryButton from "@/Components/PrimaryButton";
 
 export default function Modal({
 	children,
@@ -127,9 +127,9 @@ export default function Modal({
 						{(primaryButtonText || secondaryButtonText) && (
 							<div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
 								{secondaryButtonText && (
-									<SecondaryButton onClick={onSecondaryClick || close}>
+									<NeutralButton onClick={onSecondaryClick || close}>
 										{secondaryButtonText}
-									</SecondaryButton>
+									</NeutralButton>
 								)}
 								{renderPrimaryButton()}
 							</div>

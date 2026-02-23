@@ -4,7 +4,7 @@ import { UseForm } from "@/types";
 import axios from "axios";
 import ErrorToast from "@/Components/ErrorToast";
 import PrimaryButton from "@/Components/PrimaryButton";
-import SecondaryButton from "./SecondaryButton";
+import NeutralButton from "@/Components/NeutralButton";
 import { router } from "@inertiajs/react";
 import { useLaravelReactI18n } from "laravel-react-i18n";
 
@@ -101,7 +101,7 @@ export function FormContextSubmitButton({ children, className, postSave, editLin
   
   if (readonly) {
     if (editLink) {
-      return <SecondaryButton onClick={() => router.visit(editLink)} className={className}>{t('Edit')}</SecondaryButton>;
+      return <NeutralButton onClick={() => router.visit(editLink)} className={className}>{t('Edit')}</NeutralButton>;
     }
     return;
   }

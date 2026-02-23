@@ -1,0 +1,23 @@
+{
+    "datatable.show": "Show:",
+    "datatable.reload": "Reload",
+    "datatable.new": "New",
+    "datatable.filter": "Filter",
+    "datatable.delete": "Delete",
+    "datatable.delete_confirm": "Are you sure you want to delete the selected records?",
+    "datatable.displaying": "Displaying",
+    "datatable.to": "to",
+    "datatable.of": "of",
+    "datatable.item": "item",
+    "datatable.items": "items",
+    "datatable.add_filter": "Add Filter",
+    "datatable.choose_field": "Choose field...",
+    "datatable.cancel": "Cancel",
+    "datatable.yes": "Yes",
+    "datatable.no": "No",
+    "datatable.start_date": "Start date",
+    "datatable.end_date": "End date",
+    "datatable.apply": "Apply",
+    "datatable.clear_all": "Clear All",
+    "datatable.selected": "selected"
+}
