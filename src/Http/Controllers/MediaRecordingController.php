@@ -2,6 +2,7 @@
 namespace AHerzog\Hubjutsu\Http\Controllers;
 
 use App\Jobs\ProcessRecording;
+use App\Models\Media;
 use App\Models\MediaRecording;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -305,6 +306,44 @@ class MediaRecordingController extends Controller
                 )
                 : null,
             'error_message' => $rec->status === 'error' ? $rec->error_message : null,
+        ]);
+    }
+
+    public function toMedia(Request $request, string $uuid)
+    {
+        $rec = $this->loadOwnedRecordingOrFail($request, $uuid);
+
+        if ($rec->status !== 'done' || !$rec->mp4_path) {
+            return response()->json([
+                'message' => 'Recording is not ready yet.',
+            ], 409);
+        }
+
+        $disk = Storage::disk('recordings_private');
+        if (!$disk->exists($rec->mp4_path)) {
+            return response()->json([
+                'message' => 'Recording file not found.',
+            ], 404);
+        }
+
+        $baseName = pathinfo((string)$rec->mp4_path, PATHINFO_FILENAME) ?: ("recording_" . $uuid);
+        $publicFilename = '/recordings/' . date('Y/m') . '/' . $baseName . '_' . Str::uuid()->toString() . '.mp4';
+
+        $media = new Media([
+            'name' => "Recording {$uuid}",
+            'description' => "Recording {$uuid}",
+            'tags' => ['recording', 'screen_cam'],
+            'storage' => 'public',
+            'filename' => $publicFilename,
+            'private' => true,
+            'mimetype' => 'video/mp4',
+        ]);
+        $media->save();
+        $media->setContent($disk->get($rec->mp4_path), $publicFilename);
+        $media->save();
+
+        return response()->json([
+            'media' => $media->toArray(),
         ]);
     }
 

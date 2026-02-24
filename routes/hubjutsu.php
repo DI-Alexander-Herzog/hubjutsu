@@ -121,6 +121,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('init', [MediaRecordingController::class, 'init'])->name('init');
         Route::post('{uuid}/chunk', [MediaRecordingController::class, 'chunk'])->name('chunk');
         Route::post('{uuid}/finish', [MediaRecordingController::class, 'finish'])->name('finish');
+        Route::post('{uuid}/to-media', [MediaRecordingController::class, 'toMedia'])->name('to_media');
         Route::get('{uuid}/status', [MediaRecordingController::class, 'status'])->name('status');
         Route::get('{uuid}/download', [MediaRecordingController::class, 'download'])->name('download'); // optional
     });

@@ -50,6 +50,8 @@ type StatusResponse = {
 type ScreenCamRecorderProps = {
   onRecorded?: (payload: { uuid: string }) => void | Promise<void>;
   onProcessed?: (payload: { uuid: string; mp4Url: string }) => void | Promise<void>;
+  onMediaCreated?: (payload: { uuid: string; mp4Url: string; media: Record<string, any> }) => void | Promise<void>;
+  createMediaOnProcess?: boolean;
 };
 
 const MODES: { id: Mode; label: string }[] = [
@@ -136,6 +138,8 @@ async function waitForVideoReady(video: HTMLVideoElement): Promise<void> {
 export default function ScreenCamRecorder({
   onRecorded,
   onProcessed,
+  onMediaCreated,
+  createMediaOnProcess = false,
 }: ScreenCamRecorderProps = {}): JSX.Element {
   const START_CANCELLED_ERROR = "__start_cancelled__";
   const [mode, setMode] = useState<Mode>("screen_cam_mic");
@@ -1370,6 +1374,20 @@ export default function ScreenCamRecorder({
     if (!downloadUrl) return;
     const uuid = recordingRef.current.uuid ?? "";
     try {
+      if ((createMediaOnProcess || onMediaCreated) && uuid) {
+        const mediaResponse = await axios.post<{ media: Record<string, any> }>(
+          `/media/recording/${uuid}/to-media`
+        );
+        if (onMediaCreated) {
+          await onMediaCreated({
+            uuid,
+            mp4Url: downloadUrl,
+            media: mediaResponse.data.media,
+          });
+        }
+        return;
+      }
+
       if (onProcessed) {
         await onProcessed({ uuid, mp4Url: downloadUrl });
         return;
@@ -1521,7 +1539,7 @@ export default function ScreenCamRecorder({
                     }}
                     aria-label={
                       isDonePlayback
-                        ? "Teilen"
+                        ? ((createMediaOnProcess || onMediaCreated) ? "Übernehmen" : "Teilen")
                         : isRecording
                           ? "Stop recording"
                           : isStarting
