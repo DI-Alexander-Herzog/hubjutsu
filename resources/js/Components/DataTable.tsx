@@ -132,6 +132,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 }, ref) => {
 	const tableRef = useRef<HTMLTableElement>(null);
 	const actionMenuRef = useRef<HTMLDivElement>(null);
+	const nextTempIdRef = useRef(-1);
 
 	const { t } = useLaravelReactI18n();
 	const tr = (key: string, fallback: string) => {
@@ -575,8 +576,9 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 			saveRow(row[datakey], row_ofs);
 		}
 		if (e.key === "Escape") {
-			if (row[datakey] === 0) {
-				setRecords((prev) => prev.filter((r) => r !== row));
+			if (row[datakey] < 0) {
+				setRecords((prev) => prev.filter((r) => r[datakey] !== row[datakey]));
+				toggleRowSelection(row, false);
 			}
 			disableEditing(row[datakey]);
 		}
@@ -632,8 +634,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 		} else if (typeof newRecord === "function") {
 			newRecord();
 		} else {
-			const newRow = { [datakey]: -records.length, ...newRecord } ;
-			console.log(newRow, newRecord, records.length);
+			const newRow = { ...newRecord, [datakey]: nextTempIdRef.current-- };
 
 			setRecords((prev) => [newRow, ...prev]);
 			setEditingRecord((prev) => ({
@@ -644,6 +645,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 	};
 
 	const hasActiveFilters = Object.keys(activeFilters).length > 0;
+	const hasPersistedSelection = selectedRecords.some((record) => Number(record?.[datakey]) > 0);
 
 	const noEditor = columns.filter(c => c.editor).length === 0;
 
@@ -1146,7 +1148,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 											)}
 
 											{!disableDelete &&
-												selectedRecords.length > 0 &&
+												hasPersistedSelection &&
 												Object.keys(editingRecord).length === 0 && (
 													<button
 														onClick={() => {
@@ -1156,7 +1158,9 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 																)
 															)
 																return;
-															selectedRecords.forEach((record) => {
+															selectedRecords
+																.filter((record) => Number(record?.[datakey]) > 0)
+																.forEach((record) => {
 																const index = records.findIndex(
 																	(r) => r[datakey] === record[datakey]
 																);
@@ -1185,7 +1189,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 																			setError(error);
 																		});
 																}
-															});
+																});
 															setActionMenuOpen(false);
 														}}
 														className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
@@ -1279,9 +1283,10 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 								</NeutralButton>
 
 								{!disableDelete &&
-									selectedRecords.length > 0 &&
+									hasPersistedSelection &&
 									Object.keys(editingRecord).length === 0 && (
 										<DangerButton
+											size="small"
 											onClick={() => {
 												if (
 													!confirm(
@@ -1289,7 +1294,9 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 													)
 												)
 													return;
-												selectedRecords.forEach((record, idx) => {
+												selectedRecords
+													.filter((record) => Number(record?.[datakey]) > 0)
+													.forEach((record) => {
 													const index = records.findIndex(
 														(r) => r[datakey] === record[datakey]
 													);
@@ -1318,7 +1325,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 																setError(error);
 															});
 													}
-												});
+													});
 											}}
 											className="text-xs flex items-center gap-2 px-2 py-1"
 										>
