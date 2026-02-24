@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DataTable from '@/Components/DataTable';
 import { DataTableFormatter } from '@/Components/DataTableFormatter';
+import DataTableLink from '@/Components/DataTableLink';
 
 export default function LearningLectionIndex() {
     return (
@@ -42,6 +43,11 @@ export default function LearningLectionIndex() {
                         filter: true,
                         width: '240px',
                         editor: 'text',
+                        formatter: (row: any) => (
+                            <DataTableLink href={route('settings.learninglections.edit', row)}>
+                                {row.name}
+                            </DataTableLink>
+                        ),
                     },
                     {
                         field: 'duration_minutes',

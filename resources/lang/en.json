@@ -19,5 +19,10 @@
     "datatable.end_date": "End date",
     "datatable.apply": "Apply",
     "datatable.clear_all": "Clear All",
-    "datatable.selected": "selected"
+    "datatable.selected": "selected",
+    "datatable.search": "Search",
+    "datatable.search_placeholder": "Search...",
+    "datatable.exact": "Exact",
+    "datatable.range": "Range",
+    "datatable.from": "From"
 }

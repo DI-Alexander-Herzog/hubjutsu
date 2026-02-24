@@ -50,6 +50,10 @@ class Base extends Model {
             $builder->whereNotIn($field, $value);
         } elseif ($matchMode == "IN") {
             $builder->whereIn($field, $value);
+        } elseif ($matchMode == "BETWEEN") {
+            if (is_array($value) && count($value) >= 2) {
+                $builder->whereBetween($field, [$value[0], $value[1]]);
+            }
         } elseif ($matchMode == "CONTAINS") {
             $builder->where($field, 'LIKE' , '%' . $value . '%');
         } else {

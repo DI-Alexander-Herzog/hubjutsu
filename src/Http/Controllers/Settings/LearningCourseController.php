@@ -20,7 +20,7 @@ class LearningCourseController extends Controller
 
     public function show(LearningCourse $learningcourse)
     {
-        $learningcourse->loadMissing(['cover', 'bundles', 'modules.sections']);
+        $learningcourse->loadMissing(['cover', 'bundles', 'modules.cover', 'modules.sections']);
 
         return Inertia::render('Admin/Learning/Course/View', [
             'learning_course' => $learningcourse,
@@ -29,7 +29,7 @@ class LearningCourseController extends Controller
 
     public function edit(LearningCourse $learningcourse)
     {
-        $learningcourse->loadMissing(['cover', 'bundles', 'modules.sections']);
+        $learningcourse->loadMissing(['cover', 'bundles', 'modules.cover', 'modules.sections']);
 
         return Inertia::render('Admin/Learning/Course/Edit', [
             'learning_course' => $learningcourse,
@@ -145,8 +145,8 @@ class LearningCourseController extends Controller
             }
         });
 
-        $learningcourse->loadMissing(['cover', 'bundles', 'modules.sections']);
-        $learningcourse->load(['modules.sections']);
+        $learningcourse->loadMissing(['cover', 'bundles', 'modules.cover', 'modules.sections']);
+        $learningcourse->load(['modules.cover', 'modules.sections']);
 
         return response()->json([
             'message' => 'Import erfolgreich.',

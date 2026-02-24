@@ -24,6 +24,7 @@ class LearningCourse extends Base
         'name',
         'slug',
         'description',
+        'body',
         'active',
     ];
 

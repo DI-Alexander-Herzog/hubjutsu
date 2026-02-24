@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/20/solid';
 import Checkbox from '@/Components/Checkbox';
 import DataTable, { type Column } from '@/Components/DataTable';
+import DataTableLink from '@/Components/DataTableLink';
 import { DataTableFormatter } from '@/Components/DataTableFormatter';
 import FormContainer from '@/Components/FormContainer';
-import FormSection from '@/Components/FormSection';
+import MediaUpload from '@/Components/MediaUpload';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -25,9 +26,29 @@ type LearningModule = {
     learning_course_id: number;
     name: string;
     description: string;
+    cover?: any | null;
     active: boolean;
     sort: number;
+    unlock_mode: 'none' | 'delay_from_course_start' | 'after_previous_module_completed';
+    unlock_delay_days: number;
     sections: LearningSection[];
+};
+
+type ModuleSnapshot = {
+    name: string;
+    description: string;
+    active: boolean;
+    sort: number;
+    cover: string;
+    unlock_mode: string;
+    unlock_delay_days: number;
+};
+
+type SectionSnapshot = {
+    name: string;
+    description: string;
+    active: boolean;
+    sort: number;
 };
 
 type ModuleModalState = {
@@ -63,6 +84,11 @@ const lectionColumns: Column[] = [
         frozen: true,
         width: '240px',
         editor: 'text',
+        formatter: (row: any) => (
+            <DataTableLink href={route('settings.learninglections.edit', row)}>
+                {row.name}
+            </DataTableLink>
+        ),
     },
     {
         field: 'duration_minutes',
@@ -123,8 +149,11 @@ const normalizeModule = (module: any): LearningModule => ({
     learning_course_id: Number(module?.learning_course_id),
     name: module?.name || '',
     description: module?.description || '',
+    cover: module?.cover || null,
     active: Boolean(module?.active),
     sort: Number(module?.sort || 0),
+    unlock_mode: (module?.unlock_mode || 'none') as LearningModule['unlock_mode'],
+    unlock_delay_days: Number(module?.unlock_delay_days || 0),
     sections: sortBySortAndName((module?.sections || []).map(normalizeSection)),
 });
 
@@ -141,6 +170,64 @@ const nextSortFromItems = <T extends { sort?: number }>(items: T[] = []): number
     return maxSort + 10;
 };
 
+const moduleCoverUrl = (cover: any): string | null => {
+    if (!cover || typeof cover !== 'object') {
+        return null;
+    }
+
+    return cover.thumbnail || cover.url || cover.original_url || cover.path || null;
+};
+
+const moduleCoverSignature = (cover: any): string => {
+    if (!cover) {
+        return '';
+    }
+
+    if (typeof cover === 'string') {
+        return cover;
+    }
+
+    if (typeof cover === 'object') {
+        if (cover.__delete || cover._delete || cover.delete) {
+            return '__delete__';
+        }
+        return String(cover.id ?? cover.url ?? cover.original_url ?? cover.path ?? cover.filename ?? cover.name ?? '');
+    }
+
+    return '';
+};
+
+const toModuleSnapshot = (module: LearningModule): ModuleSnapshot => ({
+    name: module.name || '',
+    description: module.description || '',
+    active: Boolean(module.active),
+    sort: Number(module.sort || 0),
+    cover: moduleCoverSignature(module.cover),
+    unlock_mode: module.unlock_mode || 'none',
+    unlock_delay_days: Number(module.unlock_delay_days || 0),
+});
+
+const toSectionSnapshot = (section: LearningSection): SectionSnapshot => ({
+    name: section.name || '',
+    description: section.description || '',
+    active: Boolean(section.active),
+    sort: Number(section.sort || 0),
+});
+
+const buildBaselineMaps = (moduleList: LearningModule[]) => {
+    const moduleMap: Record<number, ModuleSnapshot> = {};
+    const sectionMap: Record<number, SectionSnapshot> = {};
+
+    moduleList.forEach((module) => {
+        moduleMap[module.id] = toModuleSnapshot(module);
+        module.sections.forEach((section) => {
+            sectionMap[section.id] = toSectionSnapshot(section);
+        });
+    });
+
+    return { moduleMap, sectionMap };
+};
+
 export default function CourseStructureEditor({
     learningCourseId,
     initialModules = [],
@@ -148,13 +235,19 @@ export default function CourseStructureEditor({
     learningCourseId: number;
     initialModules?: any[];
 }) {
-    const [modules, setModules] = useState<LearningModule[]>(
-        sortBySortAndName((initialModules || []).map(normalizeModule)),
-    );
+    const initialNormalizedModules = sortBySortAndName((initialModules || []).map(normalizeModule));
+    const initialBaselines = buildBaselineMaps(initialNormalizedModules);
+
+    const [modules, setModules] = useState<LearningModule[]>(initialNormalizedModules);
+    const [moduleBaseline, setModuleBaseline] = useState<Record<number, ModuleSnapshot>>(initialBaselines.moduleMap);
+    const [sectionBaseline, setSectionBaseline] = useState<Record<number, SectionSnapshot>>(initialBaselines.sectionMap);
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const [expandedModules, setExpandedModules] = useState<Record<number, boolean>>({});
     const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>({});
+    const [focusModuleId, setFocusModuleId] = useState<number | null>(null);
+    const [focusSectionId, setFocusSectionId] = useState<number | null>(null);
+    const [deepLinkApplied, setDeepLinkApplied] = useState(false);
     const [moduleModal, setModuleModal] = useState<ModuleModalState>({
         open: false,
         name: '',
@@ -183,6 +276,44 @@ export default function CourseStructureEditor({
         [sortedModules, expandedModules],
     );
 
+    useEffect(() => {
+        if (deepLinkApplied || sortedModules.length === 0) {
+            return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const moduleId = Number(params.get('module') || 0);
+        const sectionId = Number(params.get('section') || 0);
+
+        if (!moduleId && !sectionId) {
+            setDeepLinkApplied(true);
+            return;
+        }
+
+        const moduleFromSection = sortedModules.find((module) =>
+            module.sections.some((section) => section.id === sectionId),
+        );
+        const targetModuleId = moduleId || moduleFromSection?.id || 0;
+
+        if (targetModuleId) {
+            setExpandedModules((prev) => ({ ...prev, [targetModuleId]: true }));
+            setFocusModuleId(targetModuleId);
+        }
+
+        if (sectionId) {
+            setExpandedSections((prev) => ({ ...prev, [sectionId]: true }));
+            setFocusSectionId(sectionId);
+        }
+
+        setDeepLinkApplied(true);
+
+        setTimeout(() => {
+            const sectionEl = sectionId ? document.getElementById(`course-section-${sectionId}`) : null;
+            const moduleEl = targetModuleId ? document.getElementById(`course-module-${targetModuleId}`) : null;
+            (sectionEl || moduleEl)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 80);
+    }, [deepLinkApplied, sortedModules]);
+
     const setModuleField = (moduleId: number, field: keyof LearningModule, value: any) => {
         setModules((prev) =>
             prev.map((module) => (module.id === moduleId ? { ...module, [field]: value } : module)),
@@ -206,8 +337,24 @@ export default function CourseStructureEditor({
         );
     };
 
+    const isModuleDirty = (module: LearningModule): boolean => {
+        const baseline = moduleBaseline[module.id];
+        if (!baseline) {
+            return true;
+        }
+        return JSON.stringify(toModuleSnapshot(module)) !== JSON.stringify(baseline);
+    };
+
+    const isSectionDirty = (section: LearningSection): boolean => {
+        const baseline = sectionBaseline[section.id];
+        if (!baseline) {
+            return true;
+        }
+        return JSON.stringify(toSectionSnapshot(section)) !== JSON.stringify(baseline);
+    };
+
     const updateModuleOnApi = async (module: LearningModule) => {
-        await axios.post(
+        const response = await axios.post(
             route('api.model.update', {
                 model: 'learning_module',
                 id: module.id,
@@ -216,10 +363,15 @@ export default function CourseStructureEditor({
                 learning_course_id: learningCourseId,
                 name: module.name,
                 description: module.description,
+                cover: module.cover || null,
                 active: module.active,
                 sort: Number(module.sort || 0),
+                unlock_mode: module.unlock_mode || 'none',
+                unlock_delay_days: Number(module.unlock_delay_days || 0),
             },
         );
+
+        return normalizeModule(response.data);
     };
 
     const updateSectionOnApi = async (moduleId: number, section: LearningSection) => {
@@ -243,7 +395,21 @@ export default function CourseStructureEditor({
         setBusy(true);
 
         try {
-            await updateModuleOnApi(module);
+            const savedModule = await updateModuleOnApi(module);
+            setModules((prev) =>
+                prev.map((item) =>
+                    item.id === module.id
+                        ? {
+                            ...savedModule,
+                            sections: item.sections,
+                        }
+                        : item,
+                ),
+            );
+            setModuleBaseline((prev) => ({
+                ...prev,
+                [module.id]: toModuleSnapshot(savedModule),
+            }));
         } catch (e: any) {
             setError(e?.response?.data?.message || e?.message || 'Modul konnte nicht gespeichert werden.');
         } finally {
@@ -278,6 +444,13 @@ export default function CourseStructureEditor({
 
         try {
             await Promise.all(changed.map((module) => updateModuleOnApi(module)));
+            setModuleBaseline((prev) => {
+                const next = { ...prev };
+                changed.forEach((module) => {
+                    next[module.id] = toModuleSnapshot(module);
+                });
+                return next;
+            });
         } catch (e: any) {
             setError(e?.response?.data?.message || e?.message || 'Sortierung der Module konnte nicht gespeichert werden.');
         } finally {
@@ -303,11 +476,17 @@ export default function CourseStructureEditor({
                     description: moduleModal.description,
                     active: moduleModal.active,
                     sort: Number(moduleModal.sort || 0),
+                    unlock_mode: 'none',
+                    unlock_delay_days: 0,
                 },
             );
 
             const savedModule = normalizeModule(response.data);
             setModules((prev) => sortBySortAndName([{ ...savedModule, sections: [] }, ...prev]));
+            setModuleBaseline((prev) => ({
+                ...prev,
+                [savedModule.id]: toModuleSnapshot(savedModule),
+            }));
             setExpandedModules((prev) => ({ ...prev, [savedModule.id]: true }));
             setModuleModal({
                 open: false,
@@ -339,6 +518,11 @@ export default function CourseStructureEditor({
                 }),
             );
             setModules((prev) => prev.filter((module) => module.id !== moduleId));
+            setModuleBaseline((prev) => {
+                const next = { ...prev };
+                delete next[moduleId];
+                return next;
+            });
         } catch (e: any) {
             setError(e?.response?.data?.message || e?.message || 'Modul konnte nicht gelöscht werden.');
         } finally {
@@ -352,6 +536,10 @@ export default function CourseStructureEditor({
 
         try {
             await updateSectionOnApi(moduleId, section);
+            setSectionBaseline((prev) => ({
+                ...prev,
+                [section.id]: toSectionSnapshot(section),
+            }));
         } catch (e: any) {
             setError(e?.response?.data?.message || e?.message || 'Sektion konnte nicht gespeichert werden.');
         } finally {
@@ -393,6 +581,13 @@ export default function CourseStructureEditor({
 
         try {
             await Promise.all(changed.map((section) => updateSectionOnApi(moduleId, section)));
+            setSectionBaseline((prev) => {
+                const next = { ...prev };
+                changed.forEach((section) => {
+                    next[section.id] = toSectionSnapshot(section);
+                });
+                return next;
+            });
         } catch (e: any) {
             setError(e?.response?.data?.message || e?.message || 'Sortierung der Sektionen konnte nicht gespeichert werden.');
         } finally {
@@ -440,6 +635,10 @@ export default function CourseStructureEditor({
                 }),
             );
             setExpandedSections((prev) => ({ ...prev, [savedSection.id]: true }));
+            setSectionBaseline((prev) => ({
+                ...prev,
+                [savedSection.id]: toSectionSnapshot(savedSection),
+            }));
 
             setSectionModal({
                 open: false,
@@ -479,6 +678,9 @@ export default function CourseStructureEditor({
                 ((response.data?.learning_course?.modules as any[]) || []).map(normalizeModule),
             );
             setModules(importedModules);
+            const baselines = buildBaselineMaps(importedModules);
+            setModuleBaseline(baselines.moduleMap);
+            setSectionBaseline(baselines.sectionMap);
             setExpandedModules({});
             setExpandedSections({});
             setImportModal((prev) => ({ ...prev, open: false }));
@@ -517,6 +719,11 @@ export default function CourseStructureEditor({
                     };
                 }),
             );
+            setSectionBaseline((prev) => {
+                const next = { ...prev };
+                delete next[sectionId];
+                return next;
+            });
         } catch (e: any) {
             setError(e?.response?.data?.message || e?.message || 'Sektion konnte nicht gelöscht werden.');
         } finally {
@@ -526,8 +733,13 @@ export default function CourseStructureEditor({
 
     return (
         <FormContainer>
-            <FormSection title="Kursstruktur bearbeiten" subtitle="Module und Sektionen per Popup anlegen">
-                <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+        <div className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Kursstruktur bearbeiten</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Module und Sektionen per Popup anlegen</p>
+                </div>
+                <div className="flex flex-wrap items-center justify-end gap-2">
                     <NeutralButton
                         onClick={() => setImportModal((prev) => ({ ...prev, open: true }))}
                         className="px-2 py-1 text-xs"
@@ -549,19 +761,20 @@ export default function CourseStructureEditor({
                         {allModulesExpanded ? 'Alle Module einklappen' : 'Alle Module ausklappen'}
                     </NeutralButton>
                 </div>
+            </div>
+            
+            {error && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {error}
+                </div>
+            )}
 
-                {error && (
-                    <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                        {error}
-                    </div>
-                )}
-
-                {sortedModules.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500">
-                        Noch keine Module vorhanden.
-                    </div>
-                )}
-
+            {sortedModules.length === 0 && (
+                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
+                    Noch keine Module vorhanden.
+                </div>
+            )}
+   
                 {sortedModules.map((module, moduleIndex) => {
                     const sections = sortBySortAndName(module.sections);
                     const isModuleExpanded = Boolean(expandedModules[module.id]);
@@ -569,12 +782,44 @@ export default function CourseStructureEditor({
                         sections.length > 0 && sections.every((section) => Boolean(expandedSections[section.id]));
 
                     return (
-                        <div key={module.id} className="mb-5 space-y-3 rounded-lg border border-gray-200 p-4">
+                        <div
+                            id={`course-module-${module.id}`}
+                            key={module.id}
+                            className={`mb-5 space-y-3 rounded-lg border p-4 ${
+                                focusModuleId === module.id
+                                    ? 'border-primary bg-primary-50/30 ring-2 ring-primary-200'
+                                    : 'border-gray-200 dark:border-gray-700'
+                            }`}
+                        >
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div>
-                                    <div className="text-base font-semibold text-gray-900">{module.name || `Modul #${module.id}`}</div>
-                                    <div className="text-xs text-gray-500">Sort: {module.sort || 0}</div>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setExpandedModules((prev) => ({
+                                            ...prev,
+                                            [module.id]: !prev[module.id],
+                                        }))
+                                    }
+                                    className="flex items-center gap-3 text-left"
+                                >
+                                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
+                                        {moduleCoverUrl(module.cover) ? (
+                                            <img
+                                                src={moduleCoverUrl(module.cover) as string}
+                                                alt={module.name || `Modul ${module.id}`}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-400 dark:text-gray-500">
+                                                Kein Bild
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <div className="text-base font-semibold text-gray-900 dark:text-gray-100">{module.name || `Modul #${module.id}`}</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">Sort: {module.sort || 0}</div>
+                                    </div>
+                                </button>
                                 <div className="flex flex-wrap gap-2">
                                     <NeutralButton
                                         onClick={() => moveModule(module.id, 'up')}
@@ -608,56 +853,116 @@ export default function CourseStructureEditor({
 
                             {isModuleExpanded && (
                                 <>
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                        <label className="block text-sm">
-                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Modulname</span>
-                                            <input
-                                                type="text"
-                                                value={module.name}
-                                                onChange={(event) => setModuleField(module.id, 'name', event.target.value)}
-                                                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                                    <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+                                        <div>
+                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Cover</span>
+                                            <MediaUpload
+                                                name={`module_cover_${module.id}`}
+                                                accept="image/*"
+                                                attributes={{ value: module.cover || null }}
+                                                onChange={(event) =>
+                                                    setModuleField(module.id, 'cover', (event as any).target?.value || null)
+                                                }
                                             />
-                                        </label>
-                                        <label className="block text-sm">
-                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Sort</span>
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                value={module.sort}
-                                                onChange={(event) => setModuleField(module.id, 'sort', Number(event.target.value || 0))}
-                                                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                                            />
-                                        </label>
-                                        <label className="block text-sm md:col-span-2">
-                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Beschreibung</span>
-                                            <textarea
-                                                value={module.description}
-                                                onChange={(event) => setModuleField(module.id, 'description', event.target.value)}
-                                                rows={3}
-                                                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                                            />
-                                        </label>
-                                        <label className="inline-flex items-center gap-2 text-sm">
-                                            <Checkbox
-                                                checked={module.active}
-                                                onChange={(event: any) => setModuleField(module.id, 'active', Boolean(event.target.checked))}
-                                            />
-                                            Aktiv
-                                        </label>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="block text-sm">
+                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Modulname</span>
+                                                <input
+                                                    type="text"
+                                                    value={module.name}
+                                                    onChange={(event) => setModuleField(module.id, 'name', event.target.value)}
+                                                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
+                                                />
+                                            </label>
+
+                                            <label className="block text-sm">
+                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Beschreibung</span>
+                                                <textarea
+                                                    value={module.description}
+                                                    onChange={(event) => setModuleField(module.id, 'description', event.target.value)}
+                                                    rows={3}
+                                                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
+                                                />
+                                            </label>
+                                        </div>
                                     </div>
 
-                                    <div className="flex flex-wrap justify-end gap-2">
-                                        <PrimaryButton onClick={() => saveModule(module)} disabled={busy} className="px-2 py-1 text-xs">
-                                            Modul speichern
-                                        </PrimaryButton>
-                                        <button
-                                            type="button"
-                                            onClick={() => deleteModule(module.id)}
-                                            disabled={busy}
-                                            className="px-2 py-1 text-xs text-red-600 hover:underline disabled:opacity-50"
-                                        >
-                                            Modul löschen
-                                        </button>
+                                    <div className="flex flex-wrap items-end justify-between gap-3">
+                                        <div className="flex flex-wrap items-end gap-4">
+                                            <label className="block text-sm">
+                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sort</span>
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    value={module.sort}
+                                                    onChange={(event) => setModuleField(module.id, 'sort', Number(event.target.value || 0))}
+                                                    className="w-24 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm"
+                                                />
+                                            </label>
+                                            <label className="inline-flex items-center gap-2 text-sm">
+                                                <Checkbox
+                                                    checked={module.active}
+                                                    onChange={(event: any) => setModuleField(module.id, 'active', Boolean(event.target.checked))}
+                                                />
+                                                Aktiv
+                                            </label>
+                                            <label className="block text-sm">
+                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Freischaltung</span>
+                                                <select
+                                                    value={module.unlock_mode || 'none'}
+                                                    onChange={(event) =>
+                                                        setModuleField(
+                                                            module.id,
+                                                            'unlock_mode',
+                                                            event.target.value as LearningModule['unlock_mode'],
+                                                        )
+                                                    }
+                                                    className="w-56 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm"
+                                                >
+                                                    <option value="none">Sofort</option>
+                                                    <option value="delay_from_course_start">Nach Kursstart-Delay</option>
+                                                    <option value="after_previous_module_completed">Nach vorherigem Modul</option>
+                                                </select>
+                                            </label>
+                                            {module.unlock_mode === 'delay_from_course_start' && (
+                                                <label className="block text-sm">
+                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Delay (Tage)</span>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        value={module.unlock_delay_days || 0}
+                                                        onChange={(event) =>
+                                                            setModuleField(
+                                                                module.id,
+                                                                'unlock_delay_days',
+                                                                Number(event.target.value || 0),
+                                                            )
+                                                        }
+                                                        className="w-28 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm"
+                                                    />
+                                                </label>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-wrap justify-end gap-2">
+                                            <PrimaryButton
+                                                onClick={() => saveModule(module)}
+                                                disabled={busy || !isModuleDirty(module)}
+                                                className="px-2 py-1 text-xs"
+                                            >
+                                                Modul speichern
+                                            </PrimaryButton>
+                                            <button
+                                                type="button"
+                                                onClick={() => deleteModule(module.id)}
+                                                disabled={busy}
+                                                className="px-2 py-1 text-xs text-red-600 hover:underline disabled:opacity-50"
+                                            >
+                                                Modul löschen
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="flex flex-wrap justify-end gap-2">
@@ -680,7 +985,7 @@ export default function CourseStructureEditor({
                                     </div>
 
                                     {sections.length === 0 && (
-                                        <div className="rounded-md border border-dashed border-gray-300 px-3 py-4 text-sm text-gray-500">
+                                        <div className="rounded-md border border-dashed border-gray-300 dark:border-gray-600 px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
                                             Keine Sektionen in diesem Modul.
                                         </div>
                                     )}
@@ -689,14 +994,31 @@ export default function CourseStructureEditor({
                                         const isSectionExpanded = Boolean(expandedSections[section.id]);
 
                                         return (
-                                            <div key={section.id} className="space-y-3 rounded-md border border-gray-200 p-3">
+                                            <div
+                                                id={`course-section-${section.id}`}
+                                                key={section.id}
+                                                className={`space-y-3 rounded-md border p-3 ${
+                                                    focusSectionId === section.id
+                                                        ? 'border-primary bg-primary-50/30 ring-2 ring-primary-200'
+                                                        : 'border-gray-200 dark:border-gray-700'
+                                                }`}
+                                            >
                                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                                    <div>
-                                                        <div className="text-sm font-semibold text-gray-900">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setExpandedSections((prev) => ({
+                                                                ...prev,
+                                                                [section.id]: !prev[section.id],
+                                                            }))
+                                                        }
+                                                        className="text-left"
+                                                    >
+                                                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                                             {section.name || `Sektion #${section.id}`}
                                                         </div>
-                                                        <div className="text-xs text-gray-500">Sort: {section.sort || 0}</div>
-                                                    </div>
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400">Sort: {section.sort || 0}</div>
+                                                    </button>
                                                     <div className="flex flex-wrap gap-2">
                                                         <NeutralButton
                                                             onClick={() => moveSection(module.id, section.id, 'up')}
@@ -732,18 +1054,18 @@ export default function CourseStructureEditor({
                                                     <>
                                                         <div className="grid gap-3 md:grid-cols-2">
                                                             <label className="block text-sm">
-                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Sektionsname</span>
+                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sektionsname</span>
                                                                 <input
                                                                     type="text"
                                                                     value={section.name}
                                                                     onChange={(event) =>
                                                                         setSectionField(module.id, section.id, 'name', event.target.value)
                                                                     }
-                                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                                                                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
                                                                 />
                                                             </label>
                                                             <label className="block text-sm">
-                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Sort</span>
+                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sort</span>
                                                                 <input
                                                                     type="number"
                                                                     min={0}
@@ -756,18 +1078,18 @@ export default function CourseStructureEditor({
                                                                             Number(event.target.value || 0),
                                                                         )
                                                                     }
-                                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                                                                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
                                                                 />
                                                             </label>
                                                             <label className="block text-sm md:col-span-2">
-                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Beschreibung</span>
+                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Beschreibung</span>
                                                                 <textarea
                                                                     value={section.description}
                                                                     onChange={(event) =>
                                                                         setSectionField(module.id, section.id, 'description', event.target.value)
                                                                     }
                                                                     rows={2}
-                                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                                                                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
                                                                 />
                                                             </label>
                                                             <label className="inline-flex items-center gap-2 text-sm">
@@ -782,7 +1104,11 @@ export default function CourseStructureEditor({
                                                         </div>
 
                                                         <div className="flex flex-wrap justify-end gap-2">
-                                                            <PrimaryButton onClick={() => saveSection(module.id, section)} disabled={busy} className="px-2 py-1 text-xs">
+                                                            <PrimaryButton
+                                                                onClick={() => saveSection(module.id, section)}
+                                                                disabled={busy || !isSectionDirty(section)}
+                                                                className="px-2 py-1 text-xs"
+                                                            >
                                                                 Sektion speichern
                                                             </PrimaryButton>
                                                             <button
@@ -840,24 +1166,23 @@ export default function CourseStructureEditor({
                     );
                 })}
 
-                <div className="mt-3 flex flex-wrap justify-end gap-2">
-                    <SecondaryButton
-                        onClick={() =>
-                            setModuleModal({
-                                open: true,
-                                name: '',
-                                description: '',
-                                active: true,
-                                sort: nextSortFromItems(sortedModules),
-                            })
-                        }
-                        disabled={busy}
-                        className="px-2 py-1 text-xs"
-                    >
-                        Neues Modul
-                    </SecondaryButton>
-                </div>
-            </FormSection>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <SecondaryButton
+                    onClick={() =>
+                        setModuleModal({
+                            open: true,
+                            name: '',
+                            description: '',
+                            active: true,
+                            sort: nextSortFromItems(sortedModules),
+                        })
+                    }
+                    disabled={busy}
+                    className="px-2 py-1 text-xs"
+                >
+                    Neues Modul
+                </SecondaryButton>
+            </div>
 
             <Modal
                 show={moduleModal.open}
@@ -873,27 +1198,27 @@ export default function CourseStructureEditor({
             >
                 <div className="space-y-3">
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Name</span>
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Name</span>
                         <input
                             type="text"
                             value={moduleModal.name}
                             onChange={(event) => setModuleModal((prev) => ({ ...prev, name: event.target.value }))}
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Beschreibung</span>
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Beschreibung</span>
                         <textarea
                             value={moduleModal.description}
                             onChange={(event) =>
                                 setModuleModal((prev) => ({ ...prev, description: event.target.value }))
                             }
                             rows={3}
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Sort</span>
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sort</span>
                         <input
                             type="number"
                             min={0}
@@ -901,7 +1226,7 @@ export default function CourseStructureEditor({
                             onChange={(event) =>
                                 setModuleModal((prev) => ({ ...prev, sort: Number(event.target.value || 0) }))
                             }
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="inline-flex items-center gap-2 text-sm">
@@ -930,27 +1255,27 @@ export default function CourseStructureEditor({
             >
                 <div className="space-y-3">
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Name</span>
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Name</span>
                         <input
                             type="text"
                             value={sectionModal.name}
                             onChange={(event) => setSectionModal((prev) => ({ ...prev, name: event.target.value }))}
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Beschreibung</span>
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Beschreibung</span>
                         <textarea
                             value={sectionModal.description}
                             onChange={(event) =>
                                 setSectionModal((prev) => ({ ...prev, description: event.target.value }))
                             }
                             rows={3}
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Sort</span>
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sort</span>
                         <input
                             type="number"
                             min={0}
@@ -958,7 +1283,7 @@ export default function CourseStructureEditor({
                             onChange={(event) =>
                                 setSectionModal((prev) => ({ ...prev, sort: Number(event.target.value || 0) }))
                             }
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="inline-flex items-center gap-2 text-sm">
@@ -987,7 +1312,7 @@ export default function CourseStructureEditor({
             >
                 <div className="space-y-3">
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Format</span>
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Format</span>
                         <select
                             value={importModal.format}
                             onChange={(event) =>
@@ -996,7 +1321,7 @@ export default function CourseStructureEditor({
                                     format: event.target.value as 'auto' | 'markdown' | 'html',
                                 }))
                             }
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
                         >
                             <option value="auto">Auto erkennen</option>
                             <option value="markdown">Markdown</option>
@@ -1005,12 +1330,12 @@ export default function CourseStructureEditor({
                     </label>
 
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Inhalt</span>
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Inhalt</span>
                         <textarea
                             value={importModal.content}
                             onChange={(event) => setImportModal((prev) => ({ ...prev, content: event.target.value }))}
                             rows={12}
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm"
+                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 font-mono text-sm"
                             placeholder={'# Modul\n## Sektion\n### Lektion'}
                         />
                     </label>
@@ -1029,6 +1354,7 @@ export default function CourseStructureEditor({
                     </label>
                 </div>
             </Modal>
+        </div>
         </FormContainer>
     );
 }

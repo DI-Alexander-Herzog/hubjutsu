@@ -112,6 +112,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/learning-modules', [LearningModuleController::class, 'index'])->name('learningmodules.index');
         Route::get('/learning-sections', [LearningSectionController::class, 'index'])->name('learningsections.index');
         Route::get('/learning-lections', [LearningLectionController::class, 'index'])->name('learninglections.index');
+        Route::get('/learning-lections/{learninglection}/edit', [LearningLectionController::class, 'edit'])->name('learninglections.edit');
     });
     Route::post('/media/upload', [MediaController::class, 'upload'])->name('media.upload');
     Route::post('/media/chunked-upload', [MediaController::class, 'chunkedUpload'])->name('media.chunked-upload');

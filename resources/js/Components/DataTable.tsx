@@ -42,13 +42,28 @@ interface Column {
 	/** @deprecated Nicht mehr verwenden.  */
 	editor_properties?: Record<string, any>;
 	sortable?: boolean;
-	filter?: boolean | string | any;
+	filter?: boolean | DataTableFilterConfig;
 
 	frozen?: boolean;
 	width?: string;
 	align?: string;
 	headerAlign?: string;
 	formatter?: (row: Row, field: string) => JSX.Element | string | Element;
+}
+
+interface DataTableFilterConfig {
+	type: "text" | "select" | "number" | "date" | "boolean" | "model";
+	options?: Array<{ label: string; value: any }>;
+	multiple?: boolean;
+	placeholder?: string;
+	model?: string;
+	labelField?: string;
+	valueField?: string;
+	with?: string[];
+	filter?: Record<string, any> | (() => Record<string, any>);
+	min?: string | number;
+	max?: string | number;
+	step?: string | number;
 }
 
 interface Row {
@@ -947,6 +962,23 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 						</select>
 					</div>
 
+					{!useGlobalSearch && (
+						<input
+							type="search"
+							value={searchState.search || ""}
+							onChange={(event) =>
+								setSearchState((prev) => ({
+									...prev,
+									search: event.target.value,
+									first: 0,
+									page: 1,
+								}))
+							}
+							placeholder={tr("datatable.search_placeholder", "Search...")}
+							className="text-xs rounded-lg bg-white dark:bg-gray-700 px-2 py-1 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 min-w-[180px]"
+						/>
+					)}
+
 					<nav aria-label="Pagination" className="flex items-center gap-1">
 						<NeutralButton
 							onClick={() => onPageChange(1)}
@@ -1215,8 +1247,9 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 								{columns.length > 0 && (
 									<NeutralButton
 										onClick={() => setShowFilterPanel(!showFilterPanel)}
+										size="small"
 										className={classNames(
-											"inline-flex items-center justify-center text-[11px] px-2 py-1 min-w-[88px]",
+											"inline-flex items-center justify-center min-w-[72px]",
 											showFilterPanel
 												? "bg-primary "
 												: hasActiveFilters
@@ -1225,7 +1258,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 											"gap-1 relative"
 										)}
 									>
-										<FunnelIcon aria-hidden="true" className="size-3" />
+										<FunnelIcon aria-hidden="true" className="size-3.5" />
 										{tr("datatable.filter", "Filter")}
 										{hasActiveFilters && (
 											<span className="ml-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 min-w-[16px] h-4 flex items-center justify-center">
@@ -1304,9 +1337,10 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 												if (row_ofs !== -1) saveRow(Number(id), row_ofs);
 											});
 										}}
-										className="flex items-center gap-2 text-xs px-2 py-1"
+										size="small"
+										className="flex items-center gap-1.5"
 									>
-										<CheckIcon aria-hidden="true" className="size-4" />
+										<CheckIcon aria-hidden="true" className="size-3.5" />
 										<span>{t("Save")}</span>
 									</PrimaryButton>
 								)}
@@ -1314,9 +1348,10 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 								{newRecord !== false && (
 									<PrimaryButton
 										onClick={handleNewRecord}
-										className="text-xs flex items-center gap-2 px-2 py-1"
+										size="small"
+										className="flex items-center gap-1.5"
 									>
-										<PlusIcon aria-hidden="true" className="size-4" />
+										<PlusIcon aria-hidden="true" className="size-3.5" />
 										<span>{tr("datatable.new", "New")}</span>
 									</PrimaryButton>
 								)}
@@ -1365,4 +1400,4 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 
 
 export default DataTable;
-export type { Column };
+export type { Column, DataTableFilterConfig };

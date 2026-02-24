@@ -353,7 +353,9 @@ function SingleMediaUpload({
             }`}
           >
             <input {...getInputProps()} />
-            <p className="text-secondary">{isDragActive ? t('Drop file…') : t('Select or drag file here')}</p>
+            <p className="text-secondary">
+              {isDragActive ? t('media.drop_file') : t('media.select_or_drag_file')}
+            </p>
           </div>
 
           {progress > 0 && progress < 100 && (
@@ -368,14 +370,14 @@ function SingleMediaUpload({
               className="text-xs text-tertiary hover:text-tertiary/80"
               onClick={handleRemove}
             >
-              {t('Remove file')}
+              {t('media.remove_file')}
             </button>
           )}
         </div>
       </div>
 
       {isMediaMarkedForDeletion(currentValue) && (
-        <p className="text-xs italic text-gray-500">{t('File will be removed')}</p>
+        <p className="text-xs italic text-gray-500">{t('media.file_will_be_removed')}</p>
       )}
 
       <InputError
@@ -408,28 +410,41 @@ function MultipleMediaUpload({
     return [];
   };
 
+  const buildMediaSignature = (list: Record<string, any>[]) =>
+    JSON.stringify(
+      list.map((media: any) =>
+        media?.id
+          ? `${media.id}:${isMediaMarkedForDeletion(media) ? 'del' : 'keep'}:${media.mediable_sort ?? ''}`
+          : `${media?.filename ?? media?.name ?? ''}:${isMediaMarkedForDeletion(media) ? 'del' : 'keep'}:${media?.mediable_sort ?? ''}`
+      )
+    );
+
+  const initialValue = extractInitialValue();
+  const initialDeleteOps = initialValue.filter((media: any) => isMediaMarkedForDeletion(media));
+  const initialUploaded = initialValue.filter((media: any) => !isMediaMarkedForDeletion(media));
+
   const [items, setItems] = useState<MultiUploadItem[]>(() =>
-    extractInitialValue().map((media: any) => createUploadedItem(media))
+    initialUploaded.map((media: any) => createUploadedItem(media))
   );
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
-  const [deleteOps, setDeleteOps] = useState<Record<string, any>[]>([]);
+  const [deleteOps, setDeleteOps] = useState<Record<string, any>[]>(initialDeleteOps);
   const [err, setErr] = useState<string | null>(null);
-  const signatureRef = useRef<string>(
-    JSON.stringify(extractInitialValue().map((media: any) => media?.id ?? media?.filename ?? media?.name ?? ''))
-  );
+  const signatureRef = useRef<string>(buildMediaSignature(initialValue));
 
   useEffect(() => {
     if (!useForm) return;
     const formValue = useForm.data?.[name];
     if (!Array.isArray(formValue)) return;
-    const signature = JSON.stringify(
-      formValue.map((media: any) => media?.id ?? media?.filename ?? media?.name ?? '')
-    );
+    const signature = buildMediaSignature(formValue);
     if (signature === signatureRef.current) return;
     signatureRef.current = signature;
-    setItems(formValue.map((media: any) => createUploadedItem(media)));
-    setDeleteOps([]);
+    setItems(
+      formValue
+        .filter((media: any) => !isMediaMarkedForDeletion(media))
+        .map((media: any) => createUploadedItem(media))
+    );
+    setDeleteOps(formValue.filter((media: any) => isMediaMarkedForDeletion(media)));
   }, [useForm?.data?.[name]]);
 
   useEffect(() => {
@@ -440,13 +455,7 @@ function MultipleMediaUpload({
         mediable_sort: index + 1,
       }));
     const payload = [...medias, ...deleteOps];
-    const signature = JSON.stringify(
-      payload.map((media: any) =>
-        media?.id
-          ? `${media.id}:${isMediaMarkedForDeletion(media) ? 'del' : 'keep'}:${media.mediable_sort ?? ''}`
-          : media?.filename ?? media?.name ?? ''
-      )
-    );
+    const signature = buildMediaSignature(payload);
     if (signature !== signatureRef.current) {
       signatureRef.current = signature;
       if (useForm) {
@@ -555,7 +564,10 @@ function MultipleMediaUpload({
       const remaining = maxFiles - items.length;
       files = accepted.slice(0, Math.max(remaining, 0));
       if (files.length < accepted.length) {
-        syncError(t('Es können maximal {{count}} Dateien hochgeladen werden.', { count: maxFiles }));
+        const maxErrorText = String(
+          t('Es können maximal {{count}} Dateien hochgeladen werden.', { count: maxFiles })
+        ).replace(/\{\{\s*count\s*\}\}/g, String(maxFiles));
+        syncError(maxErrorText);
       } else {
         syncError(null);
       }
@@ -652,7 +664,9 @@ function MultipleMediaUpload({
           {isDragActive ? t('Dateien hier ablegen…') : t('Dateien auswählen oder hier ablegen')}
         </p>
         {maxFiles && (
-          <p className="text-xs text-secondary/70">{t('Max. {{count}} Dateien', { count: maxFiles })}</p>
+          <p className="text-xs text-secondary/70">
+            {String(t('Max. {{count}} Dateien', { count: maxFiles })).replace(/\{\{\s*count\s*\}\}/g, String(maxFiles))}
+          </p>
         )}
       </div>
 

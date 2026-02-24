@@ -32,7 +32,8 @@ Es gibt für jeden Componentn einen passendne Re-Export im @.
         }
 ```        
 
-Sprich, immer zuerst den @/* Pfad verwenden, um auf eigene Komponenten zuzugreifen und nicht die @hubjutsu/* versionen
+Sprich, immer zuerst den @/* Pfad verwenden, um auf eigene Komponenten zuzugreifen und nicht die @hubjutsu/* Versionen.
 
+Also auch in hubjutsu selbst immer zuerst @/Components/... anstelle von ./... importieren, damit die Ableitung gewährleistet ist.
 
 Keine Importpfade aus dem hubjutsu-Namespace nutzen.

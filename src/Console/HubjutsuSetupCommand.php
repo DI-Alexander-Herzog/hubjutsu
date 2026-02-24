@@ -383,7 +383,6 @@ class HubjutsuSetupCommand extends Command
 
             $this->components->info('Building node...');
             $this->runCommands([
-                'php artisan queue:table',
                 'php artisan migrate --force',
                 'php artisan ide-helper:generate',
                 'php artisan hubjutsu:generate:types',
@@ -393,7 +392,6 @@ class HubjutsuSetupCommand extends Command
             $this->runCommands(['php artisan db:seed HubjutsuSeeder --force']);
         } else {
             $this->runCommands([
-                'php artisan queue:table',
                 'php artisan migrate --force',
                 'php artisan hubjutsu:generate:types',
                 'npm run build'

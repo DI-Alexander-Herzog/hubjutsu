@@ -39,7 +39,7 @@ export default function LearningCourseIndex() {
                         width: '220px',
                         editor: 'text',
                         formatter: (row: any) => (
-                            <DataTableLink href={route('settings.learningcourses.show', row)}>
+                            <DataTableLink href={route('settings.learningcourses.edit', row)}>
                                 {row.name}
                             </DataTableLink>
                         ),

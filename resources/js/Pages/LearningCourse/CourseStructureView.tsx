@@ -1,4 +1,5 @@
 import DataTable, { type Column } from '@/Components/DataTable';
+import DataTableLink from '@/Components/DataTableLink';
 import { DataTableFormatter } from '@/Components/DataTableFormatter';
 import FormContainer from '@/Components/FormContainer';
 import FormSection from '@/Components/FormSection';
@@ -15,9 +16,20 @@ type LearningModule = {
     id: number;
     name: string;
     description?: string | null;
+    cover?: any | null;
     active: boolean;
     sort: number;
+    unlock_mode?: 'none' | 'delay_from_course_start' | 'after_previous_module_completed';
+    unlock_delay_days?: number;
     sections?: LearningSection[];
+};
+
+const moduleCoverUrl = (cover: any): string | null => {
+    if (!cover || typeof cover !== 'object') {
+        return null;
+    }
+
+    return cover.thumbnail || cover.url || cover.original_url || cover.path || null;
 };
 
 const lectionColumns: Column[] = [
@@ -28,6 +40,11 @@ const lectionColumns: Column[] = [
         filter: true,
         frozen: true,
         width: '240px',
+        formatter: (row: any) => (
+            <DataTableLink href={route('settings.learninglections.edit', row)}>
+                {row.name}
+            </DataTableLink>
+        ),
     },
     {
         field: 'duration_minutes',
@@ -87,16 +104,39 @@ export default function CourseStructureView({ modules = [] }: { modules?: Learni
 
                     return (
                         <div key={module.id} className="space-y-4 rounded-lg border border-gray-200 p-4">
-                            <div className="space-y-1">
-                                <div className="text-base font-semibold text-gray-900">
-                                    {module.name || `Modul #${module.id}`}
+                            <div className="grid gap-4 md:grid-cols-[180px_1fr]">
+                                <div>
+                                    {moduleCoverUrl(module.cover) ? (
+                                        <img
+                                            src={moduleCoverUrl(module.cover) as string}
+                                            alt={module.name || `Modul ${module.id}`}
+                                            className="h-28 w-full rounded-md border border-gray-200 object-cover"
+                                        />
+                                    ) : (
+                                        <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-gray-300 text-xs text-gray-400">
+                                            Kein Cover
+                                        </div>
+                                    )}
+                                    <div className="mt-2 text-xs text-gray-500">
+                                        Sort: {module.sort ?? 0} | Aktiv: {module.active ? 'Ja' : 'Nein'}
+                                    </div>
+                                    <div className="mt-1 text-xs text-gray-500">
+                                        Freischaltung:{' '}
+                                        {module.unlock_mode === 'delay_from_course_start'
+                                            ? `Nach ${module.unlock_delay_days ?? 0} Tagen`
+                                            : module.unlock_mode === 'after_previous_module_completed'
+                                                ? 'Nach vorherigem Modul'
+                                                : 'Sofort'}
+                                    </div>
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                    Sort: {module.sort ?? 0} | Aktiv: {module.active ? 'Ja' : 'Nein'}
+                                <div className="space-y-1">
+                                    <div className="text-base font-semibold text-gray-900">
+                                        {module.name || `Modul #${module.id}`}
+                                    </div>
+                                    {module.description && (
+                                        <div className="text-sm text-gray-700">{module.description}</div>
+                                    )}
                                 </div>
-                                {module.description && (
-                                    <div className="text-sm text-gray-700">{module.description}</div>
-                                )}
                             </div>
 
                             {sections.length === 0 && (

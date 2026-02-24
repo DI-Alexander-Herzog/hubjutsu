@@ -1,48 +1,35 @@
-import React, { useState, ChangeEvent, KeyboardEvent } from "react";
+import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
-import {
-	XMarkIcon as XMarkIconSmall,
-	PlusIcon,
-} from "@heroicons/react/20/solid";
+import { XMarkIcon as XMarkIconSmall, PlusIcon } from "@heroicons/react/20/solid";
+import { useLaravelReactI18n } from "laravel-react-i18n";
+import modelAPI from "@hubjutsu/api/modelAPI";
 
 import PrimaryButton from "@/Components/PrimaryButton";
 import NeutralButton from "@/Components/NeutralButton";
 import DangerButton from "@/Components/DangerButton";
 import InputText from "@/Components/InputText";
-import { useLaravelReactI18n } from "laravel-react-i18n";
+import Checkbox from "@/Components/Checkbox";
 
-const formatDate = (dateString?: string): string => {
-	if (!dateString) return "";
-
-	const date = new Date(dateString);
-	return date
-		.toLocaleDateString("en-GB", {
-			day: "2-digit",
-			month: "2-digit",
-			year: "numeric",
-		})
-		.replace(/\//g, "-");
-};
+type FilterType = "text" | "select" | "number" | "date" | "boolean" | "model";
 
 interface FilterOption {
 	label: string;
 	value: any;
-	matchMode?: string;
 }
 
 interface FilterConfig {
-	type:
-		| "text"
-		| "select"
-		| "multiselect"
-		| "number"
-		| "date"
-		| "boolean"
-		| "dateRange";
+	type: FilterType;
 	options?: FilterOption[];
+	multiple?: boolean;
 	placeholder?: string;
-	matchModes?: string[];
-	defaultMatchMode?: string;
+	model?: string;
+	labelField?: string;
+	valueField?: string;
+	with?: string[];
+	filter?: Record<string, any> | (() => Record<string, any>);
+	min?: string | number;
+	max?: string | number;
+	step?: string | number;
 }
 
 interface Column {
@@ -50,12 +37,7 @@ interface Column {
 	field: string;
 	editor?: "text" | "number" | "select" | any;
 	editor_properties?: Record<string, any>;
-	filter?: boolean | string | FilterConfig;
-}
-
-interface DateRangeFilter {
-	start?: string;
-	end?: string;
+	filter?: boolean | FilterType | FilterConfig;
 }
 
 interface DataTableFilterProps {
@@ -69,169 +51,94 @@ interface DataTableFilterProps {
 	onToggle: () => void;
 }
 
-class FilterConfigService {
-	static getFilterConfig(column: Column): FilterConfig | null {
-		if (!column.filter) return null;
+const FILTER_TYPES: FilterType[] = ["text", "select", "number", "date", "boolean", "model"];
 
-		if (typeof column.filter === "object") {
-			return column.filter as FilterConfig;
-		}
+const formatDate = (dateString?: string): string => {
+	if (!dateString) return "";
+	const date = new Date(dateString);
+	if (Number.isNaN(date.getTime())) return String(dateString);
+	return date
+		.toLocaleDateString("en-GB", {
+			day: "2-digit",
+			month: "2-digit",
+			year: "numeric",
+		})
+		.replace(/\//g, "-");
+};
 
-		const fieldName = column.field.toLowerCase();
-		const editorType = column.editor;
+const normalizeFilterConfig = (column: Column): FilterConfig | null => {
+	const filter = column.filter;
+	if (filter === false || filter === null || filter === undefined) return null;
+	const editorCfg = typeof column.editor === "object" && column.editor ? (column.editor as Record<string, any>) : null;
+	const editorLegacyCfg = column.editor_properties ?? {};
 
-		const isDateField =
-			editorType === "datetime" ||
-			editorType === "date" ||
-			fieldName.includes("_at") ||
-			fieldName.includes("_date") ||
-			fieldName.endsWith("date");
-
-		if (
-			!isDateField &&
-			[
-				"name",
-				"email",
-				"mail",
-				"title",
-				"description",
-				"content",
-				"text",
-				"search",
-			].some((type) => fieldName.includes(type) && !fieldName.includes("_at"))
-		) {
-			return null;
-		}
-
-		if (
-			[
-				"datetime",
-				"date",
-				"_at",
-				"_date",
-				"created",
-				"updated",
-				"deleted",
-				"verified_at",
-				"published_at",
-				"activated_at",
-			].some(
-				(type) =>
-					editorType === type ||
-					fieldName.includes(type) ||
-					fieldName.endsWith("date")
-			)
-		) {
-			return { type: "date", defaultMatchMode: "=" };
-		}
-
-		if (
-			[
-				"checkbox",
-				"is_",
-				"has_",
-				"can_",
-				"verified",
-				"active",
-				"enabled",
-				"published",
-			].some(
-				(type) =>
-					editorType === type ||
-					(fieldName.includes(type) &&
-						!fieldName.includes("_at") &&
-						!fieldName.includes("_date"))
-			)
-		) {
-			return { type: "boolean", defaultMatchMode: "=" };
-		}
-
-		if (
-			[
-				"number",
-				"_id",
-				"count",
-				"amount",
-				"price",
-				"total",
-				"quantity",
-				"age",
-				"weight",
-				"height",
-			].some((type) => editorType === type || fieldName.includes(type))
-		) {
-			return { type: "number", defaultMatchMode: "=" };
-		}
-
-		if (editorType === "select" && column.editor_properties?.options) {
-			return {
-				type: "select",
-				options: column.editor_properties.options,
-				defaultMatchMode: "=",
-			};
-		}
-
-		return { type: "text", defaultMatchMode: "contains" };
+	if (typeof filter === "object" && filter.type && FILTER_TYPES.includes(filter.type)) {
+		const cfg = filter as FilterConfig;
+		return {
+			...cfg,
+			multiple:
+				cfg.type === "select" || cfg.type === "model" ? cfg.multiple !== false : cfg.multiple,
+		};
 	}
 
-	static getInputType(column: Column, config: FilterConfig | null): string {
-		if (!config) return "text";
+	if (typeof filter === "string" && FILTER_TYPES.includes(filter as FilterType)) {
+		return {
+			type: filter as FilterType,
+			multiple: filter === "select" || filter === "model",
+		};
+	}
 
-		const fieldName = column.field.toLowerCase();
+	// Auto-map model editors to model filter for legacy `filter: true`.
+	if (filter === true && editorCfg?.type === "model" && typeof editorCfg.model === "string") {
+		return {
+			type: "model",
+			model: editorCfg.model,
+			labelField: editorCfg.labelField ?? "name",
+			valueField: editorCfg.valueField ?? "id",
+			with: editorCfg.with ?? [],
+			multiple: true,
+		};
+	}
+	if (filter === true && column.editor === "model" && typeof editorLegacyCfg.model === "string") {
+		return {
+			type: "model",
+			model: editorLegacyCfg.model,
+			labelField: editorLegacyCfg.labelField ?? "name",
+			valueField: editorLegacyCfg.valueField ?? "id",
+			with: editorLegacyCfg.with ?? [],
+			multiple: true,
+		};
+	}
 
-		switch (config.type) {
-			case "number":
-				return "number";
-			case "date":
-				return fieldName.includes("_at") || column.editor === "datetime"
-					? "datetime-local"
-					: "date";
-			case "boolean":
-				return "text";
-			default:
-				if (fieldName.includes("email") || fieldName.includes("mail"))
-					return "email";
-				if (
-					fieldName.includes("url") ||
-					fieldName.includes("website") ||
-					fieldName.includes("link")
-				)
-					return "url";
-				if (fieldName.includes("phone") || fieldName.includes("tel"))
-					return "tel";
-				if (fieldName.includes("password")) return "password";
-				return "text";
+	// Backward compatibility for legacy `filter: true`.
+	return { type: "text" };
+};
+
+const getSelectOptions = (column: Column, config: FilterConfig, records: any[]): FilterOption[] => {
+	if (Array.isArray(config.options) && config.options.length > 0) {
+		return config.options;
+	}
+
+	const editorOptions = column.editor_properties?.options;
+	if (Array.isArray(editorOptions) && editorOptions.length > 0) {
+		return editorOptions.map((opt: any) => ({
+			label: String(opt?.label ?? opt?.value ?? ""),
+			value: opt?.value ?? opt,
+		}));
+	}
+
+	const uniqueValues = new Set<any>();
+	records.forEach((row) => {
+		if (row?.[column.field] !== null && row?.[column.field] !== undefined && row?.[column.field] !== "") {
+			uniqueValues.add(row[column.field]);
 		}
-	}
+	});
 
-	static getPlaceholder(column: Column): string {
-		const label = column.label || column.field;
-		return `${label}...`;
-	}
-
-	static getDefaultMatchMode(
-		column: Column,
-		config: FilterConfig | null
-	): string {
-		if (!config) return "contains";
-		if (config.defaultMatchMode) return config.defaultMatchMode;
-
-		const fieldName = column.field.toLowerCase();
-
-		if (
-			fieldName.includes("_id") ||
-			fieldName.includes("code") ||
-			fieldName.includes("number") ||
-			fieldName.includes("status") ||
-			fieldName.includes("type") ||
-			fieldName.includes("category")
-		) {
-			return "=";
-		}
-
-		return config.type === "text" ? "contains" : "=";
-	}
-}
+	return Array.from(uniqueValues).map((value) => ({
+		label: String(value),
+		value,
+	}));
+};
 
 const DataTableFilter: React.FC<DataTableFilterProps> = ({
 	columns,
@@ -248,80 +155,266 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 		const translated = t(key);
 		return translated === key ? fallback : translated;
 	};
+
 	const [showFieldSelector, setShowFieldSelector] = useState(false);
 	const [selectedField, setSelectedField] = useState<string | null>(null);
-	const [inputValue, setInputValue] = useState<string>("");
-	const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>({});
-	const [tempDateRangeFilter, setTempDateRangeFilter] =
-		useState<DateRangeFilter>({});
 
-	const filterableColumns = columns.filter(
-		(col) =>
-			col.filter !== false && FilterConfigService.getFilterConfig(col) !== null
+	const [textValue, setTextValue] = useState("");
+	const [selectValues, setSelectValues] = useState<any[]>([]);
+	const [rangeMode, setRangeMode] = useState<"exact" | "range">("exact");
+	const [exactValue, setExactValue] = useState("");
+	const [rangeStart, setRangeStart] = useState("");
+	const [rangeEnd, setRangeEnd] = useState("");
+	const [modelQuery, setModelQuery] = useState("");
+	const [modelValues, setModelValues] = useState<any[]>([]);
+	const [modelOptions, setModelOptions] = useState<any[]>([]);
+	const [modelLoading, setModelLoading] = useState(false);
+
+	const filterableColumns = useMemo(
+		() => columns.filter((col) => normalizeFilterConfig(col) !== null),
+		[columns]
 	);
 	const hasActiveFilters = Object.keys(activeFilters).length > 0;
+	const availableFields = filterableColumns.filter((col) => !activeFilters[col.field]);
 
-	const availableFields = filterableColumns.filter(
-		(col) => !activeFilters[col.field]
+	const selectedColumn = selectedField
+		? filterableColumns.find((col) => col.field === selectedField) ?? null
+		: null;
+	const selectedConfig = selectedColumn ? normalizeFilterConfig(selectedColumn) : null;
+
+	const selectedOptions =
+		selectedColumn && selectedConfig?.type === "select"
+			? getSelectOptions(selectedColumn, selectedConfig, records)
+			: [];
+	const selectedModelConfig = selectedConfig?.type === "model" ? selectedConfig : null;
+	const selectedModelName = selectedModelConfig?.model ?? null;
+	const selectedModelLabelField = selectedModelConfig?.labelField ?? "name";
+	const selectedModelValueField = selectedModelConfig?.valueField ?? "id";
+	const selectedModelWith = selectedModelConfig?.with ?? [];
+	const selectedModelWithKey = selectedModelWith.join(",");
+	const selectedModelFilter = selectedModelConfig?.filter;
+	const selectedOptionValueMap = useMemo(
+		() => new Map(selectedOptions.map((option) => [String(option.value), option.value])),
+		[selectedOptions]
 	);
+	const selectedModelValueSet = useMemo(
+		() => new Set(modelValues.map((value) => String(value))),
+		[modelValues]
+	);
+
+	useEffect(() => {
+		if (!selectedField || !selectedModelName) {
+			setModelOptions([]);
+			setModelLoading(false);
+			return;
+		}
+
+		let resolvedFilter: Record<string, any> = {};
+		if (typeof selectedModelFilter === "function") {
+			try {
+				resolvedFilter = selectedModelFilter() ?? {};
+			} catch {
+				resolvedFilter = {};
+			}
+		} else if (selectedModelFilter) {
+			resolvedFilter = selectedModelFilter;
+		}
+		let aborted = false;
+
+		setModelLoading(true);
+		modelAPI(selectedModelName as any)
+			.search({
+				search: modelQuery,
+				order: [[selectedModelLabelField, 1]],
+				filter: resolvedFilter,
+				with: selectedModelWith,
+				limit: 50,
+			})
+			.then((res) => {
+				if (!aborted) {
+					setModelOptions(res.data ?? []);
+				}
+			})
+			.catch(() => {
+				if (!aborted) {
+					setModelOptions([]);
+				}
+			})
+			.finally(() => {
+				if (!aborted) {
+					setModelLoading(false);
+				}
+			});
+
+		return () => {
+			aborted = true;
+		};
+	}, [
+		selectedField,
+		selectedModelName,
+		selectedModelLabelField,
+		selectedModelFilter,
+		selectedModelWithKey,
+		modelQuery,
+	]);
+
+	const resetDraftState = () => {
+		setTextValue("");
+		setSelectValues([]);
+		setRangeMode("exact");
+		setExactValue("");
+		setRangeStart("");
+		setRangeEnd("");
+		setModelQuery("");
+		setModelValues([]);
+		setModelOptions([]);
+		setModelLoading(false);
+	};
+
+	const clearSelectedField = () => {
+		setSelectedField(null);
+		resetDraftState();
+	};
+
+	const startEditingFilter = (field: string) => {
+		const column = filterableColumns.find((col) => col.field === field);
+		if (!column) return;
+		const config = normalizeFilterConfig(column);
+		if (!config) return;
+
+		const existing = activeFilters[field];
+		const existingValue = existing?.value;
+		const existingMode = String(existing?.matchMode ?? "");
+
+		setSelectedField(field);
+		setShowFieldSelector(false);
+		resetDraftState();
+
+		if (!existing) return;
+
+		if (config.type === "text") {
+			setTextValue(existingValue?.toString?.() ?? "");
+			return;
+		}
+
+		if (config.type === "select") {
+			if (Array.isArray(existingValue)) {
+				setSelectValues(existingValue);
+			} else if (existingValue !== null && existingValue !== undefined && existingValue !== "") {
+				setSelectValues([existingValue]);
+			}
+			return;
+		}
+
+		if (config.type === "model") {
+			if (Array.isArray(existingValue)) {
+				setModelValues(existingValue);
+			} else if (existingValue !== null && existingValue !== undefined && existingValue !== "") {
+				setModelValues([existingValue]);
+			}
+			return;
+		}
+
+		if (config.type === "number" || config.type === "date") {
+			if (existingMode === "BETWEEN" && Array.isArray(existingValue)) {
+				setRangeMode("range");
+				setRangeStart(existingValue[0]?.toString?.() ?? "");
+				setRangeEnd(existingValue[1]?.toString?.() ?? "");
+				return;
+			}
+			if (existingMode === ">=") {
+				setRangeMode("range");
+				setRangeStart(existingValue?.toString?.() ?? "");
+				return;
+			}
+			if (existingMode === "<=") {
+				setRangeMode("range");
+				setRangeEnd(existingValue?.toString?.() ?? "");
+				return;
+			}
+			setRangeMode("exact");
+			setExactValue(existingValue?.toString?.() ?? "");
+		}
+	};
 
 	const handleFieldSelect = (field: string) => {
 		setSelectedField(field);
 		setShowFieldSelector(false);
-		setInputValue("");
-		setTempDateRangeFilter({});
+		resetDraftState();
 	};
 
-	const handleFilterApply = (value: any, matchMode?: string) => {
-		if (selectedField) {
-			onApplyFilter(selectedField, value, matchMode);
-			setSelectedField(null);
+	const applyCurrentFilter = () => {
+		if (!selectedField || !selectedConfig) return;
+
+		if (selectedConfig.type === "boolean") {
+			return;
+		}
+
+		if (selectedConfig.type === "text") {
+			if (!textValue.trim()) return;
+			onApplyFilter(selectedField, textValue, "CONTAINS");
+			clearSelectedField();
+			return;
+		}
+
+		if (selectedConfig.type === "select") {
+			if (selectValues.length === 0) return;
+			const multiple = selectedConfig.multiple !== false;
+			if (multiple) {
+				onApplyFilter(selectedField, selectValues, "IN");
+			} else {
+				onApplyFilter(selectedField, selectValues[0], "=");
+			}
+			clearSelectedField();
+			return;
+		}
+
+		if (selectedConfig.type === "model") {
+			if (modelValues.length === 0) return;
+			const multiple = selectedConfig.multiple !== false;
+			if (multiple) {
+				onApplyFilter(selectedField, modelValues, "IN");
+			} else {
+				onApplyFilter(selectedField, modelValues[0], "=");
+			}
+			clearSelectedField();
+			return;
+		}
+
+		if (selectedConfig.type === "number" || selectedConfig.type === "date") {
+			if (rangeMode === "exact") {
+				if (!exactValue) return;
+				onApplyFilter(selectedField, exactValue, "=");
+				clearSelectedField();
+				return;
+			}
+
+			if (rangeStart && rangeEnd) {
+				onApplyFilter(selectedField, [rangeStart, rangeEnd], "BETWEEN");
+				clearSelectedField();
+				return;
+			}
+			if (rangeStart) {
+				onApplyFilter(selectedField, rangeStart, ">=");
+				clearSelectedField();
+				return;
+			}
+			if (rangeEnd) {
+				onApplyFilter(selectedField, rangeEnd, "<=");
+				clearSelectedField();
+			}
 		}
 	};
 
-	const handleDateRangeFilter = () => {
-		if (
-			selectedField &&
-			(tempDateRangeFilter.start || tempDateRangeFilter.end)
-		) {
-			const filterValue: DateRangeFilter = {};
-			if (tempDateRangeFilter.start)
-				filterValue.start = tempDateRangeFilter.start;
-			if (tempDateRangeFilter.end) filterValue.end = tempDateRangeFilter.end;
-
-			onApplyFilter(selectedField, filterValue, "dateRange");
-			setSelectedField(null);
-			setDateRangeFilter(filterValue);
-			setTempDateRangeFilter({});
-		}
-	};
-
-	const handleCancelDateRangeFilter = () => {
-		setSelectedField(null);
-		setTempDateRangeFilter({});
-	};
-
-	const handleDateRangeChange = (type: "start" | "end", value: string) => {
-		const newFilter = { ...tempDateRangeFilter };
-
-		if (
-			type === "end" &&
-			newFilter.start &&
-			new Date(value) < new Date(newFilter.start)
-		) {
-			newFilter.start = value;
-			newFilter.end = undefined;
-		} else if (
-			type === "start" &&
-			newFilter.end &&
-			new Date(value) > new Date(newFilter.end)
-		) {
-			newFilter.end = value;
-		}
-
-		newFilter[type] = value;
-		setTempDateRangeFilter(newFilter);
-	};
+	const isApplyDisabled = (() => {
+		if (!selectedConfig) return true;
+		if (selectedConfig.type === "boolean") return true;
+		if (selectedConfig.type === "text") return !textValue.trim();
+		if (selectedConfig.type === "select") return selectValues.length === 0;
+		if (selectedConfig.type === "model") return modelValues.length === 0;
+		if (rangeMode === "exact") return !exactValue;
+		return !rangeStart && !rangeEnd;
+	})();
 
 	if (!isVisible) return null;
 
@@ -330,64 +423,46 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 			<div className="flex items-center gap-2 flex-wrap">
 				{Object.entries(activeFilters).map(([field, filter]) => {
 					const column = filterableColumns.find((col) => col.field === field);
+					const label = column?.label || field;
+					const filterType = column ? normalizeFilterConfig(column)?.type : undefined;
+					const value = filter?.value;
+					const mode = String(filter?.matchMode ?? "");
 
-						if (
-							filter.matchMode === "dateRange" ||
-							(filter.matchMode === "BETWEEN" && Array.isArray(filter.value))
-						) {
-							const displayValue = (() => {
-								if (filter.matchMode === "dateRange") {
-									const start = formatDate(filter.value?.start);
-									const end = formatDate(filter.value?.end);
-									if (start && end) return `${start} ${tr("datatable.to", "to")} ${end}`;
-									return start || end;
-								}
-
-								return `${formatDate(filter.value[0])} ${tr("datatable.to", "to")} ${formatDate(
-									filter.value[1]
-								)}`;
-							})();
+					let displayValue = "";
+					if (Array.isArray(value)) {
+						if (mode === "BETWEEN" && value.length === 2) {
+							displayValue =
+								filterType === "date"
+									? `${formatDate(value[0])} ${tr("datatable.to", "to")} ${formatDate(value[1])}`
+									: `${value[0]} ${tr("datatable.to", "to")} ${value[1]}`;
+						} else {
+							displayValue = `${value.length} ${tr("datatable.selected", "selected")}`;
+						}
+					} else if (mode === ">=" || mode === "<=") {
+						displayValue = `${mode} ${value}`;
+					} else {
+						displayValue = value?.toString() ?? "";
+					}
 
 						return (
 							<div
 								key={field}
-								className="inline-flex items-center gap-1 px-1.5 py-1 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs rounded-md border border-gray-200 dark:border-gray-600 shadow-sm"
+								onClick={() => startEditingFilter(field)}
+								className="inline-flex items-center gap-1 px-1.5 py-1 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs rounded-md border border-gray-200 dark:border-gray-600 shadow-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
 							>
 								<span className="font-medium text-[0.65rem] uppercase tracking-wide text-gray-600 dark:text-gray-400 mr-1">
-									{column?.label || field}
+									{label}
 								</span>
-								<span className="font-normal text-[0.7rem]">
-									{displayValue}
-								</span>
+								<span className="font-normal text-[0.7rem]">{displayValue}</span>
 								<NeutralButton
-									onClick={() => onClearFilter(field)}
+									onClick={(event) => {
+										event.stopPropagation();
+										onClearFilter(field);
+									}}
 									className="!p-0 !bg-transparent hover:!bg-gray-200 dark:hover:!bg-gray-700 ml-1"
 								>
 									<XMarkIconSmall className="h-3 w-3" />
 								</NeutralButton>
-							</div>
-						);
-					}
-
-					const displayValue = Array.isArray(filter.value)
-							? `${filter.value.length} ${tr("datatable.selected", "selected")}`
-							: filter.value?.toString();
-
-					return (
-						<div
-							key={field}
-							className="inline-flex items-center gap-1 px-1.5 py-1 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs rounded-md border border-gray-200 dark:border-gray-600 shadow-sm"
-						>
-							<span className="font-medium text-[0.65rem] uppercase tracking-wide text-gray-600 dark:text-gray-400 mr-1">
-								{column?.label || field}
-							</span>
-							<span className="font-normal text-[0.7rem]">{displayValue}</span>
-							<NeutralButton
-								onClick={() => onClearFilter(field)}
-								className="!p-0 !bg-transparent hover:!bg-gray-200 dark:hover:!bg-gray-700 ml-1"
-							>
-								<XMarkIconSmall className="h-3 w-3" />
-							</NeutralButton>
 						</div>
 					);
 				})}
@@ -396,15 +471,16 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 					<NeutralButton
 						onClick={() => setShowFieldSelector(true)}
 						disabled={availableFields.length === 0}
+						size="small"
 						className={classNames(
-							"flex items-center justify-center gap-2 text-xs px-3 py-2 min-w-[100px] relative",
+							"inline-flex items-center gap-1 h-7 px-2",
 							availableFields.length === 0
 								? "opacity-50 cursor-not-allowed"
 								: "hover:bg-gray-50 dark:hover:bg-gray-700"
 						)}
 					>
-						<PlusIcon aria-hidden="true" className="size-4 absolute left-3" />
-							<span className="ml-5">{tr("datatable.add_filter", "Add Filter")}</span>
+						<PlusIcon aria-hidden="true" className="size-3.5" />
+						<span>{tr("datatable.add_filter", "Add Filter")}</span>
 					</NeutralButton>
 				)}
 
@@ -412,189 +488,263 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 					<div className="inline-flex items-center gap-1">
 						<select
 							onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-								if (e.target.value) {
-									handleFieldSelect(e.target.value);
-								}
+								if (e.target.value) handleFieldSelect(e.target.value);
 							}}
 							className="text-xs px-2 py-1 min-w-[120px] border-gray-300 rounded-md"
 							autoFocus
 						>
-								<option value="">{tr("datatable.choose_field", "Choose field...")}</option>
+							<option value="">{tr("datatable.choose_field", "Choose field...")}</option>
 							{availableFields.map((column) => (
 								<option key={column.field} value={column.field}>
 									{column.label || column.field}
 								</option>
 							))}
 						</select>
-						<NeutralButton
-							onClick={() => setShowFieldSelector(false)}
-							className="!px-1.5 !py-1 text-xs"
-						>
-								{tr("datatable.cancel", "Cancel")}
+						<NeutralButton onClick={() => setShowFieldSelector(false)} className="!px-1.5 !py-1 text-xs">
+							{tr("datatable.cancel", "Cancel")}
 						</NeutralButton>
 					</div>
 				)}
 
-				{selectedField && (
+				{selectedField && selectedColumn && selectedConfig && (
 					<div className="inline-flex items-center gap-1">
-						{(() => {
-							const column = filterableColumns.find(
-								(col) => col.field === selectedField
-							);
-							if (!column) return null;
+						<span className="text-xs font-medium text-gray-700 dark:text-gray-300 mr-1">
+							{selectedColumn.label || selectedColumn.field}:
+						</span>
 
-							const config = FilterConfigService.getFilterConfig(column);
-							if (!config) return null;
+						{selectedConfig.type === "boolean" && (
+							<>
+								<PrimaryButton
+									onClick={() => {
+										onApplyFilter(selectedField, true, "=");
+										clearSelectedField();
+									}}
+									className="!px-2 !py-1 text-xs !bg-green-500 hover:!bg-green-600"
+								>
+									{tr("datatable.yes", "Yes")}
+								</PrimaryButton>
+								<DangerButton
+									onClick={() => {
+										onApplyFilter(selectedField, false, "=");
+										clearSelectedField();
+									}}
+									className="!px-2 !py-1 text-xs"
+								>
+									{tr("datatable.no", "No")}
+								</DangerButton>
+							</>
+						)}
 
-							switch (config.type) {
-								case "boolean":
-									return (
-										<>
-											<span className="text-xs font-medium text-gray-700 dark:text-gray-300 mr-1">
-												{column.label || column.field}:
-											</span>
-											<PrimaryButton
-												onClick={() => handleFilterApply(true, "=")}
-												className="!px-2 !py-1 text-xs !bg-green-500 hover:!bg-green-600"
-											>
-													{tr("datatable.yes", "Yes")}
-											</PrimaryButton>
-											<DangerButton
-												onClick={() => handleFilterApply(false, "=")}
-												className="!px-2 !py-1 text-xs"
-											>
-													{tr("datatable.no", "No")}
-											</DangerButton>
-										</>
-									);
+						{selectedConfig.type === "text" && (
+							<>
+								<InputText
+									type="text"
+									value={textValue}
+									onChange={(e: ChangeEvent<HTMLInputElement>) => setTextValue(e.target.value)}
+									onKeyDown={(event) => {
+										if (event.key === "Enter") {
+											event.preventDefault();
+											applyCurrentFilter();
+										}
+									}}
+									placeholder={selectedConfig.placeholder ?? `${selectedColumn.label || selectedColumn.field}...`}
+									className="!px-2 !py-1 text-xs min-w-[180px]"
+									autoFocus
+								/>
+								<PrimaryButton
+									onClick={applyCurrentFilter}
+									className="!px-2 !py-1 text-xs"
+									disabled={isApplyDisabled}
+								>
+									{tr("datatable.apply", "Apply")}
+								</PrimaryButton>
+							</>
+						)}
 
-								case "select":
-									if (config.options) {
-										return (
-											<>
-												<span className="text-xs font-medium text-gray-700 dark:text-gray-300 mr-1">
-													{column.label || column.field}:
-												</span>
-												{config.options.map((option, idx) => (
-													<PrimaryButton
-														key={idx}
-														onClick={() => handleFilterApply(option.value, "=")}
-														className="!px-2 !py-1 text-xs"
-													>
-														{option.label}
-													</PrimaryButton>
-												))}
-											</>
+						{selectedConfig.type === "select" && (
+							<>
+								<select
+									multiple={selectedConfig.multiple !== false}
+									value={selectValues.map(String)}
+									onKeyDown={(event) => {
+										if (event.key === "Enter") {
+											event.preventDefault();
+											applyCurrentFilter();
+										}
+									}}
+									onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+										const values = Array.from(e.target.selectedOptions).map(
+											(opt) => selectedOptionValueMap.get(opt.value) ?? opt.value
 										);
+										if (selectedConfig.multiple === false) {
+											setSelectValues(values.slice(0, 1));
+										} else {
+											setSelectValues(values);
+										}
+									}}
+									className="text-xs px-2 py-1 min-w-[180px] border-gray-300 rounded-md"
+									size={Math.min(Math.max(selectedOptions.length, 3), 8)}
+								>
+									{selectedOptions.map((option, idx) => (
+										<option key={idx} value={String(option.value)}>
+											{option.label}
+										</option>
+									))}
+								</select>
+								<PrimaryButton
+									onClick={applyCurrentFilter}
+									className="!px-2 !py-1 text-xs"
+									disabled={isApplyDisabled}
+								>
+									{tr("datatable.apply", "Apply")}
+								</PrimaryButton>
+							</>
+						)}
+
+						{selectedConfig.type === "model" && (
+							<div className="inline-flex items-center gap-2">
+								<InputText
+									type="text"
+									value={modelQuery}
+									onChange={(e: ChangeEvent<HTMLInputElement>) => setModelQuery(e.target.value)}
+									placeholder={tr("datatable.search_placeholder", "Search...")}
+									className="!px-2 !py-1 text-xs min-w-[160px]"
+									autoFocus
+								/>
+
+								<div className="max-h-32 min-w-[240px] overflow-auto rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
+									{modelLoading ? (
+										<div className="text-xs text-gray-500 py-1">{tr("datatable.loading", "Loading...")}</div>
+									) : modelOptions.length === 0 ? (
+										<div className="text-xs text-gray-500 py-1">{tr("datatable.no_results", "No results")}</div>
+									) : (
+										modelOptions.map((option, idx) => {
+											const optionValue = option?.[selectedModelValueField] ?? option?.id ?? option;
+											const optionLabel = String(
+												option?.[selectedModelLabelField] ?? option?.name ?? optionValue
+											);
+											const isChecked = selectedModelValueSet.has(String(optionValue));
+											return (
+												<label
+													key={`${String(optionValue)}-${idx}`}
+													className="flex items-center gap-2 py-0.5 text-xs text-gray-700 dark:text-gray-200 cursor-pointer"
+												>
+													<Checkbox
+														checked={isChecked}
+														onChange={(e: ChangeEvent<HTMLInputElement>) => {
+															const checked = e.target.checked;
+															setModelValues((prev) => {
+																const exists = prev.some((val) => String(val) === String(optionValue));
+																if (selectedConfig.multiple === false) {
+																	return checked ? [optionValue] : [];
+																}
+																if (checked && !exists) return [...prev, optionValue];
+																if (!checked && exists) {
+																	return prev.filter((val) => String(val) !== String(optionValue));
+																}
+																return prev;
+															});
+														}}
+													/>
+													<span className="truncate">{optionLabel}</span>
+												</label>
+											);
+										})
+									)}
+								</div>
+
+								<PrimaryButton
+									onClick={applyCurrentFilter}
+									className="!px-2 !py-1 text-xs"
+									disabled={isApplyDisabled}
+								>
+									{tr("datatable.apply", "Apply")}
+								</PrimaryButton>
+							</div>
+						)}
+
+						{(selectedConfig.type === "number" || selectedConfig.type === "date") && (
+							<>
+								<select
+									value={rangeMode}
+									onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+										setRangeMode(e.target.value as "exact" | "range")
 									}
-									break;
+									className="text-xs px-2 py-1 border-gray-300 rounded-md"
+								>
+									<option value="exact">{tr("datatable.exact", "Exact")}</option>
+									<option value="range">{tr("datatable.range", "Range")}</option>
+								</select>
 
-								case "date":
-								case "dateRange":
-									return (
-										<>
-											<span className="text-xs font-medium text-gray-700 dark:text-gray-300 mr-1">
-												{column.label || column.field}:
-											</span>
-											<div className="flex items-center gap-1">
-												<InputText
-													type="date"
-													value={tempDateRangeFilter.start || ""}
-													onChange={(e: ChangeEvent<HTMLInputElement>) =>
-														handleDateRangeChange("start", e.target.value)
-													}
-														placeholder={tr("datatable.start_date", "Start date")}
-													className="!px-2 !py-1 text-xs min-w-[100px]"
-												/>
-													<span className="text-xs text-gray-500">{tr("datatable.to", "to")}</span>
-												<InputText
-													type="date"
-													value={tempDateRangeFilter.end || ""}
-													onChange={(e: ChangeEvent<HTMLInputElement>) =>
-														handleDateRangeChange("end", e.target.value)
-													}
-														placeholder={tr("datatable.end_date", "End date")}
-													className="!px-2 !py-1 text-xs min-w-[100px]"
-												/>
-												<PrimaryButton
-													onClick={handleDateRangeFilter}
-													className="!px-2 !py-1 text-xs"
-													disabled={
-														!tempDateRangeFilter.start &&
-														!tempDateRangeFilter.end
-													}
-												>
-														{tr("datatable.apply", "Apply")}
-												</PrimaryButton>
-												<NeutralButton
-													onClick={handleCancelDateRangeFilter}
-													className="!px-2 !py-1 text-xs"
-												>
-														{tr("datatable.cancel", "Cancel")}
-												</NeutralButton>
-											</div>
-										</>
-									);
+								{rangeMode === "exact" ? (
+									<InputText
+										type={selectedConfig.type === "date" ? "date" : "number"}
+										value={exactValue}
+										onChange={(e: ChangeEvent<HTMLInputElement>) => setExactValue(e.target.value)}
+										onKeyDown={(event) => {
+											if (event.key === "Enter") {
+												event.preventDefault();
+												applyCurrentFilter();
+											}
+										}}
+										min={selectedConfig.min as any}
+										max={selectedConfig.max as any}
+										step={selectedConfig.step as any}
+										className="!px-2 !py-1 text-xs min-w-[120px]"
+										autoFocus
+									/>
+								) : (
+									<div className="flex items-center gap-1">
+										<InputText
+											type={selectedConfig.type === "date" ? "date" : "number"}
+											value={rangeStart}
+											onChange={(e: ChangeEvent<HTMLInputElement>) => setRangeStart(e.target.value)}
+											onKeyDown={(event) => {
+												if (event.key === "Enter") {
+													event.preventDefault();
+													applyCurrentFilter();
+												}
+											}}
+											min={selectedConfig.min as any}
+											max={selectedConfig.max as any}
+											step={selectedConfig.step as any}
+											placeholder={tr("datatable.from", "From")}
+											className="!px-2 !py-1 text-xs min-w-[120px]"
+											autoFocus
+										/>
+										<span className="text-xs text-gray-500">{tr("datatable.to", "to")}</span>
+										<InputText
+											type={selectedConfig.type === "date" ? "date" : "number"}
+											value={rangeEnd}
+											onChange={(e: ChangeEvent<HTMLInputElement>) => setRangeEnd(e.target.value)}
+											onKeyDown={(event) => {
+												if (event.key === "Enter") {
+													event.preventDefault();
+													applyCurrentFilter();
+												}
+											}}
+											min={selectedConfig.min as any}
+											max={selectedConfig.max as any}
+											step={selectedConfig.step as any}
+											placeholder={tr("datatable.to", "to")}
+											className="!px-2 !py-1 text-xs min-w-[120px]"
+										/>
+									</div>
+								)}
 
-								default:
-									return (
-										<>
-											<span className="text-xs font-medium text-gray-700 dark:text-gray-300 mr-1">
-												{column.label || column.field}:
-											</span>
-											<div className="flex items-center gap-1">
-												<InputText
-													type={FilterConfigService.getInputType(
-														column,
-														config
-													)}
-													placeholder={FilterConfigService.getPlaceholder(
-														column
-													)}
-													value={inputValue}
-													onChange={(e: ChangeEvent<HTMLInputElement>) =>
-														setInputValue(e.target.value)
-													}
-													onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-														if (e.key === "Escape") {
-															setSelectedField(null);
-															setInputValue("");
-														}
-													}}
-													className="!px-2 !py-1 text-xs min-w-[120px]"
-													autoFocus
-												/>
-												<PrimaryButton
-													onClick={() => {
-														if (inputValue.trim()) {
-															handleFilterApply(
-																inputValue,
-																FilterConfigService.getDefaultMatchMode(
-																	column,
-																	config
-																)
-															);
-														}
-													}}
-													className="!px-2 !py-1 text-xs"
-													disabled={!inputValue.trim()}
-												>
-													{tr("datatable.apply", "Apply")}
-												</PrimaryButton>
-												<NeutralButton
-													onClick={() => {
-														setSelectedField(null);
-														setInputValue("");
-													}}
-													className="!px-2 !py-1 text-xs"
-												>
-													{tr("datatable.cancel", "Cancel")}
-												</NeutralButton>
-											</div>
-										</>
-									);
-							}
-						})()}
+								<PrimaryButton
+									onClick={applyCurrentFilter}
+									className="!px-2 !py-1 text-xs"
+									disabled={isApplyDisabled}
+								>
+									{tr("datatable.apply", "Apply")}
+								</PrimaryButton>
+							</>
+						)}
+
+						<NeutralButton onClick={clearSelectedField} className="!px-2 !py-1 text-xs">
+							{tr("datatable.cancel", "Cancel")}
+						</NeutralButton>
 					</div>
 				)}
 
@@ -602,9 +752,9 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 					{hasActiveFilters && (
 						<NeutralButton
 							onClick={onClearAllFilters}
-							className="!px-1.5 !py-1 text-[0.6rem] text-red-500 dark:text-red-400 border-red-500 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+							className="!px-1.5 !py-1 !text-[11px] !leading-none text-red-500 dark:text-red-400 border-red-500 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
 						>
-								{tr("datatable.clear_all", "Clear All")}
+							{tr("datatable.clear_all", "Clear All")}
 						</NeutralButton>
 					)}
 					<NeutralButton
