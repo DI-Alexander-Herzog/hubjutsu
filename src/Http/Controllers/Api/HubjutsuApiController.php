@@ -10,9 +10,31 @@ use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Request;
 use Log;
 use Str;
+use Throwable;
 
 class HubjutsuApiController
 {
+    /**
+     * Projekt-Hook für globale Suche.
+     *
+     * Rückgabeformat pro Eintrag:
+     * [
+     *   'model' => 'learning_course',
+     *   'label' => 'Kurse',
+     *   'title_field' => 'name',          // optional, default: name
+     *   'subtitle_field' => 'description',// optional
+     *   'route' => 'settings.learningcourses.edit', // optional
+     *   'route_param' => null,            // optional, default: model binding via row
+     *   'limit' => 5,                     // optional, default: 5
+     *   'with' => [],                     // optional
+     *   'init' => '',                     // optional
+     * ]
+     */
+    protected function registerGlobalModels(Request $request): array
+    {
+        return [];
+    }
+
     /**
      * 
      * @param string $model 
@@ -102,6 +124,93 @@ class HubjutsuApiController
         }
 
         return response()->json($result);
+    }
+
+    public function globalSearch(Request $request)
+    {
+        $term = trim((string) $request->get('q', ''));
+        if ($term === '') {
+            return response()->json(['results' => []]);
+        }
+
+        $groups = [];
+        foreach ($this->registerGlobalModels($request) as $cfg) {
+            $model = (string) ($cfg['model'] ?? '');
+            if ($model === '') {
+                continue;
+            }
+
+            $titleField = (string) ($cfg['title_field'] ?? 'name');
+            $subtitleField = (string) ($cfg['subtitle_field'] ?? '');
+            $groupLabel = (string) ($cfg['label'] ?? Str::headline($model));
+            $limit = max(1, (int) ($cfg['limit'] ?? 5));
+            $with = is_array($cfg['with'] ?? null) ? $cfg['with'] : [];
+            $init = trim((string) ($cfg['init'] ?? ''));
+            $routeName = (string) ($cfg['route'] ?? '');
+            $routeParam = $cfg['route_param'] ?? null;
+
+            try {
+                $modelObj = $this->getModelIfAllowed($model, null, 'viewAny');
+
+                $initQueryMethod = 'initQuery';
+                if ($init !== '') {
+                    $customInitQueryMethod = 'initQuery' . Str::studly($init);
+                    if (method_exists($modelObj, $customInitQueryMethod)) {
+                        $initQueryMethod = $customInitQueryMethod;
+                    }
+                }
+
+                $queryBuilder = $modelObj->{$initQueryMethod}();
+                if (!($queryBuilder instanceof Builder)) {
+                    continue;
+                }
+
+                foreach ($with as $relation) {
+                    $queryBuilder->with($relation);
+                }
+
+                $rows = $queryBuilder
+                    ->search($term)
+                    ->limit($limit)
+                    ->get();
+
+                $items = [];
+                foreach ($rows as $row) {
+                    $url = null;
+                    if ($routeName !== '') {
+                        try {
+                            $url = $routeParam !== null
+                                ? route($routeName, [$routeParam => $row->getKey()])
+                                : route($routeName, $row);
+                        } catch (Throwable $e) {
+                            $url = null;
+                        }
+                    }
+
+                    $items[] = [
+                        'id' => $row->getKey(),
+                        'model' => $model,
+                        'group' => $groupLabel,
+                        'title' => (string) ($row->{$titleField} ?? ('#' . $row->getKey())),
+                        'subtitle' => $subtitleField !== '' ? (string) ($row->{$subtitleField} ?? '') : '',
+                        'url' => $url,
+                    ];
+                }
+
+                if (count($items) > 0) {
+                    $groups[] = [
+                        'model' => $model,
+                        'label' => $groupLabel,
+                        'items' => $items,
+                    ];
+                }
+            } catch (Throwable $e) {
+                // Einzelne Modellfehler sollen globale Suche nicht komplett stoppen.
+                continue;
+            }
+        }
+
+        return response()->json(['results' => $groups]);
     }
 
     public function get(Request $request, string $model, $id)
