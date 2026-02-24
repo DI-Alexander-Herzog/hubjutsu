@@ -18,10 +18,6 @@ class RoleAssignmentController extends HubjutsuApiController
 
         $scope = $this->resolveScope($data['scope_type'], $data['scope_id']);
 
-        if (!auth()->user()?->is_admin) {
-            abort(403);
-        }
-
         $ancestors = $this->resolveAncestors($scope);
 
         $ancestorAssignments = collect($ancestors)->map(function (Model $ancestor) {

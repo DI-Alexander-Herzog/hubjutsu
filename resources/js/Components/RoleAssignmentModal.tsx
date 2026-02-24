@@ -128,7 +128,6 @@ export default function RoleAssignmentSection({
 				type: "model",
 				model: "user",
 				labelField: "name",
-				with: ["push_tokens"],
 				columns: [
 					{ field: "name", label: "Name", width: "60%" },
 					{ field: "email", label: "E-Mail", width: "40%" },
