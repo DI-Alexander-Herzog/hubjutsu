@@ -112,7 +112,7 @@ type EditorRenderer = (props: {
 }) => JSX.Element;
 
 const editorClassName =
-	"text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md";
+	"text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-background dark:bg-gray-700 disabled:bg-background-600 disabled:dark:bg-gray-800 text-text-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md";
 
 const getMediaPreview = (value: any): string | null => {
 	if (isMediaMarkedForDeletion(value)) return null;
@@ -212,9 +212,9 @@ const booleanEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown, 
 	return <label className={"inline-flex items-center cursor-pointer align-middle ml-2"}>
 		<input {...column.editor_properties} name={column.field} onKeyDown={onKeyDown} type="checkbox" value="1" className="sr-only peer" checked={checked} onChange={() => onValueChange(!checked)} />
   		<div className={
-			"relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 " +
+			"relative w-11 h-6 bg-background-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 " +
 			"rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white " + 
-			"after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full " +
+			"after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-background after:border-gray-300 after:border after:rounded-full " +
 			"after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600 dark:peer-checked:bg-primary-600 "
 		}></div>
   	</label>;
@@ -349,7 +349,7 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 
 	return (
 		<div
-			className="flex items-center gap-3 text-xs text-gray-800 dark:text-gray-100"
+			className="flex items-center gap-3 text-xs text-text-800 dark:text-gray-100"
 			tabIndex={0}
 			onKeyDown={(event) => onKeyDown(event)}
 		>
@@ -358,7 +358,7 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 				className={`group relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed transition ${
 					isDragActive
 						? "border-primary-500 bg-primary-50"
-						: "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+						: "border-gray-300 dark:border-gray-600 bg-background dark:bg-gray-800"
 				} ${uploading ? "opacity-70 cursor-wait" : "cursor-pointer"}`}
 				title={label || "Datei hochladen"}
 			>
@@ -370,7 +370,7 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 						className="absolute inset-0 h-full w-full object-cover"
 					/>
 				) : (
-					<ArrowUpTrayIcon className="h-6 w-6 text-gray-400 group-hover:text-primary-500" />
+					<ArrowUpTrayIcon className="h-6 w-6 text-text-400 group-hover:text-primary-500" />
 				)}
 				<div
 					className={`pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] font-medium text-white transition ${
@@ -391,7 +391,7 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 
 			<div className="min-w-0 space-y-1">
 				{label && (
-					<span className="block truncate text-[11px] text-gray-600 dark:text-gray-300">
+					<span className="block truncate text-[11px] text-text-600 dark:text-gray-300">
 						{label}
 					</span>
 				)}
@@ -581,9 +581,9 @@ export const ModelEditor: EditorRenderer = ({
 
     const popup = open && createPortal(
             <div
-                className="z-50 bg-white dark:bg-gray-800 border border-gray-300 
+                className="z-50 bg-background dark:bg-gray-800 border border-gray-300 
                            dark:border-gray-700 rounded-md shadow-xl
-                           max-h-[300px] overflow-auto text-sm text-gray-900 dark:text-gray-100"
+                           max-h-[300px] overflow-auto text-sm text-text-900 dark:text-gray-100"
                 style={{
                     position: "absolute",
                     top: pos.top,
@@ -593,7 +593,7 @@ export const ModelEditor: EditorRenderer = ({
                 }}
 				ref={panelRef}
             >
-                <div className="sticky top-0 z-10 p-1 bg-white dark:bg-gray-800 border-b dark:border-gray-700">
+                <div className="sticky top-0 z-10 p-1 bg-background dark:bg-gray-800 border-b dark:border-gray-700">
 					<input
 						autoFocus
 						className={editorClassName}
@@ -608,7 +608,7 @@ export const ModelEditor: EditorRenderer = ({
 				</div>
 
                 <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-gray-100 dark:bg-gray-700">
+                    <thead className="sticky top-0 bg-background-600 dark:bg-gray-700">
                         <tr>
                             {cols.map((c) => (
                                 <th
@@ -691,14 +691,14 @@ export const ModelEditor: EditorRenderer = ({
 				}}
 				className="
 					w-full relative text-left
-					bg-white dark:bg-gray-800
+					bg-background dark:bg-gray-800
 					border border-gray-300 dark:border-gray-600
 					rounded-md
 					px-2 py-2
 					flex items-center justify-between
 					cursor-pointer
 					text-xs
-					text-gray-900 dark:text-gray-100
+					text-text-900 dark:text-gray-100
 					hover:border-primary
 					focus:outline-none
 					focus:ring-2 focus:ring-primary
@@ -711,7 +711,7 @@ export const ModelEditor: EditorRenderer = ({
 
 				<svg
 					className={`
-						w-3 h-3 ml-2 pointer-events-none text-gray-500 dark:text-gray-400
+						w-3 h-3 ml-2 pointer-events-none text-text-500 dark:text-gray-400
 						transition-transform 
 						${open ? "rotate-180" : ""}
 					`}

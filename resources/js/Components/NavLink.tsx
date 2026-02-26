@@ -32,14 +32,14 @@ export default function NavLink({
     const variants = {
         nav: active
             ? 'bg-primary text-onprimary flex items-center text-sm font-medium transition-all duration-200 rounded-xl relative group'
-            : 'text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/20 flex items-center text-sm font-medium transition-all duration-200 rounded-xl relative group hover:shadow-md',
+            : 'text-text-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/20 flex items-center text-sm font-medium transition-all duration-200 rounded-xl relative group hover:shadow-md',
         inline: 'text-primary dark:text-primary hover:text-primary/80 dark:hover:text-primary/80 underline font-medium transition-colors duration-200'
     };
 
     return (
         <div>
             {variant === 'inline' && preText && (
-                <p className="text-sm text-gray-800 dark:text-gray-200">
+                <p className="text-sm text-text-800 dark:text-gray-200">
                     {preText}
                     <Link
                         {...props}
@@ -72,7 +72,7 @@ export default function NavLink({
                             "flex h-6 w-6 flex-shrink-0 items-center justify-center transition-colors duration-200 mr-3",
                             active 
                                 ? "text-onprimary" 
-                                : "text-gray-500 dark:text-gray-400 group-hover:text-primary dark:group-hover:text-primary"
+                                : "text-text-500 dark:text-gray-400 group-hover:text-primary dark:group-hover:text-primary"
                         )}>
                             {icon}
                         </span>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import FormSection from "@/Components/FormSection";
+import FormContainer from "@/Components/FormContainer";
 import DataTable from "@/Components/DataTable";
 import type { Column } from "@/Components/DataTable";
 
@@ -90,12 +91,12 @@ export default function RoleAssignmentSection({
 				frozen: true,
 				formatter: (row: Record<string, any>) => (
 					<div className="flex flex-col">
-						<span className="font-medium text-gray-900 dark:text-gray-50">
+						<span className="font-medium text-text-900 dark:text-gray-50">
 							{valueOrFallback(row.user?.name, row.user?.email) ??
 								`#${row.user_id}`}
 						</span>
 						{row.user?.email && (
-							<span className="text-xs text-gray-500">{row.user.email}</span>
+							<span className="text-xs text-text-500">{row.user.email}</span>
 						)}
 					</div>
 				),
@@ -154,49 +155,50 @@ export default function RoleAssignmentSection({
 
 	if (!hasScope) {
 		return (
-			<FormSection
-				title="Rollen"
-				subtitle="Rechtevergabe"
-				className="mt-6"
-			>
-				<p className="text-sm text-gray-500">
-					Die Rollenverwaltung steht zur Verfügung, sobald dieser Datensatz
-					gespeichert wurde.
-				</p>
-			</FormSection>
+			<FormContainer>
+				<FormSection
+					title="Rollen"
+					subtitle="Rechtevergabe"
+				>
+					<p className="text-sm text-text-500">
+						Die Rollenverwaltung steht zur Verfügung, sobald dieser Datensatz
+						gespeichert wurde.
+					</p>
+				</FormSection>
+			</FormContainer>
 		);
 	}
 
 	const scopeLabel = stackData?.scope?.label ?? scope?.label ?? "";
 
-	return (		
-		<FormSection
-			title="Rollen"
-			subtitle="Rechtevergabe auf diesem Scope"
-			className="mt-6"
-		>
-			<div className="space-y-4">
+	return (
+		<FormContainer>
+			<FormSection
+				title="Rollen"
+				subtitle="Rechtevergabe auf diesem Scope"
+			>
+				<div className="space-y-4">
 				{error && (
 					<div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
 						{error}
 					</div>
 				)}
 
-				<div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-900">
+				<div className="rounded-md border border-gray-200 bg-background-600 p-4 text-sm dark:border-gray-700 dark:bg-gray-900">
 					<div className="flex items-center justify-between gap-4">
 						<div>
-							<p className="text-xs uppercase tracking-wide text-gray-500">
+							<p className="text-xs uppercase tracking-wide text-text-500">
 								Scope
 							</p>
-							<p className="text-base font-semibold text-gray-900 dark:text-gray-50">
+							<p className="text-base font-semibold text-text-900 dark:text-gray-50">
 								{scopeLabel || "Role assignments"}
 							</p>
 						</div>
 						<div className="text-right">
-							<p className="text-xs uppercase tracking-wide text-gray-500">
+							<p className="text-xs uppercase tracking-wide text-text-500">
 								Direkte Zuordnungen
 							</p>
-							<p className="text-2xl font-semibold text-gray-900 dark:text-gray-50">
+							<p className="text-2xl font-semibold text-text-900 dark:text-gray-50">
 								{stackData?.direct_count ?? "—"}
 							</p>
 						</div>
@@ -204,11 +206,11 @@ export default function RoleAssignmentSection({
 				</div>
 
 				<div className="space-y-2">
-					<div className="text-sm font-medium text-gray-900 dark:text-gray-50">
+					<div className="text-sm font-medium text-text-900 dark:text-gray-50">
 						Inherited roles
 					</div>
 					{loading && !stackData ? (
-						<p className="text-sm text-gray-500">Loading…</p>
+						<p className="text-sm text-text-500">Loading…</p>
 					) : stackData?.ancestors?.length ? (
 						<div className="space-y-3">
 							{stackData.ancestors.map((ancestor) => (
@@ -216,23 +218,23 @@ export default function RoleAssignmentSection({
 									className="rounded-md border border-gray-200 p-3 dark:border-gray-700"
 									key={`${ancestor.type}-${ancestor.id}`}
 								>
-									<div className="text-xs uppercase tracking-wide text-gray-500">
+									<div className="text-xs uppercase tracking-wide text-text-500">
 										{ancestor.type_label}
 									</div>
-									<div className="text-sm font-medium text-gray-900 dark:text-gray-50">
+									<div className="text-sm font-medium text-text-900 dark:text-gray-50">
 										{ancestor.label}
 									</div>
 									<div className="mt-2 flex flex-wrap gap-2">
 										{ancestor.assignments.map((assignment) => (
 											<div
 												key={assignment.id}
-												className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-700 dark:border-gray-600 dark:text-gray-200"
+												className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-3 py-1 text-xs text-text-700 dark:border-gray-600 dark:text-gray-200"
 											>
 												<span className="font-semibold text-primary">
 													{assignment.role?.name ?? "Role"}
 												</span>
 												{assignment.user && (
-													<span className="text-gray-500">
+													<span className="text-text-500">
 														({valueOrFallback(
 															assignment.user.name,
 															assignment.user.email
@@ -246,13 +248,13 @@ export default function RoleAssignmentSection({
 							))}
 						</div>
 					) : (
-						<p className="text-sm text-gray-500">
+						<p className="text-sm text-text-500">
 							Keine geerbten Rollen für diesen Scope.
 						</p>
 					)}
 				</div>
 
-				<div className="rounded-md border border-gray-200 p-1 dark:border-gray-700">
+					<div className="rounded-md border border-gray-200 p-1 dark:border-gray-700">
 					<DataTable
 						key={`${scope!.type}:${scope!.id}:${disabled}`}
 						routemodel="role-assignment"
@@ -272,7 +274,8 @@ export default function RoleAssignmentSection({
 						disableDelete={disabled}
 					/>
 				</div>
-			</div>
-		</FormSection>
+				</div>
+			</FormSection>
+		</FormContainer>
 	);
 }

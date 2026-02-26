@@ -27,8 +27,12 @@ import { SearchProvider } from '@/Components/SearchContext';
 import TopSearch from '@hubjutsu/Components/TopSearch';
 import Breadcrumbs, {Breadcrumb} from '@/Components/Breadcrumbs';
 
-
-export default function Authenticated({ title, children, breadcrumbs }: PropsWithChildren<{ title?: string, breadcrumbs?: Breadcrumb[] }>) {
+export default function Authenticated({
+  title,
+  children,
+  breadcrumbs,
+  hideSidebar = false,
+}: PropsWithChildren<{ title?: string, breadcrumbs?: Breadcrumb[]; hideSidebar?: boolean }>) {
 
     const page = usePage<PageProps>();
     const user = page.props.auth.user;
@@ -36,7 +40,7 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
 
     return (
       <SearchProvider>
-        <Dialog open={sidebarOpen} onClose={setSidebarOpen} className="relative z-50 lg:hidden">
+        {!hideSidebar && <Dialog open={sidebarOpen} onClose={setSidebarOpen} className="relative z-50 lg:hidden">
           <DialogBackdrop
             transition
             className="fixed inset-0 bg-gray-900/80 transition-opacity duration-300 ease-linear data-[closed]:opacity-0"
@@ -49,14 +53,14 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
             >
               <TransitionChild>
                 <div className="absolute left-full top-0 flex w-16 justify-center pt-5 duration-300 ease-in-out data-[closed]:opacity-0">
-                  <button type="button" onClick={() => setSidebarOpen(false)} className="-m-2.5 p-2.5">
+                  <button type="button" onClick={() => setSidebarOpen(false)} className="-m-2.5 p-2.5 text-text dark:text-gray-100">
                     <span className="sr-only">Close sidebar</span>
-                    <XMarkIcon aria-hidden="true" className="h-6 w-6 text-white" />
+                    <XMarkIcon aria-hidden="true" className="h-6 w-6" />
                   </button>
                 </div>
               </TransitionChild>
               {/* Sidebar component, swap this element with another sidebar if you like */}
-              <div className="flex grow flex-col gap-y-6 overflow-y-auto bg-white dark:bg-gray-900 px-4 pb-4">
+              <div className="flex grow flex-col gap-y-6 overflow-y-auto bg-background dark:bg-gray-900 px-4 pb-4">
                 <div className="flex h-16 shrink-0 items-center px-2">
                     <ApplicationLogo className="h-8 w-auto" />
                 </div>
@@ -66,7 +70,7 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
                       const menu = page.props.menus[menuSlug];
 
                       return <li key={menuSlug}>
-                        { index > 0 && <div className="text-xs font-semibold leading-6 text-primary dark:text-primary uppercase tracking-wider px-3 py-1 border-t border-gray-200 dark:border-gray-700 pt-6 -mt-2">{menu.name}</div>}
+                        { index > 0 && <div className="text-xs font-semibold leading-6 text-primary dark:text-primary uppercase tracking-wider px-3 py-1 pt-6 -mt-2">{menu.name}</div>}
                         <ul role="list" className={classNames("space-y-1", { "mt-3": index > 0 })} >
                             {menu.items?.map((item, index) => {
                               
@@ -103,15 +107,15 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
               </div>
             </DialogPanel>
           </div>
-        </Dialog>
+        </Dialog>}
 
         {/* Static sidebar for desktop */}
-        <div className={classNames(
+        {!hideSidebar && <div className={classNames(
           "hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300 ease-in-out lg:w-64",            
         )}>
           {/* Sidebar component */}
-          <div className="flex grow flex-col overflow-y-auto bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-lg">
-            <div className="flex h-16 shrink-0 items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex grow flex-col overflow-y-auto bg-background dark:bg-gray-900 shadow-lg">
+            <div className="flex h-16 shrink-0 items-center justify-between px-4">
               <div className={classNames(
                 "transition-all duration-300 opacity-100",
               
@@ -130,7 +134,7 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
 
                   return <li key={menuSlug}>
                     {index > 0 && (
-                      <div className="text-xs font-semibold leading-6 text-primary dark:text-primary uppercase tracking-wider px-3 py-2 mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+                      <div className="text-xs font-semibold leading-6 text-primary dark:text-primary uppercase tracking-wider px-3 py-2 mt-6 pt-6">
                         {menu.name}
                       </div>
                     )}
@@ -168,27 +172,34 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
               </ul>
             </nav>
           </div>
-        </div>
+        </div>}
 
         <div className={classNames(
-          "flex flex-col h-full transition-all duration-300 ease-in-out lg:pl-64",
+          "flex flex-col h-full transition-all duration-300 ease-in-out",
+          { "lg:pl-64": !hideSidebar }
         )}>
-          <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 bg-white dark:bg-gray-900">
-            <button type="button" onClick={() => setSidebarOpen(true)} className="-m-2.5 p-2.5 lg:hidden">
+          <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 bg-background dark:bg-gray-900 text-text dark:text-gray-100">
+            {!hideSidebar && <button type="button" onClick={() => setSidebarOpen(true)} className="-m-2.5 p-2.5 lg:hidden">
               <span className="sr-only">Open sidebar</span>
-              <Bars3Icon aria-hidden="true" className="h-6 w-6 stroke-text dark:stroke-white" />
-            </button>
+              <Bars3Icon aria-hidden="true" className="h-6 w-6" />
+            </button>}
             
             {/* Separator */}
-            <div aria-hidden="true" className="h-6 w-px lg:hidden" />
+            {!hideSidebar && <div aria-hidden="true" className="h-6 w-px lg:hidden" />}
 
             <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-              <TopSearch  />
+              {hideSidebar ? (
+                <div className="flex items-center">
+                  <ApplicationLogo className="h-7 w-auto" />
+                </div>
+              ) : (
+                <TopSearch />
+              )}
 
-              <div className="flex items-center gap-x-4 lg:gap-x-6">
+              <div className={classNames("flex items-center gap-x-4 lg:gap-x-6", { "ml-auto": hideSidebar })}>
                 <button type="button" className="-m-2.5 p-2.5 ">
                   <span className="sr-only">View notifications</span>
-                  <BellIcon aria-hidden="true" className="h-6 w-6 dark:stroke-gray-100" />
+                  <BellIcon aria-hidden="true" className="h-6 w-6" />
                 </button>
                 <ThemeMode  className="-m-2.5 p-2.5 " />
 
@@ -197,7 +208,7 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
 
                 {/* Profile dropdown */}
                 <Menu as="div" className="relative">
-                  <MenuButton className="-m-1.5 flex items-center p-1.5 dark:text-gray-100">
+                  <MenuButton className="-m-1.5 flex items-center p-1.5 text-text dark:text-gray-100">
                     <span className="sr-only">Open user menu</span>
                     <Avatar user={user} className="h-8 w-8" />
                     
@@ -205,23 +216,23 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
                       <span aria-hidden="true" className="ml-4 text-sm font-semibold leading-6">
                         { user.name }
                       </span>
-                      <ChevronDownIcon aria-hidden="true" className="ml-2 h-5 w-5 " />
+                      <ChevronDownIcon aria-hidden="true" className="ml-2 h-5 w-5" />
                     </span>
                   </MenuButton>
                   <MenuItems
                     transition
-                    className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md text-gray-900 bg-white dark:text-gray-100 dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 transition focus:outline-none data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+                    className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md text-text-900 bg-background dark:text-gray-100 dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 transition focus:outline-none data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
                   >
                         <MenuItem>
                             <Link href={route('profile.edit')}
-                            className="block px-3 py-1 text-sm leading-6  data-[focus]:bg-gray-50 dark:data-[focus]:text-gray-900"
+                            className="block px-3 py-1 text-sm leading-6  data-[focus]:bg-background-600 dark:data-[focus]:text-gray-900"
                             >
                                 Profile
                             </Link>
                         </MenuItem>
                         <MenuItem>
                             <Link href={route('logout')} method="post"
-                            className="block px-3 py-1 text-sm leading-6  data-[focus]:bg-gray-50 dark:data-[focus]:text-gray-900"
+                            className="block px-3 py-1 text-sm leading-6  data-[focus]:bg-background-600 dark:data-[focus]:text-gray-900"
                             >
                                 Sign out
                             </Link>
@@ -233,7 +244,7 @@ export default function Authenticated({ title, children, breadcrumbs }: PropsWit
           </div>
 
           <Head title={title} />
-          <main className="flex-grow overflow-hidden">
+          <main className="flex-grow overflow-hidden bg-background-600 dark:bg-gray-900">
             <div className='h-full flex flex-col'>
               {breadcrumbs && <div className='flex-shrink'>
                 <Breadcrumbs items={breadcrumbs} />

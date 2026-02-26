@@ -354,7 +354,7 @@ class Hub extends Base
 
     protected function shadeVars(string $name, string $hex): string
     {
-        $steps = [0,90,80,60,40,20,0,-10,-20,-30,-40,-50];
+        $steps = [ 0,64, 32, 16,  8,  2,  0, -2, -8,-16,-32,-64];
         $suf   = ['',50,100,200,300,400,500,600,700,800,900,950];
 
         $out = [];

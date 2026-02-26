@@ -29,9 +29,9 @@ const DataTableFormatter = {
         return <label className={"inline-flex items-center cursor-pointer align-middle"}>
             <input type="checkbox" value="1" className="sr-only peer" checked={checked} readOnly/>
             <div className={
-                " relative w-9 h-5 bg-gray-200 " +
+                " relative w-9 h-5 bg-background-700 " +
                 "rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white " + 
-                "after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full " +
+                "after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-background after:border-gray-300 after:border after:rounded-full " +
                 "after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600 dark:peer-checked:bg-primary-600 "
             }></div>
         </label>;
@@ -90,7 +90,7 @@ const DataTableFormatter = {
         const value = row[field];
         if (!value) return "";
         if (typeof value === "object" && value !== null && value[MEDIA_DELETE_FLAG]) {
-            return <span className="text-xs text-gray-500 italic">Wird gelöscht…</span>;
+            return <span className="text-xs text-text-500 italic">Wird gelöscht…</span>;
         }
 
         const isObject = typeof value === "object" && value !== null;

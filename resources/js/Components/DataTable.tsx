@@ -194,7 +194,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 	const showDividerOnCheckbox = lastFrozenIndex === -1;
 	const StickyRightDivider = ({ z = 999 }: { z?: number }) => (
 		<span
-			className="pointer-events-none absolute right-0 top-0 h-full w-px bg-gray-200 dark:bg-gray-700"
+			className="pointer-events-none absolute right-0 top-0 h-full w-px bg-background-700 dark:bg-gray-700"
 			style={{ zIndex: z }}
 		/>
 	);
@@ -675,7 +675,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 				/>
 
 				{/* 📌 Tabelle */}
-				<div className="bg-white dark:bg-gray-900  border border-gray-200 dark:border-gray-700 overflow-hidden w-full h-full flex-1">
+				<div className="bg-background dark:bg-gray-900 overflow-hidden w-full h-full flex-1 rounded-lg shadow-sm">
 					<div className="overflow-x-auto w-full h-full">
 						<table
 							ref={tableRef}
@@ -683,12 +683,12 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 						>
 							{/* 📌 Tabellenkopf */}
 							<thead
-								className="bg-gray-50 dark:bg-gray-800 sticky top-0"
+								className="bg-background-600 dark:bg-gray-800 sticky top-0"
 								style={{ zIndex: headerZIndex }}
 							>
 								<tr>
 									<th
-										className=" px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider  border-gray-200 dark:border-gray-700 sticky left-0 z-20 bg-gray-50 dark:bg-gray-800"
+										className=" px-3 py-2 text-left text-sm font-bold text-text-500 dark:text-gray-400 uppercase tracking-wider  border-gray-200 dark:border-gray-700 sticky left-0 z-20 bg-background-600 dark:bg-gray-800"
 										style={{ width: "3rem" }}
 									>
 										<Checkbox
@@ -711,11 +711,11 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 													: {}),
 											}}
 											className={classNames(
-												"relative px-3 py-2 text-left text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0",
+												"relative px-3 py-2 text-left text-sm font-bold text-text-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0",
 												col.frozen &&
-													"border-r-0 sticky bg-gray-50 dark:bg-gray-800",
+													"border-r-0 sticky bg-background-600 dark:bg-gray-800",
 												col.sortable &&
-													"cursor-pointer hover:bg-gray-100 dark:hover:bg-primary-800/10"
+																"cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-800/10"
 											)}
 											onClick={
 												!col.sortable
@@ -775,30 +775,34 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 								</tr>
 							</thead>
 
-							<tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+							<tbody className="bg-background dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
 								{records.map((row, row_ofs) => {
 									let firstEditor = true;
 									const isSelected = selectedRecords.includes(row);
 
 									return (
-										<tr
-											key={row[datakey]}
-											className={classNames(
-												"group hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150",
-												isSelected && "bg-primary-50 dark:bg-primary-800/10",
-												row_ofs % 2 === 0
-													? "bg-white dark:bg-gray-900"
-													: "bg-gray-50 dark:bg-gray-800"
-											)}
+									<tr
+										key={row[datakey]}
+										className={classNames(
+											"group transition-colors duration-150",
+											isSelected &&
+												(row_ofs % 2 === 0
+													? "bg-primary-50 dark:bg-primary-900/20"
+													: "bg-primary-100 dark:bg-primary-900/30"),
+											row_ofs % 2 === 0
+												? "bg-background dark:bg-gray-900"
+												: "bg-background-600 dark:bg-gray-800"
+										)}
 										>
 											{/* Sticky checkbox TD (solid backgrounds in dark mode) */}
 											<td
-												className={classNames(
-													" px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100  border-gray-200 dark:border-gray-700 sticky left-0 z-10",
+											className={classNames(
+													" px-3 py-2 whitespace-nowrap text-sm text-text-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 sticky left-0 z-10",
 													{
-														"bg-primary-50 dark:bg-primary-900 group-hover:bg-primary-100 dark:group-hover:bg-primary-900": isSelected,
-														"bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-700": !isSelected && row_ofs % 2 === 0,
-														"bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-600": !isSelected && row_ofs % 2 !== 0,
+														"bg-primary-50 dark:bg-primary-900/20 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30": isSelected && row_ofs % 2 === 0,
+														"bg-primary-100 dark:bg-primary-900/30 group-hover:bg-primary-200 dark:group-hover:bg-primary-900/40": isSelected && row_ofs % 2 !== 0,
+														"bg-background dark:bg-gray-900 group-hover:bg-primary-50 dark:group-hover:bg-gray-700": !isSelected && row_ofs % 2 === 0,
+														"bg-background-600 dark:bg-gray-800 group-hover:bg-primary-100 dark:group-hover:bg-gray-600": !isSelected && row_ofs % 2 !== 0,
 													},
 													"overflow-hidden"
 												)}
@@ -837,28 +841,28 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 															width: getColumnWidth(col),
 															...stickyStyle,
 														}}
-														className={classNames(
-															"relative whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 last:border-r-0",
-															{
-																"px-3 py-2": !(
-																	editingRecord[row[datakey]] && col.editor
-																),
-																// Sticky/frozen columns
-																["sticky border-r-0"]: isFrozen,
-																// Selected row
-																["bg-primary-50 dark:bg-primary-900 group-hover:bg-primary-100 dark:group-hover:bg-primary-900"]:
-																	isSelected,
-																// Unselected, even row
-																["bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-700"]:
-																	!isSelected && row_ofs % 2 === 0,
-																// Unselected, odd row
-																["bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-600"]:
-																	!isSelected && row_ofs % 2 !== 0,
-																// Sticky/frozen column backgrounds
-																["bg-gray-50 dark:bg-gray-800"]:
-																	isFrozen && !isSelected,
-															},
-															'overflow-hidden'
+													className={classNames(
+														"relative whitespace-nowrap text-sm text-text-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 last:border-r-0 [&_a]:font-semibold [&_a]:text-primary-700 [&_a]:underline-offset-2 [&_a]:transition-colors group-hover:[&_a]:text-primary-900 dark:[&_a]:text-primary-400 dark:group-hover:[&_a]:text-primary-200",
+														{
+															"px-3 py-2": !(
+																editingRecord[row[datakey]] && col.editor
+															),
+															// Sticky/frozen columns
+															["sticky border-r-0"]: isFrozen,
+															// Selected row
+															["bg-primary-50 dark:bg-primary-900/20 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30"]:
+																isSelected && row_ofs % 2 === 0,
+															["bg-primary-100 dark:bg-primary-900/30 group-hover:bg-primary-200 dark:group-hover:bg-primary-900/40"]:
+																isSelected && row_ofs % 2 !== 0,
+															["[&_a]:text-primary-900 dark:[&_a]:text-primary-100"]: isSelected,
+															// Unselected, even row
+															["bg-background dark:bg-gray-900 group-hover:bg-primary-50 dark:group-hover:bg-gray-700"]:
+																!isSelected && row_ofs % 2 === 0,
+															// Unselected, odd row
+															["bg-background-600 dark:bg-gray-800 group-hover:bg-primary-100 dark:group-hover:bg-gray-600"]:
+																!isSelected && row_ofs % 2 !== 0,
+														},
+														'overflow-hidden'
 														)}
 														onClick={
 															(() => {
@@ -894,7 +898,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 																onKeyDown={handleKeyDown}
 															/>
 														) : (
-															<div className="text-gray-900 dark:text-gray-100">
+															<div className="text-text-900 dark:text-gray-100">
 																{(() => {
 																	const value = col.formatter
 																		? col.formatter(row, col.field)
@@ -928,7 +932,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 									<tr>
 										<td
 											colSpan={columns.length + 1}
-											className="h-12 px-3 py-2 text-sm text-gray-400 dark:text-gray-500"
+											className="h-12 px-3 py-2 text-sm text-text-400 dark:text-gray-500"
 										>
 											&nbsp;
 										</td>
@@ -941,11 +945,11 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 			</div>
 
 			{/* 📌 Paginierung */}
-			<div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 px-4 py-2 dark:border-gray-700 text-xs">
+			<div className="flex items-center justify-between bg-background-600 dark:bg-gray-800 px-4 py-2 dark:border-gray-700 text-xs">
 				<div className="flex items-center gap-2">
 
 					<div className="flex items-center gap-1">
-						<span className="text-gray-600 dark:text-gray-400">
+						<span className="text-text-600 dark:text-gray-400">
 								{tr("datatable.show", "Show:")}
 						</span>
 						<select
@@ -956,7 +960,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 									rows: parseInt(e.target.value),
 								}))
 							}
-							className="text-xs appearance-none rounded-lg bg-white dark:bg-gray-700 px-2 py-1 pr-5 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+							className="text-xs appearance-none rounded-lg bg-background dark:bg-gray-700 px-2 py-1 pr-5 text-text-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
 						>
 							{perPageList.map((lines) => (
 								<option key={lines}>{lines}</option>
@@ -977,7 +981,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 								}))
 							}
 							placeholder={tr("datatable.search_placeholder", "Search...")}
-							className="text-xs rounded-lg bg-white dark:bg-gray-700 px-2 py-1 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 min-w-[180px]"
+							className="text-xs rounded-lg bg-background dark:bg-gray-700 px-2 py-1 text-text-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 min-w-[180px]"
 						/>
 					)}
 
@@ -986,7 +990,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 							onClick={() => onPageChange(1)}
 							disabled={searchState.page === 1}
 							size="small"
-							className="h-7 w-7 justify-center p-0"
+							className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
 						>
 							<ChevronDoubleLeftIcon className="h-3.5 w-3.5" />
 						</NeutralButton>
@@ -1005,9 +1009,9 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 											commitPageInput();
 										}
 									}}
-									className="w-14 rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-primary focus:ring-primary"
+									className="w-14 rounded border border-gray-300 bg-background px-2 py-1 text-xs text-text-700 focus:border-primary focus:ring-primary"
 								/>
-								<span className="text-xs text-gray-400">/ {totalPages}</span>
+								<span className="text-xs text-text-400">/ {totalPages}</span>
 							</div>
 						) : (
 							<>
@@ -1015,7 +1019,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 									onClick={() => onPageChange(Math.max(searchState.page - 1, 1))}
 									disabled={searchState.page === 1}
 									size="small"
-									className="h-7 w-7 justify-center p-0"
+									className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
 								>
 									<ChevronLeftIcon className="h-3.5 w-3.5" />
 								</NeutralButton>
@@ -1057,17 +1061,17 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 									return pages.map((page, index) => (
 										<React.Fragment key={index}>
 											{page === "..." ? (
-												<span className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">
+												<span className="px-2 py-1 text-xs text-text-400 dark:text-gray-500">
 													...
 												</span>
 											) : (
 												<button
 													onClick={() => onPageChange(page as number)}
 													className={classNames(
-														"px-2 py-1 text-xs rounded border transition-all duration-200",
+														"px-2 py-1 text-xs rounded shadow-sm transition-all duration-200",
 														currentPage === page
-															? "bg-primary text-white border-primary"
-															: "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:text-gray-900 dark:hover:text-gray-100"
+															? "bg-primary text-white"
+															: "bg-background dark:bg-gray-700 text-text-600 dark:text-gray-400 hover:bg-primary-50 dark:hover:bg-gray-600 hover:text-text-900 dark:hover:text-gray-100"
 													)}
 												>
 													{page}
@@ -1081,7 +1085,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 									onClick={() => onPageChange(searchState.page + 1)}
 									disabled={searchState.page >= totalPages}
 									size="small"
-									className="h-7 w-7 justify-center p-0"
+									className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
 								>
 									<ChevronRightIcon className="h-3.5 w-3.5" />
 								</NeutralButton>
@@ -1092,7 +1096,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 							onClick={() => onPageChange(totalPages)}
 							disabled={searchState.page >= totalPages}
 							size="small"
-							className="h-7 w-7 justify-center p-0"
+							className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
 						>
 							<ChevronDoubleRightIcon className="h-3.5 w-3.5" />
 						</NeutralButton>
@@ -1104,7 +1108,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 								<NeutralButton
 									onClick={() => loadLazyData()}
 									size="small"
-									className="h-7 w-7 justify-center p-0"
+									className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
 									title={tr("datatable.reload", "Reload")}
 								>
 									<ArrowPathIcon className={classNames("h-3.5 w-3.5", { "animate-spin": loading })} />
@@ -1125,19 +1129,19 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 									<NeutralButton
 										onClick={() => setActionMenuOpen((open) => !open)}
 										size="small"
-										className="h-7 w-7 justify-center p-0"
+										className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
 									>
 										<EllipsisHorizontalIcon className="h-3.5 w-3.5" />
 									</NeutralButton>
 									{actionMenuOpen && (
-										<div className="absolute bottom-0 right-0 z-20 mt-2 w-48 rounded-md border border-gray-200 bg-white py-1 text-xs text-gray-700 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+										<div className="absolute bottom-0 right-0 z-20 mt-2 w-48 rounded-md border border-gray-200 bg-background py-1 text-xs text-text-700 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
 											{columns.length > 0 && (
 												<button
 													onClick={() => {
 														setShowFilterPanel(!showFilterPanel);
 														setActionMenuOpen(false);
 													}}
-													className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-100"
+													className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-primary-50 dark:hover:bg-gray-700 dark:text-gray-100"
 												>
 													<FunnelIcon className="size-4" />
 													<span>
@@ -1210,7 +1214,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 														});
 														setActionMenuOpen(false);
 													}}
-													className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-100"
+													className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-primary-50 dark:hover:bg-gray-700 dark:text-gray-100"
 												>
 													<CheckIcon className="size-4" />
 													<span>{t("Save")}</span>
@@ -1229,7 +1233,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 														}}
 														disabled={isDisabled}
 														className={classNames(
-															"flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-100",
+														"flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-primary-50 dark:hover:bg-gray-700 dark:text-gray-100",
 															isDisabled && "cursor-not-allowed opacity-50"
 														)}
 													>
@@ -1253,11 +1257,11 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 										onClick={() => setShowFilterPanel(!showFilterPanel)}
 										size="small"
 										className={classNames(
-											"inline-flex items-center justify-center min-w-[72px]",
+											"inline-flex items-center justify-center min-w-[72px] !border-0 shadow-sm",
 											showFilterPanel
 												? "bg-primary "
 												: hasActiveFilters
-												? "bg-primary-50 dark:bg-primary-900 text-primary border-primary"
+												? "bg-primary-50 dark:bg-primary-900 text-primary"
 												: "",
 											"gap-1 relative"
 										)}
@@ -1274,7 +1278,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 
 								<NeutralButton
 									onClick={() => loadLazyData()}
-									className="flex items-center gap-1 text-xs px-2 py-2"
+									className="flex items-center gap-1 text-xs px-2 py-2 !border-0 shadow-sm"
 								>
 									<ArrowPathIcon
 										aria-hidden="true"
@@ -1391,7 +1395,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 				</div>
 
 			{!condensed && 
-				<div className=" text-gray-600 dark:text-gray-400">
+				<div className=" text-text-600 dark:text-gray-400">
 					{tr("datatable.displaying", "Displaying")} {1 + searchState.first} {tr("datatable.to", "to")}{" "}
 					{searchState.first + searchState.rows < totalRecords
 						? searchState.first + searchState.rows

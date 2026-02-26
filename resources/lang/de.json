@@ -24,5 +24,9 @@
     "datatable.search_placeholder": "Suchen...",
     "datatable.exact": "Exakt",
     "datatable.range": "Bereich",
-    "datatable.from": "Von"
+    "datatable.from": "Von",
+    "media.select_or_drag_file": "Datei auswählen oder hierher ziehen",
+    "media.drop_file": "Datei hier ablegen",
+    "media.remove_file": "Datei entfernen",
+    "media.file_will_be_removed": "Die Datei wird beim Speichern entfernt."
 }

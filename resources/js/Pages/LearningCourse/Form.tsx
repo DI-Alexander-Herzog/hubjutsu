@@ -15,7 +15,7 @@ export default function LearningCourseForm({ learning_course, disabled = true }:
                     <Input inputName="active" type="boolean" label="Active" />
                 </FormSection>
 
-                <div className="my-4 h-px bg-gray-200 dark:bg-gray-700" />
+                <div className="my-4 h-px bg-background-700 dark:bg-gray-700" />
 
                 <FormSection title="Media" subtitle="Kursbilder und Vorschau">
                     <Input inputName="cover" type="media" accept="image/*" label="Cover" />

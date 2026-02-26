@@ -78,9 +78,9 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                     disabled={props.disabled}
                     />
                     <div className={
-                        "relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 " +
+                        "relative w-11 h-6 bg-background-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 " +
                         "rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white " + 
-                        "after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full " +
+                        "after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-background after:border-gray-300 after:border after:rounded-full " +
                         "after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600 dark:peer-checked:bg-primary-600 "
                     }></div>
                     <span className="ml-2">{label || inputName.charAt(0).toUpperCase() + inputName.slice(1) }</span>
@@ -137,10 +137,25 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                 }))}
             />;
         } else if (type == "model") {
+            const fallbackInitialObject = (() => {
+                if (props.initialObject) {
+                    return props.initialObject;
+                }
+
+                if (!inputName.endsWith('_id')) {
+                    return undefined;
+                }
+
+                const relationName = inputName.slice(0, -3);
+                const relationObject = _useForm.data?.[relationName];
+                return relationObject && typeof relationObject === 'object' ? relationObject : undefined;
+            })();
+
             return <ModelSelect
                 id={id}
                 className={`mt-1 block w-full ${className}`}
                 value={_useForm.data ? _useForm.data[inputName] : null}
+                initialObject={fallbackInitialObject}
                 onChange={(val) => _useForm.setData((data: { [key: string]: any }) => ({
                     ...data,
                     [inputName]: val

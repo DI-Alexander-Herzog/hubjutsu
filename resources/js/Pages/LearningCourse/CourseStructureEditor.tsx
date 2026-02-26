@@ -6,6 +6,9 @@ import DataTable, { type Column } from '@/Components/DataTable';
 import DataTableLink from '@/Components/DataTableLink';
 import { DataTableFormatter } from '@/Components/DataTableFormatter';
 import FormContainer from '@/Components/FormContainer';
+import InputSelect from '@/Components/InputSelect';
+import InputText from '@/Components/InputText';
+import InputTextarea from '@/Components/InputTextarea';
 import MediaUpload from '@/Components/MediaUpload';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -736,8 +739,8 @@ export default function CourseStructureEditor({
         <div className="space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Kursstruktur bearbeiten</h2>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Module und Sektionen per Popup anlegen</p>
+                    <h2 className="text-lg font-semibold text-text-900 dark:text-gray-100">Kursstruktur bearbeiten</h2>
+                    <p className="text-sm text-text-600 dark:text-gray-400">Module und Sektionen per Popup anlegen</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
                     <NeutralButton
@@ -770,7 +773,7 @@ export default function CourseStructureEditor({
             )}
 
             {sortedModules.length === 0 && (
-                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
+                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 px-4 py-6 text-sm text-text-500 dark:text-gray-400">
                     Noch keine Module vorhanden.
                 </div>
             )}
@@ -810,14 +813,14 @@ export default function CourseStructureEditor({
                                                 className="h-full w-full object-cover"
                                             />
                                         ) : (
-                                            <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-400 dark:text-gray-500">
+                                            <div className="flex h-full w-full items-center justify-center text-[10px] text-text-400 dark:text-gray-500">
                                                 Kein Bild
                                             </div>
                                         )}
                                     </div>
                                     <div>
-                                        <div className="text-base font-semibold text-gray-900 dark:text-gray-100">{module.name || `Modul #${module.id}`}</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">Sort: {module.sort || 0}</div>
+                                        <div className="text-base font-semibold text-text-900 dark:text-gray-100">{module.name || `Modul #${module.id}`}</div>
+                                        <div className="text-xs text-text-500 dark:text-gray-400">Sort: {module.sort || 0}</div>
                                     </div>
                                 </button>
                                 <div className="flex flex-wrap gap-2">
@@ -855,7 +858,7 @@ export default function CourseStructureEditor({
                                 <>
                                     <div className="grid gap-4 md:grid-cols-[220px_1fr]">
                                         <div>
-                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Cover</span>
+                                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Cover</span>
                                             <MediaUpload
                                                 name={`module_cover_${module.id}`}
                                                 accept="image/*"
@@ -868,7 +871,7 @@ export default function CourseStructureEditor({
 
                                         <div className="space-y-3">
                                             <label className="block text-sm">
-                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Modulname</span>
+                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Modulname</span>
                                                 <input
                                                     type="text"
                                                     value={module.name}
@@ -878,7 +881,7 @@ export default function CourseStructureEditor({
                                             </label>
 
                                             <label className="block text-sm">
-                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Beschreibung</span>
+                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Beschreibung</span>
                                                 <textarea
                                                     value={module.description}
                                                     onChange={(event) => setModuleField(module.id, 'description', event.target.value)}
@@ -892,7 +895,7 @@ export default function CourseStructureEditor({
                                     <div className="flex flex-wrap items-end justify-between gap-3">
                                         <div className="flex flex-wrap items-end gap-4">
                                             <label className="block text-sm">
-                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sort</span>
+                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Sort</span>
                                                 <input
                                                     type="number"
                                                     min={0}
@@ -909,7 +912,7 @@ export default function CourseStructureEditor({
                                                 Aktiv
                                             </label>
                                             <label className="block text-sm">
-                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Freischaltung</span>
+                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Freischaltung</span>
                                                 <select
                                                     value={module.unlock_mode || 'none'}
                                                     onChange={(event) =>
@@ -928,7 +931,7 @@ export default function CourseStructureEditor({
                                             </label>
                                             {module.unlock_mode === 'delay_from_course_start' && (
                                                 <label className="block text-sm">
-                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Delay (Tage)</span>
+                                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Delay (Tage)</span>
                                                     <input
                                                         type="number"
                                                         min={0}
@@ -985,7 +988,7 @@ export default function CourseStructureEditor({
                                     </div>
 
                                     {sections.length === 0 && (
-                                        <div className="rounded-md border border-dashed border-gray-300 dark:border-gray-600 px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                        <div className="rounded-md border border-dashed border-gray-300 dark:border-gray-600 px-3 py-4 text-sm text-text-500 dark:text-gray-400">
                                             Keine Sektionen in diesem Modul.
                                         </div>
                                     )}
@@ -1014,10 +1017,10 @@ export default function CourseStructureEditor({
                                                         }
                                                         className="text-left"
                                                     >
-                                                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                        <div className="text-sm font-semibold text-text-900 dark:text-gray-100">
                                                             {section.name || `Sektion #${section.id}`}
                                                         </div>
-                                                        <div className="text-xs text-gray-500 dark:text-gray-400">Sort: {section.sort || 0}</div>
+                                                        <div className="text-xs text-text-500 dark:text-gray-400">Sort: {section.sort || 0}</div>
                                                     </button>
                                                     <div className="flex flex-wrap gap-2">
                                                         <NeutralButton
@@ -1054,7 +1057,7 @@ export default function CourseStructureEditor({
                                                     <>
                                                         <div className="grid gap-3 md:grid-cols-2">
                                                             <label className="block text-sm">
-                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sektionsname</span>
+                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Sektionsname</span>
                                                                 <input
                                                                     type="text"
                                                                     value={section.name}
@@ -1065,7 +1068,7 @@ export default function CourseStructureEditor({
                                                                 />
                                                             </label>
                                                             <label className="block text-sm">
-                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sort</span>
+                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Sort</span>
                                                                 <input
                                                                     type="number"
                                                                     min={0}
@@ -1082,7 +1085,7 @@ export default function CourseStructureEditor({
                                                                 />
                                                             </label>
                                                             <label className="block text-sm md:col-span-2">
-                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Beschreibung</span>
+                                                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Beschreibung</span>
                                                                 <textarea
                                                                     value={section.description}
                                                                     onChange={(event) =>
@@ -1198,35 +1201,35 @@ export default function CourseStructureEditor({
             >
                 <div className="space-y-3">
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Name</span>
-                        <input
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Name</span>
+                        <InputText
                             type="text"
                             value={moduleModal.name}
                             onChange={(event) => setModuleModal((prev) => ({ ...prev, name: event.target.value }))}
-                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
+                            className="w-full px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Beschreibung</span>
-                        <textarea
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Beschreibung</span>
+                        <InputTextarea
                             value={moduleModal.description}
                             onChange={(event) =>
                                 setModuleModal((prev) => ({ ...prev, description: event.target.value }))
                             }
                             rows={3}
-                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
+                            className="w-full px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sort</span>
-                        <input
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Sort</span>
+                        <InputText
                             type="number"
                             min={0}
                             value={moduleModal.sort}
                             onChange={(event) =>
                                 setModuleModal((prev) => ({ ...prev, sort: Number(event.target.value || 0) }))
                             }
-                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
+                            className="w-full px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="inline-flex items-center gap-2 text-sm">
@@ -1255,35 +1258,35 @@ export default function CourseStructureEditor({
             >
                 <div className="space-y-3">
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Name</span>
-                        <input
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Name</span>
+                        <InputText
                             type="text"
                             value={sectionModal.name}
                             onChange={(event) => setSectionModal((prev) => ({ ...prev, name: event.target.value }))}
-                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
+                            className="w-full px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Beschreibung</span>
-                        <textarea
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Beschreibung</span>
+                        <InputTextarea
                             value={sectionModal.description}
                             onChange={(event) =>
                                 setSectionModal((prev) => ({ ...prev, description: event.target.value }))
                             }
                             rows={3}
-                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
+                            className="w-full px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sort</span>
-                        <input
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Sort</span>
+                        <InputText
                             type="number"
                             min={0}
                             value={sectionModal.sort}
                             onChange={(event) =>
                                 setSectionModal((prev) => ({ ...prev, sort: Number(event.target.value || 0) }))
                             }
-                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
+                            className="w-full px-3 py-2 text-sm"
                         />
                     </label>
                     <label className="inline-flex items-center gap-2 text-sm">
@@ -1312,8 +1315,8 @@ export default function CourseStructureEditor({
             >
                 <div className="space-y-3">
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Format</span>
-                        <select
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Format</span>
+                        <InputSelect
                             value={importModal.format}
                             onChange={(event) =>
                                 setImportModal((prev) => ({
@@ -1321,21 +1324,23 @@ export default function CourseStructureEditor({
                                     format: event.target.value as 'auto' | 'markdown' | 'html',
                                 }))
                             }
-                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm"
-                        >
-                            <option value="auto">Auto erkennen</option>
-                            <option value="markdown">Markdown</option>
-                            <option value="html">HTML</option>
-                        </select>
+                            className="w-full px-3 py-2 text-sm"
+                            withEmpty={false}
+                            options={[
+                                ['auto', 'Auto erkennen'],
+                                ['markdown', 'Markdown'],
+                                ['html', 'HTML'],
+                            ]}
+                        />
                     </label>
 
                     <label className="block text-sm">
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Inhalt</span>
-                        <textarea
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">Inhalt</span>
+                        <InputTextarea
                             value={importModal.content}
                             onChange={(event) => setImportModal((prev) => ({ ...prev, content: event.target.value }))}
                             rows={12}
-                            className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 font-mono text-sm"
+                            className="w-full px-3 py-2 font-mono text-sm"
                             placeholder={'# Modul\n## Sektion\n### Lektion'}
                         />
                     </label>

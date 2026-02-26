@@ -23,6 +23,7 @@ interface Props {
   accept?: string;
   multiple?: boolean;
   maxFiles?: number;
+  disabled?: boolean;
 }
 
 type PreviewType = 'image' | 'video' | 'file';
@@ -212,6 +213,7 @@ function SingleMediaUpload({
   attributes = {},
   onChange,
   accept,
+  disabled = false,
 }: Props) {
   const { t } = useLaravelReactI18n();
   const [file, setFile] = useState<File | null>(null);
@@ -274,6 +276,7 @@ function SingleMediaUpload({
   };
 
   const onDrop = (accepted: File[]) => {
+    if (disabled) return;
     const selectedFile = accepted[0];
     if (!selectedFile) return;
 
@@ -312,6 +315,7 @@ function SingleMediaUpload({
   }, [preview]);
 
   const handleRemove = () => {
+    if (disabled) return;
     const marked = markMediaForDeletion(currentValue);
     setPreview(null);
     setPreviewType(null);
@@ -330,6 +334,10 @@ function SingleMediaUpload({
     onDrop,
     accept: accept ? { [accept]: [] } : undefined,
     multiple: false,
+    disabled,
+    noClick: disabled,
+    noDrag: disabled,
+    noKeyboard: disabled,
   });
 
   return (
@@ -348,13 +356,13 @@ function SingleMediaUpload({
         <div className="flex-1 space-y-2">
           <div
             {...getRootProps()}
-            className={`border border-dashed border-secondary/40 p-4 rounded cursor-pointer text-center transition-colors ${
-              isDragActive ? 'bg-secondary/10' : 'bg-white dark:bg-gray-900'
-            }`}
+            className={`border border-dashed border-secondary/40 p-4 rounded text-center transition-colors ${
+              isDragActive ? 'bg-secondary/10' : 'bg-background dark:bg-gray-900'
+            } ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
           >
             <input {...getInputProps()} />
             <p className="text-secondary">
-              {isDragActive ? t('media.drop_file') : t('media.select_or_drag_file')}
+              {disabled ? 'Datei-Upload gesperrt' : isDragActive ? t('media.drop_file') : t('media.select_or_drag_file')}
             </p>
           </div>
 
@@ -369,6 +377,7 @@ function SingleMediaUpload({
               type="button"
               className="text-xs text-tertiary hover:text-tertiary/80"
               onClick={handleRemove}
+              disabled={disabled}
             >
               {t('media.remove_file')}
             </button>
@@ -377,7 +386,7 @@ function SingleMediaUpload({
       </div>
 
       {isMediaMarkedForDeletion(currentValue) && (
-        <p className="text-xs italic text-gray-500">{t('media.file_will_be_removed')}</p>
+        <p className="text-xs italic text-text-500">{t('media.file_will_be_removed')}</p>
       )}
 
       <InputError
@@ -397,6 +406,7 @@ function MultipleMediaUpload({
   onChange,
   accept,
   maxFiles,
+  disabled = false,
 }: Props) {
   const { t } = useLaravelReactI18n();
 
@@ -552,6 +562,7 @@ function MultipleMediaUpload({
   }, []);
 
   const handleDrop = (accepted: File[]) => {
+    if (disabled) return;
     if (!accepted.length) return;
 
     let files = accepted;
@@ -596,6 +607,7 @@ function MultipleMediaUpload({
   };
 
   const removeItem = (id: string) => {
+    if (disabled) return;
     setItems((prev) => {
       const item = prev.find((entry) => entry.id === id);
       if (item?.tempPreview && item.preview) {
@@ -614,6 +626,7 @@ function MultipleMediaUpload({
   };
 
   const moveItem = (id: string, direction: 'up' | 'down') => {
+    if (disabled) return;
     setItems((prev) => {
       const index = prev.findIndex((entry) => entry.id === id);
       if (index === -1) return prev;
@@ -629,6 +642,7 @@ function MultipleMediaUpload({
   };
 
   const moveItemByDrop = (sourceId: string, targetId: string) => {
+    if (disabled) return;
     if (!sourceId || !targetId || sourceId === targetId) return;
 
     setItems((prev) => {
@@ -647,6 +661,10 @@ function MultipleMediaUpload({
     onDrop: handleDrop,
     accept: accept ? { [accept]: [] } : undefined,
     multiple: true,
+    disabled,
+    noClick: disabled,
+    noDrag: disabled,
+    noKeyboard: disabled,
   });
 
   return (
@@ -655,13 +673,13 @@ function MultipleMediaUpload({
 
       <div
         {...getRootProps()}
-        className={`border border-dashed border-secondary/40 p-4 rounded cursor-pointer text-center text-sm transition-colors ${
-          isDragActive ? 'bg-secondary/10' : 'bg-white dark:bg-gray-900'
-        }`}
+        className={`border border-dashed border-secondary/40 p-4 rounded text-center text-sm transition-colors ${
+          isDragActive ? 'bg-secondary/10' : 'bg-background dark:bg-gray-900'
+        } ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
       >
         <input {...getInputProps()} />
         <p className="font-medium text-secondary">
-          {isDragActive ? t('Dateien hier ablegen…') : t('Dateien auswählen oder hier ablegen')}
+          {disabled ? 'Datei-Upload gesperrt' : isDragActive ? t('Dateien hier ablegen…') : t('Dateien auswählen oder hier ablegen')}
         </p>
         {maxFiles && (
           <p className="text-xs text-secondary/70">
@@ -675,13 +693,15 @@ function MultipleMediaUpload({
           {items.map((item) => (
             <li
               key={item.id}
-              draggable={item.status !== 'uploading'}
+              draggable={!disabled && item.status !== 'uploading'}
               onDragStart={(event) => {
+                if (disabled || item.status === 'uploading') return;
                 setDraggedItemId(item.id);
                 event.dataTransfer.effectAllowed = 'move';
                 event.dataTransfer.setData('text/plain', item.id);
               }}
               onDragOver={(event) => {
+                if (disabled) return;
                 if (item.status === 'uploading') return;
                 event.preventDefault();
                 if (dragOverItemId !== item.id) {
@@ -690,6 +710,7 @@ function MultipleMediaUpload({
                 event.dataTransfer.dropEffect = 'move';
               }}
               onDrop={(event) => {
+                if (disabled) return;
                 event.preventDefault();
                 const sourceId = event.dataTransfer.getData('text/plain') || draggedItemId || '';
                 moveItemByDrop(sourceId, item.id);
@@ -697,12 +718,13 @@ function MultipleMediaUpload({
                 setDragOverItemId(null);
               }}
               onDragEnd={() => {
+                if (disabled) return;
                 setDraggedItemId(null);
                 setDragOverItemId(null);
               }}
               className={`flex items-center justify-between rounded border px-3 py-2 text-sm dark:border-gray-700 ${
                 dragOverItemId === item.id ? 'border-primary bg-primary/5' : 'border-gray-200'
-              } ${item.status !== 'uploading' ? 'cursor-move' : ''}`}
+              } ${!disabled && item.status !== 'uploading' ? 'cursor-move' : ''}`}
             >
               <div className="flex items-center gap-3">
                 {renderFilePreview({
@@ -713,11 +735,11 @@ function MultipleMediaUpload({
                   videoOverlay: 'corner',
                 })}
                 <div>
-                  <p className="font-medium text-gray-800 dark:text-gray-100">{item.fileName}</p>
+                  <p className="font-medium text-text-800 dark:text-gray-100">{item.fileName}</p>
                   {item.status === 'error' ? (
                     <p className="text-xs text-tertiary">{item.error}</p>
                   ) : (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-text-500">
                       {item.status === 'uploaded'
                         ? t('Bereit')
                         : `${Math.round(item.progress)}% ${t('hochgeladen')}`}
@@ -730,7 +752,7 @@ function MultipleMediaUpload({
                   type="button"
                   className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
                   onClick={() => moveItem(item.id, 'up')}
-                  disabled={item.status === 'uploading' || items[0]?.id === item.id}
+                  disabled={disabled || item.status === 'uploading' || items[0]?.id === item.id}
                   title={t('Nach oben')}
                 >
                   ↑
@@ -739,7 +761,7 @@ function MultipleMediaUpload({
                   type="button"
                   className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
                   onClick={() => moveItem(item.id, 'down')}
-                  disabled={item.status === 'uploading' || items[items.length - 1]?.id === item.id}
+                  disabled={disabled || item.status === 'uploading' || items[items.length - 1]?.id === item.id}
                   title={t('Nach unten')}
                 >
                   ↓
@@ -748,7 +770,7 @@ function MultipleMediaUpload({
                   type="button"
                   className="text-xs text-tertiary hover:text-tertiary/80 disabled:opacity-50"
                   onClick={() => removeItem(item.id)}
-                  disabled={item.status === 'uploading'}
+                  disabled={disabled || item.status === 'uploading'}
                 >
                   {t('Entfernen')}
                 </button>

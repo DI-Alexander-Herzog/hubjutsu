@@ -94,7 +94,7 @@ export default function CourseStructureView({ modules = [] }: { modules?: Learni
         <FormContainer>
             <FormSection title="Kursstruktur" subtitle="Alle Module, Sektionen und Lektionen">
                 {sortedModules.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500">
+                    <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-text-500">
                         Noch keine Module vorhanden.
                     </div>
                 )}
@@ -113,14 +113,14 @@ export default function CourseStructureView({ modules = [] }: { modules?: Learni
                                             className="h-28 w-full rounded-md border border-gray-200 object-cover"
                                         />
                                     ) : (
-                                        <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-gray-300 text-xs text-gray-400">
+                                        <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-gray-300 text-xs text-text-400">
                                             Kein Cover
                                         </div>
                                     )}
-                                    <div className="mt-2 text-xs text-gray-500">
+                                    <div className="mt-2 text-xs text-text-500">
                                         Sort: {module.sort ?? 0} | Aktiv: {module.active ? 'Ja' : 'Nein'}
                                     </div>
-                                    <div className="mt-1 text-xs text-gray-500">
+                                    <div className="mt-1 text-xs text-text-500">
                                         Freischaltung:{' '}
                                         {module.unlock_mode === 'delay_from_course_start'
                                             ? `Nach ${module.unlock_delay_days ?? 0} Tagen`
@@ -130,17 +130,17 @@ export default function CourseStructureView({ modules = [] }: { modules?: Learni
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <div className="text-base font-semibold text-gray-900">
+                                    <div className="text-base font-semibold text-text-900">
                                         {module.name || `Modul #${module.id}`}
                                     </div>
                                     {module.description && (
-                                        <div className="text-sm text-gray-700">{module.description}</div>
+                                        <div className="text-sm text-text-700">{module.description}</div>
                                     )}
                                 </div>
                             </div>
 
                             {sections.length === 0 && (
-                                <div className="rounded-md border border-dashed border-gray-300 px-3 py-4 text-sm text-gray-500">
+                                <div className="rounded-md border border-dashed border-gray-300 px-3 py-4 text-sm text-text-500">
                                     Keine Sektionen in diesem Modul.
                                 </div>
                             )}
@@ -148,14 +148,14 @@ export default function CourseStructureView({ modules = [] }: { modules?: Learni
                             {sections.map((section) => (
                                 <div key={section.id} className="space-y-3 rounded-md border border-gray-200 p-3">
                                     <div className="space-y-1">
-                                        <div className="text-sm font-semibold text-gray-900">
+                                        <div className="text-sm font-semibold text-text-900">
                                             {section.name || `Sektion #${section.id}`}
                                         </div>
-                                        <div className="text-xs text-gray-500">
+                                        <div className="text-xs text-text-500">
                                             Sort: {section.sort ?? 0} | Aktiv: {section.active ? 'Ja' : 'Nein'}
                                         </div>
                                         {section.description && (
-                                            <div className="text-sm text-gray-700">{section.description}</div>
+                                            <div className="text-sm text-text-700">{section.description}</div>
                                         )}
                                     </div>
 

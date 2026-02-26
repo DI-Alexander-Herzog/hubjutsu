@@ -40,7 +40,7 @@ export default function ErrorToast({error, title, onClose, ...props} : ErrorToas
             leaveTo="opacity-0 translate-y-2"
             afterLeave={() => {onClose && onClose()}}
         >
-            <div className="absolute right-2 top-2 z-[9999] pointer-events-auto w-full max-w-sm overflow-hidden bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="absolute right-2 top-2 z-[9999] pointer-events-auto w-full max-w-sm overflow-hidden bg-background dark:bg-gray-800 rounded-lg shadow-lg">
                 <div className="p-3">
                     <div className="flex items-start">
                         <div className="shrink-0">
@@ -50,10 +50,10 @@ export default function ErrorToast({error, title, onClose, ...props} : ErrorToas
                             />
                         </div>
                         <div className="ml-2 w-0 flex-1 pt-0.5">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            <p className="text-sm font-medium text-text-900 dark:text-gray-100">
                                 {t(title || 'Error loading!')}
                             </p>
-                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                            <p className="mt-1 text-sm text-text-600 dark:text-gray-400">
                                 {message}
                             </p>
                         </div>
@@ -61,7 +61,7 @@ export default function ErrorToast({error, title, onClose, ...props} : ErrorToas
                             <button
                                 type="button"
                                 onClick={() => setShow(false)}
-                                className="inline-flex bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-1 focus:ring-red-500"
+                                className="inline-flex bg-background dark:bg-gray-800 text-text-400 hover:text-text-600 dark:hover:text-gray-300 focus:outline-none focus:ring-1 focus:ring-red-500"
                             >
                                 <span className="sr-only">{t('Close')}</span>
                                 <XMarkIcon aria-hidden="true" className="size-4" />

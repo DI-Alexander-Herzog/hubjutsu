@@ -34,14 +34,14 @@ export default function NeutralButton({
                     'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800',
                     display === 'outline'
                         ? [
-                            'border border-gray-300 text-gray-700 bg-transparent dark:border-gray-500 dark:text-gray-300',
-                            'hover:bg-gray-50 dark:hover:bg-gray-700',
-                            'active:bg-gray-100 dark:active:bg-gray-600',
+                            'border border-gray-300 text-text-700 bg-transparent dark:border-gray-500 dark:text-gray-300',
+                            'hover:bg-background-600 dark:hover:bg-gray-700',
+                            'active:bg-background-600 dark:active:bg-gray-600',
                         ]
                         : [
-                            'bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-300',
-                            'hover:bg-gray-50 dark:hover:bg-gray-700',
-                            'active:bg-gray-100 dark:active:bg-gray-600',
+                            'bg-background dark:bg-gray-800 border border-gray-300 dark:border-gray-500 text-text-700 dark:text-gray-300',
+                            'hover:bg-background-600 dark:hover:bg-gray-700',
+                            'active:bg-background-600 dark:active:bg-gray-600',
                         ],
                     sizeClasses[size],
                     {

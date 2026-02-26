@@ -105,17 +105,17 @@ export default function Modal({
 					leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
 				>
 					<DialogPanel
-						className={`mb-6 bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full sm:mx-auto ${maxWidthClass}`}
+						className={`mb-6 bg-background dark:bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full sm:mx-auto ${maxWidthClass}`}
 					>
 						{(title || subtitle) && (
-							<div className="p-6 border-b border-gray-200 dark:border-gray-700">
+							<div className="p-6">
 								{title && (
-									<h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+									<h2 className="text-lg font-medium text-text-900 dark:text-gray-100">
 										{title}
 									</h2>
 								)}
 								{subtitle && (
-									<p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+									<p className="mt-1 text-sm text-text-600 dark:text-gray-400">
 										{subtitle}
 									</p>
 								)}
@@ -125,7 +125,7 @@ export default function Modal({
 						<div className="p-6">{children}</div>
 
 						{(primaryButtonText || secondaryButtonText) && (
-							<div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+							<div className="px-6 py-4 flex justify-end">
 								{secondaryButtonText && (
 									<NeutralButton onClick={onSecondaryClick || close}>
 										{secondaryButtonText}

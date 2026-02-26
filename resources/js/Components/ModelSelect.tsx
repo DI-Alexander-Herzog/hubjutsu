@@ -3,7 +3,7 @@ import modelAPI from "@hubjutsu/api/modelAPI";
 import { DataTableFormatter } from "./DataTableFormatter";
 
 const inputClassName =
-	"text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md";
+	"text-sm w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-background dark:bg-gray-700 disabled:bg-background-600 disabled:dark:bg-gray-800 text-text-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary rounded-md";
 
 type ColumnConfig = {
 	field: string;
@@ -75,6 +75,8 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 		typeof value === "object" && value !== null
 			? value[valueField] ?? value.id
 			: value;
+	const resolvedValueKey =
+		resolvedValue === undefined || resolvedValue === null ? null : String(resolvedValue);
 	const fallbackLabel =
 		typeof value === "object" && value !== null
 			? value[labelField] ?? value.name
@@ -125,7 +127,13 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 		? initialObject[labelField] ?? initialObject.name
 		: null;
 
-	const selectedRow = data.find((row) => row[valueField] === resolvedValue);
+	const selectedRow = data.find((row) => {
+		const rowValue = row?.[valueField];
+		if (rowValue === undefined || rowValue === null || resolvedValueKey === null) {
+			return false;
+		}
+		return String(rowValue) === resolvedValueKey;
+	});
 	const selectedLabel =
 		(
 			selectedRow?.[labelField] ??
@@ -133,6 +141,48 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 			
 			initialObjectLabel
 		)?.toString();
+
+	useEffect(() => {
+		if (resolvedValue === undefined || resolvedValue === null || resolvedValue === "") {
+			return;
+		}
+		if (selectedRow || fallbackLabel || initialObjectLabel) {
+			return;
+		}
+
+		let cancelled = false;
+		modelAPI(model as any)
+			.find(resolvedValue)
+			.then((record) => {
+				if (cancelled || !record) {
+					return;
+				}
+				setData((prev) => {
+					const recordValueKey =
+						record?.[valueField] === undefined || record?.[valueField] === null
+							? null
+							: String(record[valueField]);
+					const exists = prev.some((entry) => {
+						const entryValue = entry?.[valueField];
+						if (entryValue === undefined || entryValue === null || recordValueKey === null) {
+							return false;
+						}
+						return String(entryValue) === recordValueKey;
+					});
+					if (exists) {
+						return prev;
+					}
+					return [record, ...prev];
+				});
+			})
+			.catch(() => {
+				// Keep placeholder if lookup fails.
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [resolvedValue, selectedRow, fallbackLabel, initialObjectLabel, model, valueField]);
 
 	const handleSelect = (row: Record<string, any>) => {
 		onChange(returnObject ? row : row[valueField]);
@@ -177,9 +227,9 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 		open && (
 			<div
 				ref={panelRef}
-				className="absolute z-40 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-xl text-sm overflow-hidden"
+				className="absolute z-40 mt-1 w-full bg-background dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-xl text-sm overflow-hidden"
 			>
-				<div className="sticky top-0 z-10 p-1 bg-white dark:bg-gray-800 border-b dark:border-gray-700">
+				<div className="sticky top-0 z-10 p-1 bg-background dark:bg-gray-800 border-b dark:border-gray-700">
 					<input
 						autoFocus
 						className={inputClassName}
@@ -195,7 +245,7 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 
 				<div className="max-h-72 overflow-y-auto">
 					<table className="w-full text-sm">
-						<thead className="sticky top-0 bg-gray-100 dark:bg-gray-700">
+						<thead className="sticky top-0 bg-background-600 dark:bg-gray-700">
 							<tr>
 								{cols.map((col) => (
 									<th
@@ -259,7 +309,7 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 					setOpen((prev) => !prev);
 				}}
 				onKeyDown={handleKeyDown}
-				className={`w-full relative text-left bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 min-h-[42px] flex items-center justify-between cursor-pointer text-sm text-gray-900 dark:text-gray-100 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary transition ${
+				className={`w-full relative text-left bg-background dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 min-h-[42px] flex items-center justify-between cursor-pointer text-sm text-text-900 dark:text-gray-100 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary transition ${
 					disabled ? "opacity-60 cursor-not-allowed" : ""
 				}`}
 			>
@@ -267,7 +317,7 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 					{selectedLabel || placeholder}
 				</span>
 				<svg
-					className={`w-4 h-4 ml-2 pointer-events-none text-gray-500 dark:text-gray-400 transition-transform ${
+					className={`w-4 h-4 ml-2 pointer-events-none text-text-500 dark:text-gray-400 transition-transform ${
 						open ? "rotate-180" : ""
 					}`}
 					fill="none"

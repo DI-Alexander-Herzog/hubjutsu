@@ -33,7 +33,7 @@ export default function Welcome({ auth, guestMode, canRegister }: PageProps<{ gu
         <>
             <Head title="Welcome" />
             
-            <div className="text-black dark:bg-gray-800 dark:text-gray-100 flex min-h-full flex-1">
+            <div className="text-text dark:bg-gray-800 dark:text-gray-100 flex min-h-full flex-1">
 
                 <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
                     <div className="flex flex-0 justify-end" >

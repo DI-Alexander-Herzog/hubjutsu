@@ -419,7 +419,7 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 	if (!isVisible) return null;
 
 	return (
-		<div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-2 py-2">
+		<div className="bg-background dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-2 py-2">
 			<div className="flex items-center gap-2 flex-wrap">
 				{Object.entries(activeFilters).map(([field, filter]) => {
 					const column = filterableColumns.find((col) => col.field === field);
@@ -448,9 +448,9 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 							<div
 								key={field}
 								onClick={() => startEditingFilter(field)}
-								className="inline-flex items-center gap-1 px-1.5 py-1 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs rounded-md border border-gray-200 dark:border-gray-600 shadow-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+								className="inline-flex items-center gap-1 px-1.5 py-1 bg-background-600 dark:bg-gray-800 text-text-700 dark:text-gray-300 text-xs rounded-md border border-gray-200 dark:border-gray-600 shadow-sm cursor-pointer hover:bg-background-600 dark:hover:bg-gray-700"
 							>
-								<span className="font-medium text-[0.65rem] uppercase tracking-wide text-gray-600 dark:text-gray-400 mr-1">
+								<span className="font-medium text-[0.65rem] uppercase tracking-wide text-text-600 dark:text-gray-400 mr-1">
 									{label}
 								</span>
 								<span className="font-normal text-[0.7rem]">{displayValue}</span>
@@ -459,7 +459,7 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 										event.stopPropagation();
 										onClearFilter(field);
 									}}
-									className="!p-0 !bg-transparent hover:!bg-gray-200 dark:hover:!bg-gray-700 ml-1"
+									className="!p-0 !bg-transparent hover:!bg-background-700 dark:hover:!bg-gray-700 ml-1"
 								>
 									<XMarkIconSmall className="h-3 w-3" />
 								</NeutralButton>
@@ -476,7 +476,7 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 							"inline-flex items-center gap-1 h-7 px-2",
 							availableFields.length === 0
 								? "opacity-50 cursor-not-allowed"
-								: "hover:bg-gray-50 dark:hover:bg-gray-700"
+								: "hover:bg-background-600 dark:hover:bg-gray-700"
 						)}
 					>
 						<PlusIcon aria-hidden="true" className="size-3.5" />
@@ -508,7 +508,7 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 
 				{selectedField && selectedColumn && selectedConfig && (
 					<div className="inline-flex items-center gap-1">
-						<span className="text-xs font-medium text-gray-700 dark:text-gray-300 mr-1">
+						<span className="text-xs font-medium text-text-700 dark:text-gray-300 mr-1">
 							{selectedColumn.label || selectedColumn.field}:
 						</span>
 
@@ -612,11 +612,11 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 									autoFocus
 								/>
 
-								<div className="max-h-32 min-w-[240px] overflow-auto rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
+								<div className="max-h-32 min-w-[240px] overflow-auto rounded-md border border-gray-300 dark:border-gray-600 bg-background dark:bg-gray-800 px-2 py-1">
 									{modelLoading ? (
-										<div className="text-xs text-gray-500 py-1">{tr("datatable.loading", "Loading...")}</div>
+										<div className="text-xs text-text-500 py-1">{tr("datatable.loading", "Loading...")}</div>
 									) : modelOptions.length === 0 ? (
-										<div className="text-xs text-gray-500 py-1">{tr("datatable.no_results", "No results")}</div>
+										<div className="text-xs text-text-500 py-1">{tr("datatable.no_results", "No results")}</div>
 									) : (
 										modelOptions.map((option, idx) => {
 											const optionValue = option?.[selectedModelValueField] ?? option?.id ?? option;
@@ -627,7 +627,7 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 											return (
 												<label
 													key={`${String(optionValue)}-${idx}`}
-													className="flex items-center gap-2 py-0.5 text-xs text-gray-700 dark:text-gray-200 cursor-pointer"
+													className="flex items-center gap-2 py-0.5 text-xs text-text-700 dark:text-gray-200 cursor-pointer"
 												>
 													<Checkbox
 														checked={isChecked}
@@ -712,7 +712,7 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 											className="!px-2 !py-1 text-xs min-w-[120px]"
 											autoFocus
 										/>
-										<span className="text-xs text-gray-500">{tr("datatable.to", "to")}</span>
+										<span className="text-xs text-text-500">{tr("datatable.to", "to")}</span>
 										<InputText
 											type={selectedConfig.type === "date" ? "date" : "number"}
 											value={rangeEnd}
@@ -759,7 +759,7 @@ const DataTableFilter: React.FC<DataTableFilterProps> = ({
 					)}
 					<NeutralButton
 						onClick={onToggle}
-						className="!p-1 !bg-transparent hover:!bg-gray-100 dark:hover:!bg-gray-700"
+						className="!p-1 !bg-transparent hover:!bg-background-600 dark:hover:!bg-gray-700"
 					>
 						<XMarkIconSmall className="h-3 w-3" />
 					</NeutralButton>

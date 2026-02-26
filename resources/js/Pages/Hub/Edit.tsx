@@ -2,7 +2,6 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import HubForm from './Form';
 import { CogIcon, FolderIcon } from '@heroicons/react/20/solid';
 import RoleAssignmentSection from '@/Components/RoleAssignmentModal';
-import FormContainer from '@hubjutsu/Components/FormContainer';
 
 export default function HubEdit({ hubEntry }: { hubEntry?: any }) {
     return (
@@ -18,7 +17,6 @@ export default function HubEdit({ hubEntry }: { hubEntry?: any }) {
             <HubForm hub={hubEntry} />
 
             {hubEntry?.id && (
-                <FormContainer>
                 <RoleAssignmentSection
                     scope={{
                         type: hubEntry?.morph_class ?? 'App\\Models\\Hub',
@@ -26,7 +24,6 @@ export default function HubEdit({ hubEntry }: { hubEntry?: any }) {
                         label: hubEntry.name,
                     }}
                 />
-                </FormContainer>
             )}
         </AuthenticatedLayout>
     );

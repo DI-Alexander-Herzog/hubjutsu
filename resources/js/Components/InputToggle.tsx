@@ -17,7 +17,7 @@ const ToggleSwitch = ({
         onClick={onChange}
         className={classNames(
             'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-            checked ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-700',
+            checked ? 'bg-primary-600' : 'bg-background-700 dark:bg-gray-700',
             disabled && 'opacity-50 cursor-not-allowed'
         )}
         disabled={disabled}
@@ -28,7 +28,7 @@ const ToggleSwitch = ({
         <span className="sr-only">Toggle correct answer</span>
         <span
             className={classNames(
-                'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out',
+                'pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow transform ring-0 transition duration-200 ease-in-out',
                 checked ? 'translate-x-5' : 'translate-x-0'
             )}
         />

@@ -25,8 +25,9 @@ export default function ThemeModeButton({ className = '', disabled, children, ..
     };
 
     
-    const light =  <SunIcon className={ 'dark:stroke-gray-100 ' + (className ? 'h-6 w-6' : '')}/>;
-    const dark =  <MoonIcon  className={ 'dark:stroke-gray-100 ' + (className ? 'h-6 w-6' : '')}/>;
+    const iconSize = className ? 'h-6 w-6' : '';
+    const light = <SunIcon className={iconSize} />;
+    const dark = <MoonIcon className={iconSize} />;
 
     return (
         <button
