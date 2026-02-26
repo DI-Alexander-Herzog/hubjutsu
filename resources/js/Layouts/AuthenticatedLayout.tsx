@@ -60,7 +60,7 @@ export default function Authenticated({
                 </div>
               </TransitionChild>
               {/* Sidebar component, swap this element with another sidebar if you like */}
-              <div className="flex grow flex-col gap-y-6 overflow-y-auto bg-background dark:bg-gray-900 px-4 pb-4">
+              <div className="flex grow flex-col gap-y-6 overflow-y-auto bg-background-600 dark:bg-gray-900 px-4 pb-4">
                 <div className="flex h-16 shrink-0 items-center px-2">
                     <ApplicationLogo className="h-8 w-auto" />
                 </div>
@@ -111,10 +111,10 @@ export default function Authenticated({
 
         {/* Static sidebar for desktop */}
         {!hideSidebar && <div className={classNames(
-          "hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300 ease-in-out lg:w-64",            
+          "hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300 ease-in-out lg:w-64 ",            
         )}>
           {/* Sidebar component */}
-          <div className="flex grow flex-col overflow-y-auto bg-background dark:bg-gray-900 shadow-lg">
+          <div className="flex grow flex-col overflow-y-auto bg-background-600 dark:bg-gray-900 shadow-inner">
             <div className="flex h-16 shrink-0 items-center justify-between px-4">
               <div className={classNames(
                 "transition-all duration-300 opacity-100",
