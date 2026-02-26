@@ -33,7 +33,7 @@ export default function PrimaryButton({
                     'border border-transparent rounded-md font-semibold  tracking-widest ',
 
                     'focus:outline-none focus:ring-2 focus:ring-offset-2',
-                    'focus:ring-primary dark:focus:ring-offset-onprimary',
+                    'focus:ring-primary focus:ring-offset-background dark:focus:ring-offset-gray-900',
                     display === 'outline'
                         ? [
                             'border-primary text-primary bg-transparent dark:border-onprimary dark:text-onprimary',
@@ -41,17 +41,15 @@ export default function PrimaryButton({
                             'active:bg-primary/20 dark:active:bg-onprimary/20',
                         ]
                         : [
-                            'bg-primary text-onprimary dark:bg-onprimary dark:text-primary',
-                            'hover:bg-primary-300 hover:text-onprimary-300 dark:hover:bg-onprimary-300 dark:hover:text-primary-300',
-                            'active:bg-primary-900 dark:active:bg-onprimary-300',
-                            'active:text-onprimary-900 dark:active:text-primary-300',
-                            'focus:bg-gray-700 dark:focus:bg-primary-300',
-                            'dark:focus:text-onprimary',
+                            'bg-primary text-onprimary',
+                            'hover:brightness-95',
+                            'active:brightness-90',
+                            'focus:text-onprimary',
                         ],
                     sizeClasses[size],
                     
                     {
-                        'opacity-25': disabled,
+                        'opacity-25 cursor-not-allowed': disabled,
                     },
                     className
                 )
