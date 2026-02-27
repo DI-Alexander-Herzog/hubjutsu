@@ -142,17 +142,36 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 			initialObjectLabel
 		)?.toString();
 
-	useEffect(() => {
+	const hasResolvedLabel = Boolean(selectedLabel && selectedLabel.length > 0);
+	const normalizedLookupId = (() => {
 		if (resolvedValue === undefined || resolvedValue === null || resolvedValue === "") {
+			return null;
+		}
+		if (typeof resolvedValue === "number") {
+			return resolvedValue;
+		}
+		if (typeof resolvedValue === "string") {
+			const trimmed = resolvedValue.trim();
+			if (trimmed === "") {
+				return null;
+			}
+			const asNumber = Number(trimmed);
+			return Number.isFinite(asNumber) ? asNumber : trimmed;
+		}
+		return resolvedValue;
+	})();
+
+	useEffect(() => {
+		if (normalizedLookupId === null) {
 			return;
 		}
-		if (selectedRow || fallbackLabel || initialObjectLabel) {
+		if (hasResolvedLabel) {
 			return;
 		}
 
 		let cancelled = false;
 		modelAPI(model as any)
-			.find(resolvedValue)
+			.find(normalizedLookupId as any)
 			.then((record) => {
 				if (cancelled || !record) {
 					return;
@@ -182,7 +201,7 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 		return () => {
 			cancelled = true;
 		};
-	}, [resolvedValue, selectedRow, fallbackLabel, initialObjectLabel, model, valueField]);
+	}, [normalizedLookupId, hasResolvedLabel, model, valueField]);
 
 	const handleSelect = (row: Record<string, any>) => {
 		onChange(returnObject ? row : row[valueField]);

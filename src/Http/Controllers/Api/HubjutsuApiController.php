@@ -215,7 +215,7 @@ class HubjutsuApiController
 
     public function get(Request $request, string $model, $id)
     {
-        $modelObj = $this->getModelIfAllowed($model, null, 'view');
+        $modelObj = $this->getModelIfAllowed($model, $id, 'view');
         if ($modelObj instanceof Base) {        
             return response()->json($modelObj->prepareForApi($request));
         }

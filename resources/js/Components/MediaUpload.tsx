@@ -726,7 +726,7 @@ function MultipleMediaUpload({
                 dragOverItemId === item.id ? 'border-primary bg-primary/5' : 'border-gray-200'
               } ${!disabled && item.status !== 'uploading' ? 'cursor-move' : ''}`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 {renderFilePreview({
                   previewType: item.previewType,
                   preview: item.preview,
@@ -734,8 +734,10 @@ function MultipleMediaUpload({
                   sizeClass: 'h-10 w-10',
                   videoOverlay: 'corner',
                 })}
-                <div>
-                  <p className="font-medium text-text-800 dark:text-gray-100">{item.fileName}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="block w-full truncate font-medium text-text-800 dark:text-gray-100" title={item.fileName}>
+                    {item.fileName}
+                  </p>
                   {item.status === 'error' ? (
                     <p className="text-xs text-tertiary">{item.error}</p>
                   ) : (
