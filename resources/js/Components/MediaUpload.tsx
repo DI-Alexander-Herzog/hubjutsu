@@ -195,6 +195,25 @@ function renderFilePreview({
   );
 }
 
+function getFilesFromClipboard(clipboardData: DataTransfer | null | undefined): File[] {
+  if (!clipboardData) return [];
+  const files: File[] = [];
+
+  if (clipboardData.items?.length) {
+    for (const item of Array.from(clipboardData.items)) {
+      if (item.kind !== 'file') continue;
+      const file = item.getAsFile();
+      if (file) files.push(file);
+    }
+  }
+
+  if (!files.length && clipboardData.files?.length) {
+    files.push(...Array.from(clipboardData.files));
+  }
+
+  return files;
+}
+
 const BaseMediaUpload = forwardRef<HTMLDivElement, Props>(function BaseMediaUpload(props, ref) {
   if (props.multiple) {
     return <MultipleMediaUpload {...props} />;
@@ -228,6 +247,7 @@ function SingleMediaUpload({
   );
   const [progress, setProgress] = useState<number>(0);
   const [err, setErr] = useState<string | null>(null);
+  const [pasteActive, setPasteActive] = useState(false);
 
   const upload = async (selectedFile: File) => {
     const chunkSize = 1024 * 512; // 512KB
@@ -289,6 +309,20 @@ function SingleMediaUpload({
     setErr(null);
     upload(selectedFile);
   };
+
+  useEffect(() => {
+    if (!pasteActive || disabled) return;
+
+    const handleDocumentPaste = (event: ClipboardEvent) => {
+      const files = getFilesFromClipboard(event.clipboardData);
+      if (!files.length) return;
+      event.preventDefault();
+      onDrop(files);
+    };
+
+    document.addEventListener('paste', handleDocumentPaste);
+    return () => document.removeEventListener('paste', handleDocumentPaste);
+  }, [pasteActive, disabled]);
 
   useEffect(() => {
     if (!useForm) return;
@@ -355,7 +389,13 @@ function SingleMediaUpload({
 
         <div className="flex-1 space-y-2">
           <div
-            {...getRootProps()}
+            {...getRootProps({
+              tabIndex: disabled ? -1 : 0,
+              onMouseEnter: () => setPasteActive(true),
+              onMouseLeave: () => setPasteActive(false),
+              onFocus: () => setPasteActive(true),
+              onBlur: () => setPasteActive(false),
+            })}
             className={`border border-dashed border-secondary/40 p-4 rounded text-center transition-colors ${
               isDragActive ? 'bg-secondary/10' : 'bg-background dark:bg-gray-900'
             } ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
@@ -364,6 +404,11 @@ function SingleMediaUpload({
             <p className="text-secondary">
               {disabled ? 'Datei-Upload gesperrt' : isDragActive ? t('media.drop_file') : t('media.select_or_drag_file')}
             </p>
+            {!disabled && (
+              <p className="mt-1 text-xs text-secondary/70">
+                {t('Tipp: Bild/Datei mit Strg+V (Cmd+V) einfügen')}
+              </p>
+            )}
           </div>
 
           {progress > 0 && progress < 100 && (
@@ -409,6 +454,7 @@ function MultipleMediaUpload({
   disabled = false,
 }: Props) {
   const { t } = useLaravelReactI18n();
+  const [pasteActive, setPasteActive] = useState(false);
 
   const extractInitialValue = () => {
     if (Array.isArray(attributes.value)) {
@@ -606,6 +652,20 @@ function MultipleMediaUpload({
     });
   };
 
+  useEffect(() => {
+    if (!pasteActive || disabled) return;
+
+    const handleDocumentPaste = (event: ClipboardEvent) => {
+      const files = getFilesFromClipboard(event.clipboardData);
+      if (!files.length) return;
+      event.preventDefault();
+      handleDrop(files);
+    };
+
+    document.addEventListener('paste', handleDocumentPaste);
+    return () => document.removeEventListener('paste', handleDocumentPaste);
+  }, [pasteActive, disabled, items.length, maxFiles]);
+
   const removeItem = (id: string) => {
     if (disabled) return;
     setItems((prev) => {
@@ -672,7 +732,13 @@ function MultipleMediaUpload({
       {label && <label className="block font-semibold text-sm">{label}</label>}
 
       <div
-        {...getRootProps()}
+        {...getRootProps({
+          tabIndex: disabled ? -1 : 0,
+          onMouseEnter: () => setPasteActive(true),
+          onMouseLeave: () => setPasteActive(false),
+          onFocus: () => setPasteActive(true),
+          onBlur: () => setPasteActive(false),
+        })}
         className={`border border-dashed border-secondary/40 p-4 rounded text-center text-sm transition-colors ${
           isDragActive ? 'bg-secondary/10' : 'bg-background dark:bg-gray-900'
         } ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
@@ -681,6 +747,11 @@ function MultipleMediaUpload({
         <p className="font-medium text-secondary">
           {disabled ? 'Datei-Upload gesperrt' : isDragActive ? t('Dateien hier ablegen…') : t('Dateien auswählen oder hier ablegen')}
         </p>
+        {!disabled && (
+          <p className="mt-1 text-xs text-secondary/70">
+            {t('Tipp: Bild/Datei mit Strg+V (Cmd+V) einfügen')}
+          </p>
+        )}
         {maxFiles && (
           <p className="text-xs text-secondary/70">
             {String(t('Max. {{count}} Dateien', { count: maxFiles })).replace(/\{\{\s*count\s*\}\}/g, String(maxFiles))}
