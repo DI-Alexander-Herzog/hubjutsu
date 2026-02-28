@@ -390,9 +390,4 @@ class Hub extends Base
         $this->setMedia($media, 'logoDark');
     }
 
-    public function conventions()
-    {
-        return $this->hasMany(\App\Models\Convention::class, 'hub_id', 'id');
-    }
-
 }
