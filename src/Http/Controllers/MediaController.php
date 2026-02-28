@@ -44,6 +44,18 @@ class MediaController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
             'tags' => ['nullable'],
+            'meta' => ['nullable', 'array'],
+            'meta.image' => ['nullable', 'array'],
+            'meta.image.focal_point' => ['nullable', 'array'],
+            'meta.image.focal_point.x' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'meta.image.focal_point.y' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'meta.image.crop' => ['nullable', 'array'],
+            'meta.image.crop.x' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'meta.image.crop.y' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'meta.image.crop.w' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'meta.image.crop.h' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'meta.image.crop.unit' => ['nullable', 'in:percent'],
+            'meta.image.crop.aspect' => ['nullable', 'in:free,original,1:1,4:3,16:9,3:4,9:16'],
         ]);
 
         $tags = $validated['tags'] ?? null;
@@ -61,10 +73,44 @@ class MediaController extends Controller
             'name' => $validated['name'],
             'description' => $validated['description'] ?? '',
             'tags' => $tags,
+            'meta' => $validated['meta'] ?? $media->meta ?? [],
         ]);
         $media->save();
+        $media->generateImageVariants();
 
         return redirect()->route('media.edit', [$media->id]);
+    }
+
+    public function file(Media $media)
+    {
+        abort_unless($this->canEditMedia($media), 403);
+        abort_unless($media->storage && $media->filename, 404);
+        $path = ltrim((string) $media->filename, '/');
+        abort_unless(Storage::disk($media->storage)->exists($path), 404);
+
+        return response()->file(Storage::disk($media->storage)->path($path), [
+            'Content-Type' => $media->mimetype ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+        ]);
+    }
+
+    public function variant(Media $media, string $variant)
+    {
+        abort_unless($this->canEditMedia($media), 403);
+        abort_unless($variant !== '', 404);
+
+        $variantMeta = data_get($media->meta, "image.variants.{$variant}");
+        $variantPath = is_array($variantMeta) ? ($variantMeta['path'] ?? null) : null;
+        abort_unless(is_string($variantPath) && $variantPath !== '', 404);
+
+        $path = ltrim($variantPath, '/');
+        abort_unless($media->storage, 404);
+        abort_unless(Storage::disk($media->storage)->exists($path), 404);
+
+        return response()->file(Storage::disk($media->storage)->path($path), [
+            'Content-Type' => $media->mimetype ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+        ]);
     }
 
     public function upload(Request $request) {
