@@ -1,82 +1,17 @@
-import React, { useEffect, useState, useRef, JSX, useMemo, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useState, useRef, useMemo, useImperativeHandle, forwardRef } from "react";
 import axios from "axios";
-import {
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	ChevronDoubleLeftIcon,
-	ChevronDoubleRightIcon,
-	ArrowPathIcon,
-	TrashIcon,
-	CheckIcon,
-	PlusIcon,
-	FunnelIcon,
-	EllipsisHorizontalIcon
-} from "@heroicons/react/20/solid";
-import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
 import classNames from "classnames";
-import Checkbox from "@/Components/Checkbox";
-import PrimaryButton from "@/Components/PrimaryButton";
-import NeutralButton from "@/Components/NeutralButton";
-import DangerButton from "@/Components/DangerButton";
-import DataTableFilter from "@/Components/DataTableFilter";
-
 import { flushSync } from "react-dom";
+
+import DataTableFilter from "@/Components/DataTableFilter";
+import DataTableHeaderView from "@/Components/DataTableHeaderView";
+import DataTableRowsView from "@/Components/DataTableRowsView";
+import DataTableFooterView from "@/Components/DataTableFooterView";
+import ErrorToast from "@/Components/ErrorToast";
+
 import { useSearch } from "@/Components/SearchContext";
 import { useLaravelReactI18n } from "laravel-react-i18n";
-import ErrorToast from "@/Components/ErrorToast";
-import { DataTableFormatter } from "@/Components/DataTableFormatter";
-import DataTableEditor from "@/Components/DataTableEditor"; 
-import type { DataTableCustomEditorProps, EditorConfig } from "@/Components/DataTableEditor";
-import IconLibrary from "@/Components/IconLibrary";
-import { iconMap } from "./IconLibrary";
-
-// 📌 Spalten-Typen definieren
-interface Column {
-	label?: string;
-	field: string;
-	editor?:
-		| string
-		| EditorConfig
-		| ((props: DataTableCustomEditorProps) => React.ReactNode)
-		| undefined;
-	/** @deprecated Nicht mehr verwenden.  */
-	editor_properties?: Record<string, any>;
-	sortable?: boolean;
-	filter?: boolean | DataTableFilterConfig;
-
-	frozen?: boolean;
-	width?: string;
-	align?: string;
-	headerAlign?: string;
-	formatter?: (row: Row, field: string) => JSX.Element | string | Element;
-}
-
-interface DataTableFilterConfig {
-	type: "text" | "select" | "number" | "date" | "boolean" | "model";
-	options?: Array<{ label: string; value: any }>;
-	multiple?: boolean;
-	placeholder?: string;
-	model?: string;
-	labelField?: string;
-	valueField?: string;
-	with?: string[];
-	filter?: Record<string, any> | (() => Record<string, any>);
-	min?: string | number;
-	max?: string | number;
-	step?: string | number;
-}
-
-interface Row {
-	[key: string]: any;
-}
-
-interface DataTableAction {
-	label: string;
-	icon?: JSX.Element |  keyof typeof iconMap ;
-	onClick: (selectedRecords: Row[], reload: () => void) => void;
-	variant?: "primary" | "secondary" | "danger" | "link";
-	disabled?: boolean | ((selectedRecords: Row[]) => boolean);
-}
+import type { Column, DataTableAction, Row, SearchState, DataTableFilterConfig } from "@/Components/DataTableTypes";
 
 interface DataTableProps {
 	routemodel?: string;
@@ -101,17 +36,6 @@ export interface DataTableRef {
 	refresh: () => void;
 }
 
-interface SearchState {
-	first: number;
-	rows: number;
-	page: number;
-	search?: string;
-	init?: string;
-	filters: Array<{ field: string; matchMode: string; value: any }>;
-	multiSortMeta: Array<[string, number]>;
-	with: string[];
-}
-
 const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 	routemodel,
 	columns,
@@ -133,6 +57,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 	const tableRef = useRef<HTMLTableElement>(null);
 	const actionMenuRef = useRef<HTMLDivElement>(null);
 	const nextTempIdRef = useRef(-1);
+	const isResizingRef = useRef(false);
 
 	const { t } = useLaravelReactI18n();
 	const tr = (key: string, fallback: string) => {
@@ -147,9 +72,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 		columns.forEach((col) => {
 			if (!col.width) return;
 			const parsed = parseInt(col.width, 10);
-			if (!Number.isNaN(parsed)) {
-				initial[col.field] = parsed;
-			}
+			if (!Number.isNaN(parsed)) initial[col.field] = parsed;
 		});
 		return initial;
 	});
@@ -160,16 +83,14 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 			columns.forEach((col) => {
 				if (next[col.field] !== undefined || !col.width) return;
 				const parsed = parseInt(col.width, 10);
-				if (!Number.isNaN(parsed)) {
-					next[col.field] = parsed;
-				}
+				if (!Number.isNaN(parsed)) next[col.field] = parsed;
 			});
 			return next;
 		});
 	}, [columns]);
 
 	const stickyLeft = (idx: number) => {
-		const widths = ["3rem"]; // checkbox column is always sticky
+		const widths = ["3rem"];
 		for (let i = 0; i < idx; i++) {
 			if (columns[i].frozen) {
 				const width = columnWidths[columns[i].field];
@@ -181,7 +102,6 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 
 	const stickyZBody = (idx = 0) => 10 + idx;
 	const stickyZHead = (idx = 0) => 20 + idx;
-
 	const headerZIndex = 20;
 
 	const lastFrozenIndex = useMemo(() => {
@@ -191,14 +111,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 		});
 		return last;
 	}, [columns]);
-	const showDividerOnCheckbox = lastFrozenIndex === -1;
-	const StickyRightDivider = ({ z = 999 }: { z?: number }) => (
-		<span
-			className="pointer-events-none absolute right-0 top-0 h-full w-px bg-background-700 dark:bg-gray-700"
-			style={{ zIndex: z }}
-		/>
-	);
-	// 📌 State-Variablen
+
 	const [loading, setLoading] = useState(false);
 	const [totalRecords, setTotalRecords] = useState(0);
 	const [records, setRecords] = useState<Row[]>([]);
@@ -206,26 +119,19 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 	const [actionMenuOpen, setActionMenuOpen] = useState(false);
 	const [pageInput, setPageInput] = useState("1");
 	const [error, setError] = useState<null | string | any>(null);
-	const [editingRecord, setEditingRecord] = useState<{ [key: number]: Row }>(
-		{}
-	);
+	const [editingRecord, setEditingRecord] = useState<{ [key: number]: Row }>({});
 	const [showFilterPanel, setShowFilterPanel] = useState(false);
-	const [activeFilters, setActiveFilters] = useState<{ [field: string]: any }>(
-		{}
-	);
-	const updateSelectedRecords = (
-		updater: Row[] | ((prev: Row[]) => Row[])
-	) => {
+	const [activeFilters, setActiveFilters] = useState<{ [field: string]: any }>({});
+
+	const updateSelectedRecords = (updater: Row[] | ((prev: Row[]) => Row[])) => {
 		setSelectedRecords((prev) => {
-			const next =
-				typeof updater === "function"
-					? (updater as (p: Row[]) => Row[])(prev)
-					: updater;
+			const next = typeof updater === "function" ? (updater as (p: Row[]) => Row[])(prev) : updater;
 			onSelectionChange?.(next);
 			return next;
 		});
 	};
-	const [searchState, setSearchState] = useState(() => {
+
+	const [searchState, setSearchState] = useState<SearchState>(() => {
 		const initialSort: Array<[string, number]> = [];
 		if (typeof defaultSortField === "string") {
 			initialSort.push([defaultSortField, 1]);
@@ -242,22 +148,11 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 			search: useGlobalSearch ? query : undefined,
 			init,
 			filters: Object.entries(filters).map(([key, value]) => {
-				if (Array.isArray(value) && value.length > 0) {
-					return { field: key, matchMode: "IN", value: value };
+				if (Array.isArray(value) && value.length > 0) return { field: key, matchMode: "IN", value };
+				if (typeof value === "object" && value !== null && "matchMode" in value && "value" in value) {
+					return { field: key, matchMode: (value as any).matchMode, value: (value as any).value };
 				}
-				if (
-					typeof value === "object" &&
-					value !== null &&
-					"matchMode" in value &&
-					"value" in value
-				) {
-					return {
-						field: key,
-						matchMode: (value as any).matchMode,
-						value: (value as any).value,
-					};
-				}
-				return { field: key, matchMode: "=", value: value };
+				return { field: key, matchMode: "=", value };
 			}),
 			multiSortMeta: initialSort,
 			with: withRelations,
@@ -266,18 +161,11 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 
 	useEffect(() => {
 		if (!useGlobalSearch) return;
-
-		setSearchState((prev) => {
-			if (prev.search === query) return prev;
-			return { ...prev, search: query, first: 0, page: 1 };
-		});
+		setSearchState((prev) => (prev.search === query ? prev : { ...prev, search: query, first: 0, page: 1 }));
 	}, [query, useGlobalSearch]);
 
 	useEffect(() => {
-		setSearchState((prev) => {
-			if (prev.init === init) return prev;
-			return { ...prev, init, first: 0, page: 1 };
-		});
+		setSearchState((prev) => (prev.init === init ? prev : { ...prev, init, first: 0, page: 1 }));
 	}, [init]);
 
 	useEffect(() => {
@@ -288,16 +176,14 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 		if (!actionMenuOpen) return;
 		const handleClick = (event: MouseEvent) => {
 			if (!actionMenuRef.current) return;
-			if (!actionMenuRef.current.contains(event.target as Node)) {
-				setActionMenuOpen(false);
-			}
+			if (!actionMenuRef.current.contains(event.target as Node)) setActionMenuOpen(false);
 		};
 		document.addEventListener("click", handleClick);
 		return () => document.removeEventListener("click", handleClick);
 	}, [actionMenuOpen]);
 
 	const perPageList = [2, 10, 15, 20, 50, 100, 1000];
-	if (perPageList.indexOf(perPage) === -1) {
+	if (!perPageList.includes(perPage)) {
 		perPageList.push(perPage);
 		perPageList.sort((a, b) => a - b);
 	}
@@ -311,65 +197,42 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 		setError(null);
 		updateSelectedRecords([]);
 		setEditingRecord({});
-
 		setLoading(true);
 
 		axios
-			.get(route("api.model.search", { model: routemodel }), {
-				params: searchState,
-			})
+			.get(route("api.model.search", { model: routemodel }), { params: searchState })
 			.then((response) => {
 				setLoading(false);
 				setRecords(response.data.data);
 				setTotalRecords(response.data.total);
 				if (initialSelection) {
-					const selection =
-						initialSelection === "all"
-							? response.data.data
-							: initialSelection(response.data.data);
+					const selection = initialSelection === "all" ? response.data.data : initialSelection(response.data.data);
 					updateSelectedRecords(selection);
 				}
 			})
-			.catch((error) => {
-				console.log(error);
+			.catch((err) => {
 				setLoading(false);
-				setError(error.response?.data || error.message || error.toString() || "Error");
+				setError(err.response?.data || err.message || err.toString() || "Error");
 			});
 	};
 
-	useImperativeHandle(ref, () => ({
-		refresh: () => loadLazyData(),
-	}));
+	useImperativeHandle(ref, () => ({ refresh: () => loadLazyData() }));
 
-	// 📌 Sortierung
 	const handleSort = (field: string, event?: React.MouseEvent) => {
 		setSearchState((prev) => {
-			let ms = [ ...prev.multiSortMeta ];
+			let ms = [...prev.multiSortMeta];
 			const isShiftClick = event?.shiftKey;
-			
 			const existingIndex = ms.findIndex(([f]) => f === field);
 			if (isShiftClick) {
-				if (existingIndex === -1) {
-					ms.push([field, 1]);
-				} else {
-					ms[existingIndex][1] *= -1;
-				}
-
+				if (existingIndex === -1) ms.push([field, 1]);
+				else ms[existingIndex][1] *= -1;
 			} else {
-				if (existingIndex !== -1) {
-					ms = [[field, -ms[existingIndex][1] ]];
-				} else {
-					ms = [[field, 1]];
-				}
+				if (existingIndex !== -1) ms = [[field, -ms[existingIndex][1]]];
+				else ms = [[field, 1]];
 			}
-
-			return {
-				...prev,
-				multiSortMeta: ms,
-			};
+			return { ...prev, multiSortMeta: ms };
 		});
 	};
-
 
 	const getSortOrderText = (index: number) => {
 		const suffixes = ["th", "st", "nd", "rd"];
@@ -379,90 +242,56 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 
 	const applyFilter = (field: string, value: any, matchMode?: string) => {
 		const newFilters = { ...activeFilters };
-
-		if (
-			value === null ||
-			value === undefined ||
-			value === "" ||
-			(Array.isArray(value) && value.length === 0)
-		) {
+		if (value === null || value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) {
 			delete newFilters[field];
 		} else {
 			if (matchMode === "dateRange" && typeof value === "object") {
 				const filterValue = [];
 				if (value.start) filterValue.push(value.start);
 				if (value.end) filterValue.push(value.end);
-
 				newFilters[field] = {
 					value: filterValue.length > 1 ? filterValue : filterValue[0],
 					matchMode: filterValue.length > 1 ? "BETWEEN" : "=",
 				};
 			} else {
-				newFilters[field] = {
-					value,
-					matchMode: matchMode || "contains",
-				};
+				newFilters[field] = { value, matchMode: matchMode || "contains" };
 			}
 		}
 
 		setActiveFilters(newFilters);
-
 		setSearchState((prev) => ({
 			...prev,
 			first: 0,
 			page: 1,
-			filters: Object.entries({...filters, ...newFilters}).map(([key, value]) => {
-				if (Array.isArray(value) && value.length > 0) {
-					return { field: key, matchMode: "IN", value: value };
+			filters: Object.entries({ ...filters, ...newFilters }).map(([key, v]) => {
+				if (Array.isArray(v) && v.length > 0) return { field: key, matchMode: "IN", value: v };
+				if (typeof v === "object" && v !== null && "matchMode" in v && "value" in v) {
+					return { field: key, matchMode: (v as any).matchMode, value: (v as any).value };
 				}
-				if (
-					typeof value === "object" &&
-					value !== null &&
-					"matchMode" in value &&
-					"value" in value
-				) {
-					return {
-						field: key,
-						matchMode: (value as any).matchMode,
-						value: (value as any).value,
-					};
-				}
-				return { field: key, matchMode: "=", value: value };
+				return { field: key, matchMode: "=", value: v };
 			}),
 		}));
 	};
 
-	const clearFilter = (field: string) => {
-		applyFilter(field, null);
-	};
-
+	const clearFilter = (field: string) => applyFilter(field, null);
 	const clearAllFilters = () => {
 		setActiveFilters({});
 		setSearchState((prev) => ({
 			...prev,
 			first: 0,
 			page: 1,
-			filters: prev.filters.filter((f) =>
-				Object.keys(filters).includes(f.field)
-			),
+			filters: prev.filters.filter((f) => Object.keys(filters).includes(f.field)),
 		}));
 	};
 
-	// 📌 Paginierung
 	const onPageChange = (newPage: number) => {
-		setSearchState((prev) => ({
-			...prev,
-			page: newPage,
-			first: (newPage - 1) * prev.rows,
-		}));
+		setSearchState((prev) => ({ ...prev, page: newPage, first: (newPage - 1) * prev.rows }));
 	};
 
 	const getColumnWidth = (col: Column) => {
 		const width = columnWidths[col.field];
 		return width ? `${width}px` : col.width ?? "auto";
 	};
-
-	const isResizingRef = useRef(false);
 
 	const startResize = (event: React.MouseEvent<HTMLSpanElement>, field: string) => {
 		event.preventDefault();
@@ -501,17 +330,11 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 		}
 		const next = Math.min(Math.max(Math.round(parsed), 1), totalPages);
 		setPageInput(String(next));
-		if (next !== searchState.page) {
-			onPageChange(next);
-		}
+		if (next !== searchState.page) onPageChange(next);
 	};
 
 	const focusEditor = (target: any, field: string) => {
-		if (
-			["select", "input", "textarea"].includes(target.tagName.toLowerCase())
-		) {
-			return;
-		}
+		if (["select", "input", "textarea"].includes(target.tagName.toLowerCase())) return;
 		const td = target.closest("td");
 		setTimeout(() => {
 			td?.querySelector("input,textarea,select")?.focus();
@@ -521,10 +344,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 	const enableEditing = (row: Row) => {
 		toggleRowSelection(row, true);
 		const id = row[datakey];
-		setEditingRecord((prev) => {
-			if (prev[id]) return prev;
-			return { ...prev, [id]: { ...row } }; // klonen, kein Ref-Sharing
-		});
+		setEditingRecord((prev) => (prev[id] ? prev : { ...prev, [id]: { ...row } }));
 	};
 
 	const disableEditing = (id: number) => {
@@ -535,21 +355,18 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 		});
 	};
 
-	const saveRow = (editingRecordId: number, row_ofs: number) => {
+	const saveRow = (editingRecordId: number, rowOfs: number) => {
 		setRecords((prev) => {
-			const newRecords = [...prev];
-			newRecords[row_ofs] = editingRecord[editingRecordId];
-			return newRecords;
+			const next = [...prev];
+			next[rowOfs] = editingRecord[editingRecordId];
+			return next;
 		});
 
 		setLoading(true);
-		const updateOrCreateRoute = editingRecordId > 0
-			? route("api.model.update", {
-					model: routemodel,
-					[datakey]: editingRecordId,
-					with: withRelations,
-			  })
-			: route("api.model.create", { model: routemodel, with: withRelations });
+		const updateOrCreateRoute =
+			editingRecordId > 0
+				? route("api.model.update", { model: routemodel, [datakey]: editingRecordId, with: withRelations })
+				: route("api.model.create", { model: routemodel, with: withRelations });
 
 		axios
 			.post(updateOrCreateRoute, editingRecord[editingRecordId])
@@ -558,22 +375,22 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 				disableEditing(editingRecordId);
 				toggleRowSelection(response.data, true);
 				setRecords((prev) => {
-					const newRecords = [...prev];
-					newRecords[row_ofs] = response.data;
-					return newRecords;
+					const next = [...prev];
+					next[rowOfs] = response.data;
+					return next;
 				});
 			})
-			.catch((error) => {
-				setError(error.response?.data || error.message || error.toString() || "Error");
+			.catch((err) => {
+				setError(err.response?.data || err.message || err.toString() || "Error");
 				setLoading(false);
 			});
 	};
 
-	const handleKeyDown = (e: any, field: string, row: Row, row_ofs: number) => {
+	const handleKeyDown = (e: any, field: string, row: Row, rowOfs: number) => {
 		if ((e.ctrlKey || e.metaKey) && e.key === "s") {
 			e.preventDefault();
 			flushSync(() => {});
-			saveRow(row[datakey], row_ofs);
+			saveRow(row[datakey], rowOfs);
 		}
 		if (e.key === "Escape") {
 			if (row[datakey] < 0) {
@@ -594,7 +411,6 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 	};
 
 	const toggleRowSelection = (row: Row, state?: boolean) => {
-		
 		if (editingRecord[row[datakey]]) state = true;
 
 		if (state === undefined) {
@@ -604,63 +420,67 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 					: [...prev, row]
 			);
 		} else if (state) {
-			if (selectedRecords.findIndex((r) => r[datakey] === row[datakey]) !== -1) {
-				/* skip if in list */
-				return;
-			}
-
-			updateSelectedRecords((prev) => [
-				...prev.filter((r) => r[datakey] !== row[datakey]),
-				row,
-			]);
+			if (selectedRecords.findIndex((r) => r[datakey] === row[datakey]) !== -1) return;
+			updateSelectedRecords((prev) => [...prev.filter((r) => r[datakey] !== row[datakey]), row]);
 		} else {
-			updateSelectedRecords((prev) =>
-				prev.filter((r) => r[datakey] !== row[datakey])
-			);
+			updateSelectedRecords((prev) => prev.filter((r) => r[datakey] !== row[datakey]));
 		}
 	};
 
-	const toggleSelectAll = () => {
-		updateSelectedRecords(
-			records.length === selectedRecords.length ? [] : [...records]
-		);
-	};
+	const toggleSelectAll = () => updateSelectedRecords(records.length === selectedRecords.length ? [] : [...records]);
 
 	const handleNewRecord = () => {
 		if (newRecord === false) return;
-
 		if (typeof newRecord === "string") {
 			window.location.href = newRecord;
 		} else if (typeof newRecord === "function") {
 			newRecord();
 		} else {
 			const newRow = { ...newRecord, [datakey]: nextTempIdRef.current-- };
-
 			setRecords((prev) => [newRow, ...prev]);
-			setEditingRecord((prev) => ({
-				...prev,
-				[newRow[datakey]]: newRow,
-			}));
+			setEditingRecord((prev) => ({ ...prev, [newRow[datakey]]: newRow }));
 		}
+	};
+
+	const deleteSelected = () => {
+		if (!confirm(tr("datatable.delete_confirm", "Are you sure you want to delete the selected records?"))) return;
+		selectedRecords
+			.filter((record) => Number(record?.[datakey]) > 0)
+			.forEach((record) => {
+				const index = records.findIndex((r) => r[datakey] === record[datakey]);
+				if (index === -1) return;
+				axios
+					.delete(route("api.model.delete", { model: routemodel, id: record[datakey] }))
+					.then(() => {
+						setRecords((prev) => {
+							const next = [...prev];
+							const idx = next.findIndex((r) => r[datakey] === record[datakey]);
+							if (idx !== -1) next.splice(idx, 1);
+							return next;
+						});
+						toggleRowSelection(record, false);
+						setTotalRecords((prev) => prev - 1);
+					})
+					.catch((err) => setError(err));
+			});
+		setActionMenuOpen(false);
+	};
+
+	const saveEditingRows = () => {
+		Object.keys(editingRecord).forEach((id) => {
+			const rowOfs = records.findIndex((r) => r[datakey] === editingRecord[Number(id)][datakey]);
+			if (rowOfs !== -1) saveRow(Number(id), rowOfs);
+		});
+		setActionMenuOpen(false);
 	};
 
 	const hasActiveFilters = Object.keys(activeFilters).length > 0;
 	const hasPersistedSelection = selectedRecords.some((record) => Number(record?.[datakey]) > 0);
-
-	const noEditor = columns.filter(c => c.editor).length === 0;
+	const noEditor = columns.filter((c) => c.editor).length === 0;
 
 	return (
-		<div
-			className={classNames("w-full h-full flex flex-col")}
-			style={{
-				...(height ? { height } : {}),
-			}}
-		>
-			<div
-				className="relative flex-grow overflow-auto w-full"
-				{...(height ? { style: { height } } : {})}
-			>
-				
+		<div className={classNames("w-full h-full flex flex-col")} style={{ ...(height ? { height } : {}) }}>
+			<div className="relative flex-grow overflow-auto w-full" {...(height ? { style: { height } } : {})}>
 				<ErrorToast error={error} onClose={() => setError(null)} />
 
 				<DataTableFilter
@@ -674,741 +494,94 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 					onToggle={() => setShowFilterPanel(false)}
 				/>
 
-				{/* 📌 Tabelle */}
 				<div className="bg-background dark:bg-gray-900 overflow-hidden w-full h-full flex-1 rounded-lg shadow-sm">
 					<div className="overflow-x-auto w-full h-full">
-						<table
-							ref={tableRef}
-							className="w-full min-w-full table-fixed border-collapse"
-						>
-							{/* 📌 Tabellenkopf */}
-							<thead
-								className="bg-background-600 dark:bg-gray-800 sticky top-0"
-								style={{ zIndex: headerZIndex }}
-							>
-								<tr>
-									<th
-										className=" px-3 py-2 text-left text-sm font-bold text-text-500 dark:text-gray-400 uppercase tracking-wider  border-gray-200 dark:border-gray-700 sticky left-0 z-20 bg-background-600 dark:bg-gray-800"
-										style={{ width: "3rem" }}
-									>
-										<Checkbox
-											checked={
-												records.length === selectedRecords.length &&
-												records.length > 0
-											}
-											onChange={toggleSelectAll}
-										/>
-										{/* Always show right border for checkbox column */}
-										<StickyRightDivider z={headerZIndex + 5} />
-									</th>
-									{columns.map((col, idx) => (
-										<th
-											key={col.field}
-											style={{
-												width: getColumnWidth(col),
-												...(col.frozen
-													? { left: stickyLeft(idx), zIndex: stickyZHead(idx) }
-													: {}),
-											}}
-											className={classNames(
-												"relative px-3 py-2 text-left text-sm font-bold text-text-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0",
-												col.frozen &&
-													"border-r-0 sticky bg-background-600 dark:bg-gray-800",
-												col.sortable &&
-																"cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-800/10"
-											)}
-											onClick={
-												!col.sortable
-													? undefined
-													: (e) => {
-															if (isResizingRef.current) {
-																return;
-															}
-															if (
-																(e.target as Element)?.closest(
-																	".filter-dropdown"
-																)
-															) {
-																return;
-															}
-															handleSort(col.field, e);
-													  }
-											}
-										>
-											<div className="flex items-center min-w-0">
-												<span className="truncate">{col.label}</span>
-												<div className="ml-2 flex items-center gap-1 flex-shrink-0">
-													{col.sortable && (
-													<div className="ml-2 flex items-center gap-1 flex-shrink-0">
-														{searchState.multiSortMeta.findIndex(([field]) => field === col.field) !== -1 ? (
-															<>
-																<span className="text-[0.5rem] font-medium text-white bg-primary px-1 py-0.25 rounded-full">
-																	{getSortOrderText(
-																		Math.abs(
-																			searchState.multiSortMeta.findIndex(([field]) => field === col.field) + 1
-																		)
-																	)}
-																</span>
-																<span className="text-primary text-sm">
-																	{(searchState.multiSortMeta.find(([field]) => field === col.field) || [col.field,1])[1] > 0
-																		? "↑"
-																		: "↓"}
-																</span>
-															</>
-														) : null}
-													</div>
-												)}
-												</div>
-											</div>
-
-											{col.frozen && (
-												<StickyRightDivider z={stickyZHead(idx) + 5} />
-											)}
-											<span
-												role="separator"
-												aria-orientation="vertical"
-												onMouseDown={(event) => startResize(event, col.field)}
-												className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/20"
-											/>
-										</th>
-									))}
-								</tr>
-							</thead>
-
-							<tbody className="bg-background dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-								{records.map((row, row_ofs) => {
-									let firstEditor = true;
-									const isSelected = selectedRecords.includes(row);
-
-									return (
-									<tr
-										key={row[datakey]}
-										className={classNames(
-											"group transition-colors duration-150",
-											isSelected &&
-												(row_ofs % 2 === 0
-													? "bg-primary-50 dark:bg-primary-900/20"
-													: "bg-primary-100 dark:bg-primary-900/30"),
-											row_ofs % 2 === 0
-												? "bg-background dark:bg-gray-900"
-												: "bg-background-600 dark:bg-gray-800"
-										)}
-										>
-											{/* Sticky checkbox TD (solid backgrounds in dark mode) */}
-											<td
-											className={classNames(
-													" px-3 py-2 whitespace-nowrap text-sm text-text-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 sticky left-0 z-10",
-													{
-														"bg-primary-50 dark:bg-primary-900/20 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30": isSelected && row_ofs % 2 === 0,
-														"bg-primary-100 dark:bg-primary-900/30 group-hover:bg-primary-200 dark:group-hover:bg-primary-900/40": isSelected && row_ofs % 2 !== 0,
-														"bg-background dark:bg-gray-900 group-hover:bg-primary-50 dark:group-hover:bg-gray-700": !isSelected && row_ofs % 2 === 0,
-														"bg-background-600 dark:bg-gray-800 group-hover:bg-primary-100 dark:group-hover:bg-gray-600": !isSelected && row_ofs % 2 !== 0,
-													},
-													"overflow-hidden"
-												)}
-											>
-												<Checkbox
-													checked={isSelected}
-													onChange={() => toggleRowSelection(row)}
-												/>
-
-												<StickyRightDivider z={stickyZBody(0) + 5} />
-											</td>
-
-											{columns.map((col, idx) => {
-												if (col.editor && firstEditor) {
-													col.editor_properties = col.editor_properties || {};
-													col.editor_properties.autoFocus = true;
-													firstEditor = false;
-												}
-
-												const isFrozen = col.frozen;
-												const isLastFrozen =
-													isFrozen && idx === lastFrozenIndex;
-
-												const stickyStyle = isFrozen
-													? {
-															left: stickyLeft(idx),
-															zIndex: stickyZBody(idx),
-													  }
-													: {};
-
-												return (
-													<td
-														data-col={col.field}
-														key={col.field}
-														style={{
-															width: getColumnWidth(col),
-															...stickyStyle,
-														}}
-													className={classNames(
-														"relative whitespace-nowrap text-sm text-text-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 last:border-r-0 [&_a]:font-semibold [&_a]:text-primary-700 [&_a]:underline-offset-2 [&_a]:transition-colors group-hover:[&_a]:text-primary-900 dark:[&_a]:text-primary-400 dark:group-hover:[&_a]:text-primary-200",
-														{
-															"px-3 py-2": !(
-																editingRecord[row[datakey]] && col.editor
-															),
-															// Sticky/frozen columns
-															["sticky border-r-0"]: isFrozen,
-															// Selected row
-															["bg-primary-50 dark:bg-primary-900/20 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30"]:
-																isSelected && row_ofs % 2 === 0,
-															["bg-primary-100 dark:bg-primary-900/30 group-hover:bg-primary-200 dark:group-hover:bg-primary-900/40"]:
-																isSelected && row_ofs % 2 !== 0,
-															["[&_a]:text-primary-900 dark:[&_a]:text-primary-100"]: isSelected,
-															// Unselected, even row
-															["bg-background dark:bg-gray-900 group-hover:bg-primary-50 dark:group-hover:bg-gray-700"]:
-																!isSelected && row_ofs % 2 === 0,
-															// Unselected, odd row
-															["bg-background-600 dark:bg-gray-800 group-hover:bg-primary-100 dark:group-hover:bg-gray-600"]:
-																!isSelected && row_ofs % 2 !== 0,
-														},
-														'overflow-hidden'
-														)}
-														onClick={
-															(() => {
-																if (noEditor) {
-																	return (event) => toggleRowSelection(row);
-																}
-																// If some row is being edited, clicking any cell enables editing that row
-																// Otherwise, clicking enables selection, double-click enables editing
-																if (Object.keys(editingRecord).length > 0) {
-																	return (event) => {
-																		enableEditing(row);
-																		focusEditor(event.target, col.field);
-																	};
-																}
-																return handleDoubleClick(
-																	(event) => toggleRowSelection(row),
-																	(event) => {
-																		enableEditing(row);
-																		focusEditor(event.target, col.field);
-																	}
-																);
-															})()
-														}
-													>
-														{editingRecord[row[datakey]] && col.editor ? (
-															<DataTableEditor
-																editor={col.editor}
-																column={col}
-																row={editingRecord[row[datakey]]}
-																datakey={datakey}
-																rowIndex={row_ofs}
-																onValueChange={setRowValue}
-																onKeyDown={handleKeyDown}
-															/>
-														) : (
-															<div className="text-text-900 dark:text-gray-100">
-																{(() => {
-																	const value = col.formatter
-																		? col.formatter(row, col.field)
-																		: DataTableFormatter.default(row, col.field);
-																	// Only render if value is a valid ReactNode
-																	if (
-																		typeof value === "string" ||
-																		typeof value === "number" ||
-																		React.isValidElement(value) ||
-																		value === null ||
-																		value === undefined
-																	) {
-																		return value;
-																	}
-																	// Fallback: render as JSON string
-																	return JSON.stringify(value);
-																})()}
-															</div>
-														)}
-
-														{isFrozen && (
-															<StickyRightDivider z={stickyZBody(idx) + 5} />
-														)}
-													</td>
-												);
-											})}
-										</tr>
-									);
-								})}
-								{records.length === 0 && (
-									<tr>
-										<td
-											colSpan={columns.length + 1}
-											className="h-12 px-3 py-2 text-sm text-text-400 dark:text-gray-500"
-										>
-											&nbsp;
-										</td>
-									</tr>
-								)}
-							</tbody>
+						<table ref={tableRef} className="w-full min-w-full table-fixed border-collapse">
+							<DataTableHeaderView
+								columns={columns}
+								recordsLength={records.length}
+								selectedRecordsLength={selectedRecords.length}
+								headerZIndex={headerZIndex}
+								multiSortMeta={searchState.multiSortMeta}
+								isResizingRef={isResizingRef}
+								onSort={handleSort}
+								onToggleSelectAll={toggleSelectAll}
+								onStartResize={startResize}
+								getColumnWidth={getColumnWidth}
+								stickyLeft={stickyLeft}
+								stickyZHead={stickyZHead}
+								getSortOrderText={getSortOrderText}
+							/>
+							<DataTableRowsView
+								records={records}
+								columns={columns}
+								datakey={datakey}
+								selectedRecords={selectedRecords}
+								editingRecord={editingRecord}
+								lastFrozenIndex={lastFrozenIndex}
+								noEditor={noEditor}
+								toggleRowSelection={toggleRowSelection}
+								enableEditing={enableEditing}
+								focusEditor={focusEditor}
+								setRowValue={setRowValue}
+								handleKeyDown={handleKeyDown}
+								stickyLeft={stickyLeft}
+								stickyZBody={stickyZBody}
+								getColumnWidth={getColumnWidth}
+							/>
 						</table>
 					</div>
 				</div>
 			</div>
 
-			{/* 📌 Paginierung */}
-			<div className="flex items-center justify-between bg-background-600 dark:bg-gray-800 px-4 py-2 dark:border-gray-700 text-xs">
-				<div className="flex items-center gap-2">
-
-					<div className="flex items-center gap-1">
-						<span className="text-text-600 dark:text-gray-400">
-								{tr("datatable.show", "Show:")}
-						</span>
-						<select
-							defaultValue={searchState.rows}
-							onChange={(e) =>
-								setSearchState((prev) => ({
-									...prev,
-									rows: parseInt(e.target.value),
-								}))
-							}
-							className="text-xs appearance-none rounded-lg bg-background dark:bg-gray-700 px-2 py-1 pr-5 text-text-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
-						>
-							{perPageList.map((lines) => (
-								<option key={lines}>{lines}</option>
-							))}
-						</select>
-					</div>
-
-					{!useGlobalSearch && (
-						<input
-							type="search"
-							value={searchState.search || ""}
-							onChange={(event) =>
-								setSearchState((prev) => ({
-									...prev,
-									search: event.target.value,
-									first: 0,
-									page: 1,
-								}))
-							}
-							placeholder={tr("datatable.search_placeholder", "Search...")}
-							className="text-xs rounded-lg bg-background dark:bg-gray-700 px-2 py-1 text-text-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 min-w-[180px]"
-						/>
-					)}
-
-					<nav aria-label="Pagination" className="flex items-center gap-1">
-						<NeutralButton
-							onClick={() => onPageChange(1)}
-							disabled={searchState.page === 1}
-							size="small"
-							className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
-						>
-							<ChevronDoubleLeftIcon className="h-3.5 w-3.5" />
-						</NeutralButton>
-
-						{condensed ? (
-							<div className="flex items-center gap-1">
-								<input
-									type="number"
-									min={1}
-									max={totalPages}
-									value={pageInput}
-									onChange={(e) => setPageInput(e.target.value)}
-									onBlur={commitPageInput}
-									onKeyDown={(event) => {
-										if (event.key === "Enter") {
-											commitPageInput();
-										}
-									}}
-									className="w-14 rounded border border-gray-300 bg-background px-2 py-1 text-xs text-text-700 focus:border-primary focus:ring-primary"
-								/>
-								<span className="text-xs text-text-400">/ {totalPages}</span>
-							</div>
-						) : (
-							<>
-								<NeutralButton
-									onClick={() => onPageChange(Math.max(searchState.page - 1, 1))}
-									disabled={searchState.page === 1}
-									size="small"
-									className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
-								>
-									<ChevronLeftIcon className="h-3.5 w-3.5" />
-								</NeutralButton>
-
-								{(() => {
-									const currentPage = searchState.page;
-									const pages = [];
-
-									pages.push(1);
-
-									let start = Math.max(2, currentPage - 1);
-									let end = Math.min(totalPages - 1, currentPage + 1);
-
-									// Adjust range for edge cases
-									if (currentPage <= 3) {
-										end = Math.min(totalPages - 1, 4);
-									} else if (currentPage >= totalPages - 2) {
-										start = Math.max(2, totalPages - 3);
-									}
-
-									if (start > 2) {
-										pages.push("...");
-									}
-
-									for (let i = start; i <= end; i++) {
-										if (i > 1 && i < totalPages) {
-											pages.push(i);
-										}
-									}
-
-									if (end < totalPages - 1) {
-										pages.push("...");
-									}
-
-									if (totalPages > 1) {
-										pages.push(totalPages);
-									}
-
-									return pages.map((page, index) => (
-										<React.Fragment key={index}>
-											{page === "..." ? (
-												<span className="px-2 py-1 text-xs text-text-400 dark:text-gray-500">
-													...
-												</span>
-											) : (
-												<button
-													onClick={() => onPageChange(page as number)}
-													className={classNames(
-														"px-2 py-1 text-xs rounded shadow-sm transition-all duration-200",
-														currentPage === page
-															? "bg-primary text-white"
-															: "bg-background dark:bg-gray-700 text-text-600 dark:text-gray-400 hover:bg-primary-50 dark:hover:bg-gray-600 hover:text-text-900 dark:hover:text-gray-100"
-													)}
-												>
-													{page}
-												</button>
-											)}
-										</React.Fragment>
-									));
-								})()}
-
-								<NeutralButton
-									onClick={() => onPageChange(searchState.page + 1)}
-									disabled={searchState.page >= totalPages}
-									size="small"
-									className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
-								>
-									<ChevronRightIcon className="h-3.5 w-3.5" />
-								</NeutralButton>
-							</>
-						)}
-
-						<NeutralButton
-							onClick={() => onPageChange(totalPages)}
-							disabled={searchState.page >= totalPages}
-							size="small"
-							className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
-						>
-							<ChevronDoubleRightIcon className="h-3.5 w-3.5" />
-						</NeutralButton>
-					</nav>
-
-					<div className="flex items-center gap-2">
-						{condensed ? (
-							<>
-								<NeutralButton
-									onClick={() => loadLazyData()}
-									size="small"
-									className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
-									title={tr("datatable.reload", "Reload")}
-								>
-									<ArrowPathIcon className={classNames("h-3.5 w-3.5", { "animate-spin": loading })} />
-								</NeutralButton>
-
-								{newRecord !== false && (
-									<PrimaryButton
-										onClick={handleNewRecord}
-										size="small"
-										className="h-7 px-2 py-0 text-xs"
-									>
-										<PlusIcon className="mr-1 h-3.5 w-3.5" />
-										{tr("datatable.new", "New")}
-									</PrimaryButton>
-								)}
-
-								<div className="relative" ref={actionMenuRef}>
-									<NeutralButton
-										onClick={() => setActionMenuOpen((open) => !open)}
-										size="small"
-										className="h-7 w-7 justify-center p-0 !border-0 shadow-sm"
-									>
-										<EllipsisHorizontalIcon className="h-3.5 w-3.5" />
-									</NeutralButton>
-									{actionMenuOpen && (
-										<div className="absolute bottom-0 right-0 z-20 mt-2 w-48 rounded-md border border-gray-200 bg-background py-1 text-xs text-text-700 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
-											{columns.length > 0 && (
-												<button
-													onClick={() => {
-														setShowFilterPanel(!showFilterPanel);
-														setActionMenuOpen(false);
-													}}
-													className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-primary-50 dark:hover:bg-gray-700 dark:text-gray-100"
-												>
-													<FunnelIcon className="size-4" />
-													<span>
-															{tr("datatable.filter", "Filter")}
-														{hasActiveFilters ? ` (${Object.keys(activeFilters).length})` : ""}
-													</span>
-												</button>
-											)}
-
-											{!disableDelete &&
-												hasPersistedSelection &&
-												Object.keys(editingRecord).length === 0 && (
-													<button
-														onClick={() => {
-															if (
-																!confirm(
-																	tr("datatable.delete_confirm", "Are you sure you want to delete the selected records?")
-																)
-															)
-																return;
-															selectedRecords
-																.filter((record) => Number(record?.[datakey]) > 0)
-																.forEach((record) => {
-																const index = records.findIndex(
-																	(r) => r[datakey] === record[datakey]
-																);
-																if (index !== -1) {
-																	axios
-																		.delete(
-																			route("api.model.delete", {
-																				model: routemodel,
-																				id: record[datakey],
-																			})
-																		)
-																		.then(() => {
-																			setRecords((records) => {
-																				const index = records.findIndex(
-																					(r) => r[datakey] === record[datakey]
-																				);
-																				if (index !== -1) {
-																					records.splice(index, 1);
-																				}
-																				return [...records];
-																			});
-																			toggleRowSelection(record, false);
-																			setTotalRecords((prev) => prev - 1);
-																		})
-																		.catch((error) => {
-																			setError(error);
-																		});
-																}
-																});
-															setActionMenuOpen(false);
-														}}
-														className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
-													>
-														<TrashIcon className="size-4" />
-														<span>{tr("datatable.delete", "Delete")}</span>
-													</button>
-												)}
-
-											{Object.keys(editingRecord).length > 0 && (
-												<button
-													onClick={() => {
-														Object.keys(editingRecord).forEach((id) => {
-															const row_ofs = records.findIndex(
-																(r) => r[datakey] === editingRecord[Number(id)][datakey]
-															);
-															if (row_ofs !== -1) saveRow(Number(id), row_ofs);
-														});
-														setActionMenuOpen(false);
-													}}
-													className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-primary-50 dark:hover:bg-gray-700 dark:text-gray-100"
-												>
-													<CheckIcon className="size-4" />
-													<span>{t("Save")}</span>
-												</button>
-											)}
-
-											{actions?.length > 0 && actions.map((action, idx) => {
-												const isDisabled = (typeof action.disabled === "function" ? action.disabled(selectedRecords) : action.disabled) ?? selectedRecords.length === 0;
-												return (
-													<button
-														key={idx}
-														onClick={() => {
-															if (isDisabled) return;
-															action.onClick(selectedRecords, loadLazyData);
-															setActionMenuOpen(false);
-														}}
-														disabled={isDisabled}
-														className={classNames(
-														"flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-primary-50 dark:hover:bg-gray-700 dark:text-gray-100",
-															isDisabled && "cursor-not-allowed opacity-50"
-														)}
-													>
-														{action.icon && (
-															<span aria-hidden="true" className="size-4">
-																{typeof action.icon == "string" ? <IconLibrary name={action.icon} />: action.icon }
-															</span>
-														)}
-														<span>{action.label}</span>
-													</button>
-												);
-											})}
-										</div>
-									)}
-								</div>
-							</>
-						) : (
-							<>
-								{columns.length > 0 && (
-									<NeutralButton
-										onClick={() => setShowFilterPanel(!showFilterPanel)}
-										size="small"
-										className={classNames(
-											"inline-flex items-center justify-center min-w-[72px] !border-0 shadow-sm",
-											showFilterPanel
-												? "bg-primary "
-												: hasActiveFilters
-												? "bg-primary-50 dark:bg-primary-900 text-primary"
-												: "",
-											"gap-1 relative"
-										)}
-									>
-										<FunnelIcon aria-hidden="true" className="size-3.5" />
-										{tr("datatable.filter", "Filter")}
-										{hasActiveFilters && (
-											<span className="ml-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 min-w-[16px] h-4 flex items-center justify-center">
-												{Object.keys(activeFilters).length}
-											</span>
-										)}
-									</NeutralButton>
-								)}
-
-								<NeutralButton
-									onClick={() => loadLazyData()}
-									className="flex items-center gap-1 text-xs px-2 py-2 !border-0 shadow-sm"
-								>
-									<ArrowPathIcon
-										aria-hidden="true"
-										className={classNames("size-2", { "animate-spin": loading })}
-									/>
-								</NeutralButton>
-
-								{!disableDelete &&
-									hasPersistedSelection &&
-									Object.keys(editingRecord).length === 0 && (
-										<DangerButton
-											size="small"
-											onClick={() => {
-												if (
-													!confirm(
-														tr("datatable.delete_confirm", "Are you sure you want to delete the selected records?")
-													)
-												)
-													return;
-												selectedRecords
-													.filter((record) => Number(record?.[datakey]) > 0)
-													.forEach((record) => {
-													const index = records.findIndex(
-														(r) => r[datakey] === record[datakey]
-													);
-													if (index !== -1) {
-														axios
-															.delete(
-																route("api.model.delete", {
-																	model: routemodel,
-																	id: record[datakey],
-																})
-															)
-															.then(() => {
-																setRecords((records) => {
-																	const index = records.findIndex(
-																		(r) => r[datakey] === record[datakey]
-																	);
-																	if (index !== -1) {
-																		records.splice(index, 1);
-																	}
-																	return [...records];
-																});
-																toggleRowSelection(record, false);
-																setTotalRecords((prev) => prev - 1);
-															})
-															.catch((error) => {
-																setError(error);
-															});
-													}
-													});
-											}}
-											className="text-xs flex items-center gap-2 px-2 py-1"
-										>
-											<TrashIcon aria-hidden="true" className="size-4" />
-											<span>{tr("datatable.delete", "Delete")}</span>
-										</DangerButton>
-									)}
-
-								{Object.keys(editingRecord).length > 0 && (
-									<PrimaryButton
-										onClick={() => {
-											Object.keys(editingRecord).forEach((id) => {
-												const row_ofs = records.findIndex(
-													(r) => r[datakey] === editingRecord[Number(id)][datakey]
-												);
-												if (row_ofs !== -1) saveRow(Number(id), row_ofs);
-											});
-										}}
-										size="small"
-										className="flex items-center gap-1.5"
-									>
-										<CheckIcon aria-hidden="true" className="size-3.5" />
-										<span>{t("Save")}</span>
-									</PrimaryButton>
-								)}
-
-								{newRecord !== false && (
-									<PrimaryButton
-										onClick={handleNewRecord}
-										size="small"
-										className="flex items-center gap-1.5"
-									>
-										<PlusIcon aria-hidden="true" className="size-3.5" />
-										<span>{tr("datatable.new", "New")}</span>
-									</PrimaryButton>
-								)}
-
-								{actions?.length > 0 && actions.map((action, idx) => {
-									const isDisabled = (typeof action.disabled === "function" ? action.disabled(selectedRecords) : action.disabled) ?? selectedRecords.length === 0;
-									const ButtonComponent =
-										action.variant === "danger"
-											? DangerButton
-											: action.variant === "link"
-											? "button"
-											: action.variant === "secondary"
-											? NeutralButton
-											: PrimaryButton;
-									return (
-										<ButtonComponent
-											key={idx}
-											onClick={() => action.onClick(selectedRecords, loadLazyData)}
-											disabled={isDisabled}
-											className={classNames("text-xs flex items-center gap-2 px-2 py-1", isDisabled && 'opacity-50 cursor-not-allowed')}
-										>
-											{action.icon && <span aria-hidden="true"  className="size-4">{typeof action.icon == "string" ? <IconLibrary name={action.icon} />: action.icon }</span>}
-											{action.label}
-										</ButtonComponent>
-									);
-								})}
-							</>
-						)}
-					</div>
-				</div>
-
-			{!condensed && 
-				<div className=" text-text-600 dark:text-gray-400">
-					{tr("datatable.displaying", "Displaying")} {1 + searchState.first} {tr("datatable.to", "to")}{" "}
-					{searchState.first + searchState.rows < totalRecords
-						? searchState.first + searchState.rows
-						: totalRecords}{" "}
-					{tr("datatable.of", "of")} {totalRecords} {totalRecords !== 1 ? tr("datatable.items", "items") : tr("datatable.item", "item")}
-				</div>
-			}
-			</div>
+			<DataTableFooterView
+				condensed={condensed}
+				columnsLength={columns.length}
+				showFilterPanel={showFilterPanel}
+				hasActiveFilters={hasActiveFilters}
+				activeFiltersCount={Object.keys(activeFilters).length}
+				onToggleFilterPanel={() => {
+					setShowFilterPanel(!showFilterPanel);
+					setActionMenuOpen(false);
+				}}
+				onReload={loadLazyData}
+				loading={loading}
+				canCreate={newRecord !== false}
+				onCreate={handleNewRecord}
+				actionMenuOpen={actionMenuOpen}
+				onToggleActionMenu={() => setActionMenuOpen((open) => !open)}
+				actionMenuRef={actionMenuRef}
+				canDelete={!disableDelete && hasPersistedSelection && Object.keys(editingRecord).length === 0}
+				onDeleteSelected={deleteSelected}
+				editingCount={Object.keys(editingRecord).length}
+				onSaveEditing={saveEditingRows}
+				actions={actions}
+				selectedRecords={selectedRecords}
+				onAction={(action) => {
+					action.onClick(selectedRecords, loadLazyData);
+					setActionMenuOpen(false);
+				}}
+				perPageList={perPageList}
+				rows={searchState.rows}
+				onRowsChange={(rows) => setSearchState((prev) => ({ ...prev, rows }))}
+				useGlobalSearch={useGlobalSearch}
+				search={searchState.search || ""}
+				onSearchChange={(search) => setSearchState((prev) => ({ ...prev, search, first: 0, page: 1 }))}
+				page={searchState.page}
+				totalPages={totalPages}
+				onPageChange={onPageChange}
+				pageInput={pageInput}
+				onPageInputChange={setPageInput}
+				onPageInputCommit={commitPageInput}
+				displayStart={1 + searchState.first}
+				displayEnd={searchState.first + searchState.rows < totalRecords ? searchState.first + searchState.rows : totalRecords}
+				totalRecords={totalRecords}
+				tr={tr}
+				t={t}
+			/>
 		</div>
 	);
 });
-
-
 
 export default DataTable;
 export type { Column, DataTableFilterConfig };
