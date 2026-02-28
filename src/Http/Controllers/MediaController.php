@@ -13,9 +13,59 @@ use Illuminate\Http\UploadedFile;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Storage;
+use Str;
 
 class MediaController extends Controller
 {
+    protected function canEditMedia(Media $media): bool
+    {
+        if (!$media->user_id) {
+            return true;
+        }
+
+        return (int) $media->user_id === (int) Auth::id();
+    }
+
+    public function edit(Media $media): Response
+    {
+        abort_unless($this->canEditMedia($media), 403);
+
+        return Inertia::render('Media/Edit', [
+            'media' => $media,
+            'isAttached' => (bool) ($media->mediable_id && $media->mediable_type),
+        ]);
+    }
+
+    public function update(Request $request, Media $media): RedirectResponse
+    {
+        abort_unless($this->canEditMedia($media), 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'tags' => ['nullable'],
+        ]);
+
+        $tags = $validated['tags'] ?? null;
+        if (is_string($tags)) {
+            $tags = collect(preg_split('/[\s,;]+/', $tags))
+                ->filter(fn ($tag) => filled($tag))
+                ->map(fn ($tag) => trim((string) $tag))
+                ->values()
+                ->all();
+        } elseif ($tags === null) {
+            $tags = [];
+        }
+
+        $media->fill([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? '',
+            'tags' => $tags,
+        ]);
+        $media->save();
+
+        return redirect()->route('media.edit', [$media->id]);
+    }
 
     public function upload(Request $request) {
 
@@ -41,12 +91,19 @@ class MediaController extends Controller
                 $storage = 'public';
             }
 
+            $uploadUuid = (string) Str::uuid();
+            $originalName = $file->getClientOriginalName();
+            $extension = $file->getClientOriginalExtension();
+            $baseName = pathinfo($originalName, PATHINFO_FILENAME);
+            $safeBaseName = Str::slug($baseName) ?: 'file';
+            $targetFilename = $safeBaseName . ($extension ? '.' . $extension : '');
+
             $defaults = [
-                'name' => $file->getClientOriginalName(),
-                'description' => $file->getClientOriginalName(),
+                'name' => $originalName,
+                'description' => $originalName,
                 'tags' => $key,
                 'storage' => $storage,
-                'filename' => $filenamePrefix . '/' . date('Y/m') . '/' . basename($file->getFilename()) . '.' . $file->getClientOriginalExtension(),
+                'filename' => $filenamePrefix . '/' . date('Y/m') . '/' . $uploadUuid . '/' . $targetFilename,
                 'private' => true,
             ];
 
@@ -66,7 +123,7 @@ class MediaController extends Controller
         $chunkIndex = $request->input('chunk_index');
         $totalChunks = $request->input('total_chunks');
         $originalName = $request->input('filename');
-        $diskKey = $request->input('disk', 'public');
+        $diskKey = $request->input('disk', 'local');
 
         $file = $request->file('chunk');
         if (!$file instanceof UploadedFile) {
@@ -87,25 +144,49 @@ class MediaController extends Controller
             return response()->json(['status' => 'waiting']);
         }
 
+        // Guard against race conditions: only continue when all expected chunk files exist.
+        for ($i = 0; $i < $totalChunks; $i++) {
+            if (!is_file("{$tempDir}/chunk_{$i}")) {
+                return response()->json(['status' => 'waiting']);
+            }
+        }
+
         // Zusammensetzen
-        $filename = date('Y/m') . '/' . $uuid . '_' . basename($originalName);
-        $disk = config("filesystems.disks.{$diskKey}") ? $diskKey : 'public';
+        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+        $baseName = pathinfo($originalName, PATHINFO_FILENAME);
+        $safeBaseName = Str::slug($baseName) ?: 'upload';
+        $targetFilename = $safeBaseName . ($extension ? '.' . $extension : '');
+        $filename = date('Y/m') . '/' . $uuid . '/' . $targetFilename;
+        $disk = config("filesystems.disks.{$diskKey}") ? $diskKey : 'local';
         $targetPath = Storage::disk($disk)->path($filename);
         $targetDir = dirname($targetPath);
         if (!is_dir($targetDir)) {
             mkdir($targetDir, 0777, true);
         }
 
-        $output = fopen($targetPath, 'ab');
+        $output = fopen($targetPath, 'wb');
+        if ($output === false) {
+            return response()->json(['error' => 'failed to assemble upload'], 500);
+        }
         for ($i = 0; $i < $totalChunks; $i++) {
             $chunk = "{$tempDir}/chunk_{$i}";
             $in = fopen($chunk, 'rb');
+            if ($in === false) {
+                fclose($output);
+                return response()->json(['status' => 'waiting']);
+            }
             stream_copy_to_stream($in, $output);
             fclose($in);
             unlink($chunk);
         }
         fclose($output);
         rmdir($tempDir);
+
+        if (!Storage::disk($disk)->exists($filename)) {
+            return response()->json(['error' => 'assembled file missing'], 500);
+        }
+
+        $mimeType = @mime_content_type($targetPath) ?: null;
 
         // Media anlegen
         $media = new Media([
@@ -114,10 +195,9 @@ class MediaController extends Controller
             'tags' => 'chunked',
             'storage' => $disk,
             'filename' => '/' . $filename,
+            'mimetype' => $mimeType,
             'private' => true,
         ]);
-        $media->save();
-        $media->setContent(file_get_contents($targetPath));
         $media->save();
 
         return response()->json(['done' => true, 'media' => $media]);

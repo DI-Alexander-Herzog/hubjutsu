@@ -248,6 +248,17 @@ function SingleMediaUpload({
   const [progress, setProgress] = useState<number>(0);
   const [err, setErr] = useState<string | null>(null);
   const [pasteActive, setPasteActive] = useState(false);
+  const isAttached = Boolean(
+    currentValue &&
+      typeof currentValue === 'object' &&
+      !isMediaMarkedForDeletion(currentValue) &&
+      currentValue.mediable_id &&
+      currentValue.mediable_type
+  );
+  const attachedMediaId =
+    currentValue && typeof currentValue === 'object' && currentValue.id
+      ? currentValue.id
+      : null;
 
   const upload = async (selectedFile: File) => {
     const chunkSize = 1024 * 512; // 512KB
@@ -364,6 +375,15 @@ function SingleMediaUpload({
     } as unknown as SyntheticEvent);
   };
 
+  const handleEdit = () => {
+    if (!isAttached || !attachedMediaId || disabled) return;
+    const shouldNavigate = window.confirm(
+      'Zum Media Edit wechseln? Aktuelle Änderungen gehen womöglich verloren.'
+    );
+    if (!shouldNavigate) return;
+    window.location.assign(route('media.edit', [attachedMediaId]));
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: accept ? { [accept]: [] } : undefined,
@@ -418,14 +438,26 @@ function SingleMediaUpload({
           )}
 
           {(previewType || currentValue) && (
-            <button
-              type="button"
-              className="text-xs text-tertiary hover:text-tertiary/80"
-              onClick={handleRemove}
-              disabled={disabled}
-            >
-              {t('media.remove_file')}
-            </button>
+            <div className="flex items-center gap-3">
+              {isAttached && (
+                <button
+                  type="button"
+                  className="text-xs text-secondary hover:text-secondary/80"
+                  onClick={handleEdit}
+                  disabled={disabled}
+                >
+                  {t('Bearbeiten')}
+                </button>
+              )}
+              <button
+                type="button"
+                className="text-xs text-tertiary hover:text-tertiary/80"
+                onClick={handleRemove}
+                disabled={disabled}
+              >
+                {t('media.remove_file')}
+              </button>
+            </div>
           )}
         </div>
       </div>

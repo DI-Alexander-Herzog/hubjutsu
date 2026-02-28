@@ -162,7 +162,14 @@ class Media extends Base {
 
         if ($currentStorage !== $storage || ($category && !str_starts_with($file, $filenamePrefix . '/'))) {
             $contents = Storage::disk($currentStorage)->get($file);
-            $newFilename = $filenamePrefix . '/' . $this->created_at->format('Y/m') . '/' . basename($file);
+            // Keep each media file in its own scoped folder to avoid filename collisions on relocate.
+            $newFilename = $filenamePrefix
+                . '/'
+                . $this->created_at->format('Y/m')
+                . '/'
+                . $this->getKey()
+                . '/'
+                . basename($file);
             Storage::disk($storage)->put($newFilename, $contents);
             $this->storage = $storage;
             $this->filename = $newFilename;
