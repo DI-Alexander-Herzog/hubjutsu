@@ -7,6 +7,7 @@ import DataTableFooterView from "@/Components/DataTableFooterView";
 import ErrorToast from "@/Components/ErrorToast";
 import type { Column, DataTableAction, DataTableFilterConfig, Row } from "@/Components/DataTableTypes";
 import { useLaravelReactI18n } from "laravel-react-i18n";
+import { useSearch } from "@/Components/SearchContext";
 
 interface DataTableDatasetProps {
 	dataset: Row[];
@@ -71,7 +72,7 @@ const DataTableDataset = forwardRef<DataTableDatasetRef, DataTableDatasetProps>(
 	columns,
 	height = null,
 	perPage = 20,
-	useGlobalSearch = false,
+	useGlobalSearch = true,
 	defaultSortField = undefined,
 	actions = [],
 	condensed = false,
@@ -97,6 +98,7 @@ const DataTableDataset = forwardRef<DataTableDatasetRef, DataTableDatasetProps>(
 	};
 
 	const { t } = useLaravelReactI18n();
+	const { query } = useSearch();
 	const tr = (key: string, fallback: string) => {
 		const translated = t(key);
 		return translated === key ? fallback : translated;
@@ -153,7 +155,7 @@ const DataTableDataset = forwardRef<DataTableDatasetRef, DataTableDatasetProps>(
 	const [error, setError] = useState<null | string | any>(null);
 	const [showFilterPanel, setShowFilterPanel] = useState(false);
 	const [activeFilters, setActiveFilters] = useState<{ [field: string]: any }>({});
-	const [search, setSearch] = useState("");
+	const [search, setSearch] = useState(() => (useGlobalSearch ? query : ""));
 	const [page, setPage] = useState(1);
 	const [rows, setRows] = useState(perPage);
 	const [multiSortMeta, setMultiSortMeta] = useState<Array<[string, number]>>(() => {
@@ -201,10 +203,16 @@ const DataTableDataset = forwardRef<DataTableDatasetRef, DataTableDatasetProps>(
 		return () => document.removeEventListener("click", handleClick);
 	}, [actionMenuOpen]);
 
+	useEffect(() => {
+		if (!useGlobalSearch) return;
+		setSearch((prev) => (prev === query ? prev : query));
+		setPage(1);
+	}, [query, useGlobalSearch]);
+
 	const filteredAndSorted = useMemo(() => {
 		let next = [...indexedDataset];
 
-		if (!useGlobalSearch && search.trim() !== "") {
+		if (search.trim() !== "") {
 			const q = search.toLowerCase();
 			next = next.filter((row: DatasetRow) =>
 				columns.some((col) => String(row?.[col.field] ?? "").toLowerCase().includes(q))
@@ -380,6 +388,7 @@ const DataTableDataset = forwardRef<DataTableDatasetRef, DataTableDatasetProps>(
 	const toggleSelectAll = () => updateSelectedRecords(records.length === selectedRecords.length ? [] : [...records]);
 
 	const hasActiveFilters = Object.keys(activeFilters).length > 0;
+	const hasFilterableColumns = columns.some((col) => !!col.filter);
 
 	return (
 		<div className={classNames("w-full h-full flex flex-col")} style={{ ...(height ? { height } : {}) }}>
@@ -440,6 +449,7 @@ const DataTableDataset = forwardRef<DataTableDatasetRef, DataTableDatasetProps>(
 			<DataTableFooterView
 				condensed={condensed}
 				columnsLength={columns.length}
+				hasFilterableColumns={hasFilterableColumns}
 				showFilterPanel={showFilterPanel}
 				hasActiveFilters={hasActiveFilters}
 				activeFiltersCount={Object.keys(activeFilters).length}

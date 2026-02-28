@@ -21,6 +21,7 @@ import type { DataTableAction, Row } from "@/Components/DataTableTypes";
 interface DataTableFooterViewProps {
 	condensed: boolean;
 	columnsLength: number;
+	hasFilterableColumns: boolean;
 	showFilterPanel: boolean;
 	hasActiveFilters: boolean;
 	activeFiltersCount: number;
@@ -61,6 +62,7 @@ interface DataTableFooterViewProps {
 const DataTableFooterView: React.FC<DataTableFooterViewProps> = ({
 	condensed,
 	columnsLength,
+	hasFilterableColumns,
 	showFilterPanel,
 	hasActiveFilters,
 	activeFiltersCount,
@@ -115,7 +117,7 @@ const DataTableFooterView: React.FC<DataTableFooterViewProps> = ({
 					</select>
 				</div>
 
-				{!useGlobalSearch && (
+				{!useGlobalSearch && hasFilterableColumns && showFilterPanel && (
 					<input
 						type="search"
 						value={search}

@@ -477,6 +477,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 	const hasActiveFilters = Object.keys(activeFilters).length > 0;
 	const hasPersistedSelection = selectedRecords.some((record) => Number(record?.[datakey]) > 0);
 	const noEditor = columns.filter((c) => c.editor).length === 0;
+	const hasFilterableColumns = columns.some((col) => !!col.filter);
 
 	return (
 		<div className={classNames("w-full h-full flex flex-col")} style={{ ...(height ? { height } : {}) }}>
@@ -537,6 +538,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 			<DataTableFooterView
 				condensed={condensed}
 				columnsLength={columns.length}
+				hasFilterableColumns={hasFilterableColumns}
 				showFilterPanel={showFilterPanel}
 				hasActiveFilters={hasActiveFilters}
 				activeFiltersCount={Object.keys(activeFilters).length}
