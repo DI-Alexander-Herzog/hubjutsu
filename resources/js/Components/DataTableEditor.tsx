@@ -229,6 +229,7 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 	const [progress, setProgress] = useState(0);
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [pasteActive, setPasteActive] = useState(false);
 
 	useEffect(() => {
 		setPreview(getMediaPreview(currentValue));
@@ -316,6 +317,44 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 		[uploadFile]
 	);
 
+	const extractClipboardFiles = (clipboardData: DataTransfer | null | undefined) => {
+		if (!clipboardData) return [] as File[];
+		const files: File[] = [];
+		if (clipboardData.items?.length) {
+			for (const item of Array.from(clipboardData.items)) {
+				if (item.kind !== "file") continue;
+				const file = item.getAsFile();
+				if (file) files.push(file);
+			}
+		}
+		if (!files.length && clipboardData.files?.length) {
+			files.push(...Array.from(clipboardData.files));
+		}
+		return files;
+	};
+
+	const handlePaste = useCallback(
+		(event: React.ClipboardEvent<HTMLDivElement>) => {
+			const files = extractClipboardFiles(event.clipboardData);
+			if (!files.length) return;
+			event.preventDefault();
+			onDrop(files);
+		},
+		[onDrop]
+	);
+
+	useEffect(() => {
+		if (!pasteActive || uploading) return;
+		const onDocumentPaste = (event: ClipboardEvent) => {
+			const files = extractClipboardFiles(event.clipboardData);
+			if (!files.length) return;
+			event.preventDefault();
+			onDrop(files);
+		};
+		document.addEventListener("paste", onDocumentPaste);
+		return () => document.removeEventListener("paste", onDocumentPaste);
+	}, [pasteActive, uploading, onDrop]);
+
 	const dropzoneAccept = useMemo(() => {
 		if (!editorProps.accept) return undefined;
 		if (typeof editorProps.accept === "string") {
@@ -352,9 +391,12 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 			className="flex items-center gap-3 text-xs text-text-800 dark:text-gray-100"
 			tabIndex={0}
 			onKeyDown={(event) => onKeyDown(event)}
+			onPaste={handlePaste}
 		>
 			<div
 				{...rootProps}
+				onMouseEnter={() => setPasteActive(true)}
+				onMouseLeave={() => setPasteActive(false)}
 				className={`group relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed transition ${
 					isDragActive
 						? "border-primary-500 bg-primary-50"
