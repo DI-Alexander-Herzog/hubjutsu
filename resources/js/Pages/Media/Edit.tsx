@@ -14,6 +14,15 @@ interface MediaEditProps {
 
 type CropBox = { x: number; y: number; w: number; h: number };
 type SubtitleTrack = { label: string; lang: string; format: string; src: string };
+type VideoSegment = { from: number; to: number };
+const SEGMENT_DECIMALS = 3;
+const SEGMENT_MIN_GAP = 0.05;
+const SEGMENT_EPSILON = 0.0005;
+
+function roundSegmentValue(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Number(value.toFixed(SEGMENT_DECIMALS));
+}
 
 function getMediaUrl(media: Record<string, any>): string | null {
   if (media?.id) {
@@ -46,10 +55,6 @@ function toNumberOrNull(value: unknown): number | null {
 
 function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, value));
-}
-
-function clampNonNegative(value: number): number {
-  return Math.max(0, value);
 }
 
 function formatPercent(value: number): string {
@@ -125,6 +130,50 @@ function parseSubtitlesJson(value: unknown): SubtitleTrack[] | null {
         src: typeof entry?.src === 'string' ? entry.src : '',
       }))
       .filter((entry) => entry.src !== '');
+  } catch (error) {
+    return null;
+  }
+}
+
+function normalizeVideoSegments(segments: VideoSegment[], duration?: number): VideoSegment[] {
+  const max = Number.isFinite(duration) && duration && duration > 0 ? duration : null;
+  const prepared = segments
+    .map((segment) => {
+      const from = roundSegmentValue(Math.max(0, Number(segment.from)));
+      const rawTo = roundSegmentValue(Math.max(0, Number(segment.to)));
+      const to = roundSegmentValue(max !== null ? Math.min(rawTo, max) : rawTo);
+      return { from, to };
+    })
+    .filter((segment) => Number.isFinite(segment.from) && Number.isFinite(segment.to) && segment.to > segment.from)
+    .sort((a, b) => a.from - b.from);
+
+  const merged: VideoSegment[] = [];
+  for (const segment of prepared) {
+    const last = merged[merged.length - 1];
+    if (!last) {
+      merged.push(segment);
+      continue;
+    }
+    // Merge only when segments truly overlap, not when they just touch at a cut boundary.
+    if (segment.from < last.to - SEGMENT_EPSILON) {
+      last.to = roundSegmentValue(Math.max(last.to, segment.to));
+      continue;
+    }
+    merged.push(segment);
+  }
+
+  return merged;
+}
+
+function parseVideoSegmentsJson(value: unknown): VideoSegment[] | null {
+  if (!value || typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return null;
+    return normalizeVideoSegments(parsed.map((entry) => ({
+      from: Number(entry?.from),
+      to: Number(entry?.to),
+    })));
   } catch (error) {
     return null;
   }
@@ -396,38 +445,157 @@ function VisualVideoEditor({
   setData: (key: string, value: any) => void;
   subtitles: SubtitleTrack[];
 }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const timelineRef = useRef<HTMLDivElement | null>(null);
+  const seekingInternallyRef = useRef(false);
+  const dragBoundaryRef = useRef<{ segmentIndex: number; edge: 'from' | 'to' } | null>(null);
   const [duration, setDuration] = useState(0);
+  const [playhead, setPlayhead] = useState(0);
+  const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
+  const [previewSegmentsOnly, setPreviewSegmentsOnly] = useState(true);
 
-  const rawFrom = toNumberOrNull(data.video_segment_from);
-  const rawTo = toNumberOrNull(data.video_segment_to);
-  const max = duration > 0 ? duration : 0;
+  const parsedSegments = parseVideoSegmentsJson(data.video_segments_json) ?? [];
+  const segments = normalizeVideoSegments(parsedSegments, duration);
+  const currentSegment = segments[activeSegmentIndex] ?? null;
 
-  const from = rawFrom !== null ? clampNonNegative(rawFrom) : 0;
-  const toCandidate = rawTo !== null ? clampNonNegative(rawTo) : max;
-  const to = Math.max(from, max > 0 ? Math.min(toCandidate, max) : toCandidate);
-  const safeFrom = max > 0 ? Math.min(from, max) : from;
+  const writeSegments = (nextSegments: VideoSegment[]) => {
+    const normalized = normalizeVideoSegments(nextSegments, duration);
+    setData('video_segments_json', JSON.stringify(normalized, null, 2));
+    const nextIndex = Math.min(Math.max(activeSegmentIndex, 0), Math.max(0, normalized.length - 1));
+    setActiveSegmentIndex(nextIndex);
+  };
 
-  const syncFrom = (nextValue: number) => {
-    const clamped = max > 0 ? Math.min(clampNonNegative(nextValue), max) : clampNonNegative(nextValue);
-    setData('video_segment_from', clamped.toFixed(2));
-    if (rawTo !== null && rawTo < clamped) {
-      setData('video_segment_to', clamped.toFixed(2));
+  const seekTo = (seconds: number) => {
+    const next = Math.max(0, Math.min(seconds, duration > 0 ? duration : seconds));
+    setPlayhead(next);
+    if (videoRef.current) {
+      seekingInternallyRef.current = true;
+      videoRef.current.currentTime = next;
+      window.setTimeout(() => {
+        seekingInternallyRef.current = false;
+      }, 0);
     }
   };
 
-  const syncTo = (nextValue: number) => {
-    const clamped = max > 0 ? Math.min(clampNonNegative(nextValue), max) : clampNonNegative(nextValue);
-    setData('video_segment_to', Math.max(clamped, safeFrom).toFixed(2));
+  const findSegmentIndexAt = (time: number): number => {
+    return segments.findIndex((segment) => time >= segment.from - SEGMENT_EPSILON && time <= segment.to + SEGMENT_EPSILON);
   };
 
-  const clearSegment = () => {
-    setData('video_segment_from', '');
-    setData('video_segment_to', '');
+  const jumpToNearestSegmentFrom = (time: number): number | null => {
+    const next = segments.find((segment) => segment.from >= time);
+    if (next) return next.from;
+    const prev = [...segments].reverse().find((segment) => segment.to <= time);
+    if (prev) return prev.to;
+    return null;
+  };
+
+  const enforceSegmentPreview = (time: number, keepPlaying: boolean) => {
+    if (!previewSegmentsOnly || segments.length === 0 || !videoRef.current) return;
+    const idx = findSegmentIndexAt(time);
+    if (idx >= 0) {
+      const current = segments[idx];
+      if (time >= current.to - 0.03) {
+        const next = segments[idx + 1];
+        if (next) {
+          seekTo(next.from);
+          if (keepPlaying) {
+            videoRef.current.play().catch(() => {});
+          }
+        } else {
+          videoRef.current.pause();
+          seekTo(current.to);
+        }
+      }
+      return;
+    }
+
+    const target = jumpToNearestSegmentFrom(time);
+    if (target === null) return;
+    seekTo(target);
+    if (keepPlaying) {
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const cutAtPlayhead = () => {
+    const segmentIndex = findSegmentIndexAt(playhead);
+    console.log('idx', segmentIndex);
+    if (segmentIndex < 0) return;
+    const segmentToSplit = segments[segmentIndex];
+    console.log('split', segmentToSplit);
+    if (!segmentToSplit) return;
+    if (playhead <= segmentToSplit.from + SEGMENT_MIN_GAP || playhead >= segmentToSplit.to - SEGMENT_MIN_GAP) {
+      console.log('zu knapp', playhead);
+      return;
+    }
+
+    const splitAt = roundSegmentValue(playhead);
+    const next = [
+      ...segments.slice(0, segmentIndex),
+      { from: roundSegmentValue(segmentToSplit.from), to: splitAt },
+      { from: splitAt, to: roundSegmentValue(segmentToSplit.to) },
+      ...segments.slice(segmentIndex + 1),
+    ];
+    console.log('next', next);
+    writeSegments(next);
+    setActiveSegmentIndex(segmentIndex + 1);
+  };
+  const segmentIndexAtPlayhead = findSegmentIndexAt(playhead);
+  const canCutAtPlayhead = segmentIndexAtPlayhead >= 0
+    && playhead > (segments[segmentIndexAtPlayhead]?.from ?? 0) + SEGMENT_MIN_GAP
+    && playhead < (segments[segmentIndexAtPlayhead]?.to ?? 0) - SEGMENT_MIN_GAP;
+
+  const timelineSeek = (clientX: number) => {
+    const rect = timelineRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || duration <= 0) return;
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    seekTo(ratio * duration);
+  };
+
+  const timelineSecondsFromClientX = (clientX: number): number | null => {
+    const rect = timelineRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || duration <= 0) return null;
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    return ratio * duration;
+  };
+
+  const updateSegmentBoundary = (segmentIndex: number, edge: 'from' | 'to', seconds: number) => {
+    if (!Number.isFinite(seconds) || !segments[segmentIndex]) return;
+    const minSize = SEGMENT_MIN_GAP;
+    const next = [...segments];
+    const current = { ...next[segmentIndex] };
+    const prev = segmentIndex > 0 ? next[segmentIndex - 1] : null;
+    const after = segmentIndex < next.length - 1 ? next[segmentIndex + 1] : null;
+
+    if (edge === 'from') {
+      const min = prev ? prev.to : 0;
+      const max = current.to - minSize;
+      current.from = roundSegmentValue(Math.min(Math.max(seconds, min), max));
+    } else {
+      const min = current.from + minSize;
+      const max = after ? after.from : duration;
+      current.to = roundSegmentValue(Math.min(Math.max(seconds, min), max));
+    }
+
+    next[segmentIndex] = current;
+    writeSegments(next);
+  };
+
+  const updateSegmentField = (index: number, field: 'from' | 'to', value: number) => {
+    const next = [...segments];
+    next[index] = { ...next[index], [field]: roundSegmentValue(Number.isFinite(value) ? value : 0) };
+    writeSegments(next);
+  };
+
+  const removeSegment = (index: number) => {
+    const next = segments.filter((_, i) => i !== index);
+    writeSegments(next);
   };
 
   return (
     <div className="space-y-3">
       <video
+        ref={videoRef}
         src={mediaUrl}
         controls
         className="max-h-72 w-full rounded border border-secondary/20 bg-black"
@@ -435,10 +603,22 @@ function VisualVideoEditor({
           const nextDuration = event.currentTarget.duration;
           if (Number.isFinite(nextDuration) && nextDuration > 0) {
             setDuration(nextDuration);
-            if (rawTo === null) {
-              setData('video_segment_to', nextDuration.toFixed(2));
+            if (segments.length === 0) {
+              writeSegments([{ from: 0, to: nextDuration }]);
             }
           }
+        }}
+        onPlay={(event) => enforceSegmentPreview(event.currentTarget.currentTime, true)}
+        onSeeking={(event) => {
+          const nextTime = event.currentTarget.currentTime;
+          setPlayhead(nextTime);
+          if (seekingInternallyRef.current) return;
+          enforceSegmentPreview(nextTime, !event.currentTarget.paused);
+        }}
+        onTimeUpdate={(event) => {
+          const nextTime = event.currentTarget.currentTime;
+          setPlayhead(nextTime);
+          enforceSegmentPreview(nextTime, !event.currentTarget.paused);
         }}
       >
         {subtitles.map((track, index) => (
@@ -452,61 +632,155 @@ function VisualVideoEditor({
         ))}
       </video>
 
-      {max > 0 && (
+      {duration > 0 && (
         <div className="space-y-2 rounded border border-secondary/20 p-3">
           <div className="text-xs text-text-500 dark:text-gray-400">
-            Segment-Schieber: {formatSeconds(safeFrom)} bis {formatSeconds(to)} (Dauer {formatSeconds(max)})
+            Cursor: {formatSeconds(playhead)} / {formatSeconds(duration)}
           </div>
-          <div className="relative h-8">
-            <input
-              type="range"
-              min={0}
-              max={max}
-              step={0.1}
-              value={safeFrom}
-              onChange={(event) => syncFrom(Number(event.target.value))}
-              className="absolute inset-0 w-full"
-            />
-            <input
-              type="range"
-              min={0}
-              max={max}
-              step={0.1}
-              value={to}
-              onChange={(event) => syncTo(Number(event.target.value))}
-              className="absolute inset-0 w-full"
+          <div
+            ref={timelineRef}
+            role="slider"
+            tabIndex={0}
+            aria-valuemin={0}
+            aria-valuemax={duration}
+            aria-valuenow={playhead}
+            className="relative h-8 cursor-pointer rounded border border-secondary/30 bg-secondary/10"
+            onClick={(event) => {
+              timelineSeek(event.clientX);
+              const seconds = timelineSecondsFromClientX(event.clientX);
+              if (seconds === null) return;
+              const idx = findSegmentIndexAt(seconds);
+              if (idx >= 0) setActiveSegmentIndex(idx);
+            }}
+            onPointerMove={(event) => {
+              const drag = dragBoundaryRef.current;
+              if (!drag) return;
+              event.preventDefault();
+              const seconds = timelineSecondsFromClientX(event.clientX);
+              if (seconds === null) return;
+              updateSegmentBoundary(drag.segmentIndex, drag.edge, seconds);
+            }}
+            onPointerUp={() => {
+              dragBoundaryRef.current = null;
+            }}
+            onPointerLeave={() => {
+              dragBoundaryRef.current = null;
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                seekTo(playhead - 0.5);
+              } else if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                seekTo(playhead + 0.5);
+              }
+            }}
+          >
+            {segments.map((segment, index) => {
+              const left = (segment.from / duration) * 100;
+              const width = ((segment.to - segment.from) / duration) * 100;
+              const active = index === activeSegmentIndex;
+              return (
+                <button
+                  key={`timeline-segment-${segment.from}-${segment.to}-${index}`}
+                  type="button"
+                  title={`Segment ${index + 1}: ${formatSeconds(segment.from)} - ${formatSeconds(segment.to)}`}
+                  className={`absolute bottom-0 top-0 rounded ${active ? 'bg-primary/70' : 'bg-primary/40'}`}
+                  style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setActiveSegmentIndex(index);
+                  }}
+                />
+              );
+            })}
+            {currentSegment && (
+              <>
+                <button
+                  type="button"
+                  title="Segment-Start ziehen"
+                  className="absolute top-0 h-8 w-2 -translate-x-1/2 cursor-ew-resize rounded bg-white/90 shadow"
+                  style={{ left: `${(currentSegment.from / duration) * 100}%` }}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    dragBoundaryRef.current = { segmentIndex: activeSegmentIndex, edge: 'from' };
+                    (event.currentTarget as HTMLButtonElement).setPointerCapture(event.pointerId);
+                  }}
+                />
+                <button
+                  type="button"
+                  title="Segment-Ende ziehen"
+                  className="absolute top-0 h-8 w-2 -translate-x-1/2 cursor-ew-resize rounded bg-white/90 shadow"
+                  style={{ left: `${(currentSegment.to / duration) * 100}%` }}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    dragBoundaryRef.current = { segmentIndex: activeSegmentIndex, edge: 'to' };
+                    (event.currentTarget as HTMLButtonElement).setPointerCapture(event.pointerId);
+                  }}
+                />
+              </>
+            )}
+            <div
+              className="pointer-events-none absolute bottom-0 top-0 w-[2px] bg-red-500"
+              style={{ left: `${(playhead / duration) * 100}%` }}
             />
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <label className="text-xs text-text-500">
-              Von (Sek.)
+          <div className="flex flex-wrap gap-2">
+            <SecondaryButton type="button" onClick={cutAtPlayhead} disabled={!canCutAtPlayhead}>Schnittmarke setzen</SecondaryButton>
+            <label className="ml-2 inline-flex items-center gap-2 text-xs">
               <input
-                type="number"
-                min={0}
-                max={max}
-                step={0.1}
-                value={rawFrom ?? ''}
-                onChange={(event) => syncFrom(Number(event.target.value))}
-                className="mt-1 w-full rounded border border-secondary/30 bg-background px-2 py-1 text-sm"
+                type="checkbox"
+                checked={previewSegmentsOnly}
+                onChange={(event) => setPreviewSegmentsOnly(event.target.checked)}
               />
+              Vorschau nur Segmente
             </label>
-            <label className="text-xs text-text-500">
-              Bis (Sek.)
-              <input
-                type="number"
-                min={0}
-                max={max}
-                step={0.1}
-                value={rawTo ?? ''}
-                onChange={(event) => syncTo(Number(event.target.value))}
-                className="mt-1 w-full rounded border border-secondary/30 bg-background px-2 py-1 text-sm"
-              />
-            </label>
-            <div className="flex items-end">
-              <SecondaryButton type="button" onClick={clearSegment}>
-                Segment zurücksetzen
-              </SecondaryButton>
-            </div>
+          </div>
+          <div className="space-y-2">
+            {segments.map((segment, index) => (
+              <div key={`segment-row-${index}`} className={`grid grid-cols-1 gap-2 rounded border p-2 md:grid-cols-6 ${index === activeSegmentIndex ? 'border-primary/60' : 'border-secondary/20'}`}>
+                <button type="button" className="text-left text-xs font-semibold" onClick={() => setActiveSegmentIndex(index)}>
+                  Segment {index + 1}
+                </button>
+                <label className="text-xs md:col-span-2">
+                  Von
+                  <input
+                    type="number"
+                    min={0}
+                    max={duration}
+                    step={0.001}
+                    value={segment.from.toFixed(SEGMENT_DECIMALS)}
+                    onChange={(event) => updateSegmentField(index, 'from', Number(event.target.value))}
+                    className="mt-1 w-full rounded border border-secondary/30 bg-background px-2 py-1 text-sm"
+                  />
+                </label>
+                <label className="text-xs md:col-span-2">
+                  Bis
+                  <input
+                    type="number"
+                    min={0}
+                    max={duration}
+                    step={0.001}
+                    value={segment.to.toFixed(SEGMENT_DECIMALS)}
+                    onChange={(event) => updateSegmentField(index, 'to', Number(event.target.value))}
+                    className="mt-1 w-full rounded border border-secondary/30 bg-background px-2 py-1 text-sm"
+                  />
+                </label>
+                <div className="flex items-end">
+                  <SecondaryButton type="button" onClick={() => removeSegment(index)}>
+                    Segment löschen
+                  </SecondaryButton>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden">
+            <input
+              type="text"
+              value={String(data.video_segments_json ?? '[]')}
+              readOnly
+              className="w-full"
+            />
           </div>
         </div>
       )}
@@ -544,6 +818,10 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
   const isVideo = mimeType.startsWith('video/');
   const initialSegmentFrom = media?.meta?.video?.segment?.from ?? '';
   const initialSegmentTo = media?.meta?.video?.segment?.to ?? '';
+  const initialSegments = Array.isArray(media?.meta?.video?.segments)
+    ? media.meta.video.segments
+    : ((initialSegmentFrom !== '' || initialSegmentTo !== '') ? [{ from: Number(initialSegmentFrom || 0), to: Number(initialSegmentTo || 0) }] : []);
+  const initialSegmentsJson = JSON.stringify(normalizeVideoSegments(initialSegments), null, 2);
   const initialSubtitles = Array.isArray(media?.meta?.video?.subtitles) ? media.meta.video.subtitles : [];
   const initialSubtitlesJson = JSON.stringify(initialSubtitles, null, 2);
 
@@ -560,6 +838,7 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
     crop_aspect: initialCropAspect,
     video_segment_from: initialSegmentFrom,
     video_segment_to: initialSegmentTo,
+    video_segments_json: initialSegmentsJson,
     video_subtitles_json: initialSubtitlesJson,
   });
   const { post: postHls, processing: processingHls } = useForm({});
@@ -567,8 +846,13 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const parsedSubtitles = parseSubtitlesJson(data.video_subtitles_json);
+    const parsedSegments = parseVideoSegmentsJson(data.video_segments_json);
     if (parsedSubtitles === null) {
       window.alert('Untertitel JSON ist ungültig. Erwartet wird ein Array mit { label, lang, format, src }.');
+      return;
+    }
+    if (parsedSegments === null) {
+      window.alert('Segmente JSON ist ungültig. Erwartet wird ein Array mit { from, to }.');
       return;
     }
 
@@ -614,12 +898,16 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
         const currentVideoMeta = currentMeta?.video && typeof currentMeta.video === 'object' ? currentMeta.video : {};
         const segmentFrom = toNumberOrNull(formData.video_segment_from);
         const segmentTo = toNumberOrNull(formData.video_segment_to);
+        const segments = normalizeVideoSegments(parsedSegments);
+        const legacyFrom = segments[0]?.from ?? segmentFrom;
+        const legacyTo = segments[segments.length - 1]?.to ?? segmentTo;
         nextMeta.video = {
           ...currentVideoMeta,
           segment: {
-            from: segmentFrom,
-            to: segmentTo !== null && segmentFrom !== null && segmentTo < segmentFrom ? segmentFrom : segmentTo,
+            from: legacyFrom,
+            to: legacyTo !== null && legacyFrom !== null && legacyTo < legacyFrom ? legacyFrom : legacyTo,
           },
+          segments,
           subtitles: parsedSubtitles,
         };
       }

@@ -534,6 +534,7 @@ class Media extends Base {
         $meta = is_array($this->meta) ? $this->meta : [];
         $videoMeta = is_array($meta['video'] ?? null) ? $meta['video'] : [];
         $segmentMeta = is_array($videoMeta['segment'] ?? null) ? $videoMeta['segment'] : [];
+        $segmentsMeta = $this->normalizeVideoSegments((array) ($videoMeta['segments'] ?? []));
 
         $segmentFrom = isset($segmentMeta['from']) ? (float) $segmentMeta['from'] : null;
         $segmentTo = isset($segmentMeta['to']) ? (float) $segmentMeta['to'] : null;
@@ -543,6 +544,20 @@ class Media extends Base {
         if ($segmentTo !== null && $segmentTo < 0) {
             $segmentTo = 0.0;
         }
+        if (count($segmentsMeta) === 0 && ($segmentFrom !== null || $segmentTo !== null)) {
+            $segmentsMeta = [[
+                'from' => $segmentFrom ?? 0.0,
+                'to' => $segmentTo ?? null,
+            ]];
+        }
+        $segmentsSpec = collect($segmentsMeta)
+            ->filter(function (array $segment): bool {
+                return isset($segment['to']) && (float) $segment['to'] > (float) ($segment['from'] ?? 0);
+            })
+            ->map(function (array $segment): string {
+                return ((float) $segment['from']) . '-' . ((float) $segment['to']);
+            })
+            ->implode(',');
 
         $scriptPath = (string) config('hubjutsu.media_hls_script');
         if ($scriptPath === '') {
@@ -561,6 +576,7 @@ class Media extends Base {
             Storage::disk($this->storage)->path($segmentPatternRelativePath),
             $segmentFrom !== null && $segmentFrom > 0 ? (string) $segmentFrom : '',
             $segmentTo !== null && $segmentTo > 0 ? (string) $segmentTo : '',
+            $segmentsSpec,
         ]);
         $process->setTimeout(3600);
         $process->run();
@@ -577,9 +593,55 @@ class Media extends Base {
             'playlist' => '/' . ltrim($playlistRelativePath, '/'),
             'generated_at' => now()->toIso8601String(),
         ];
+        if (count($segmentsMeta) > 0) {
+            $videoMeta['segments'] = $segmentsMeta;
+            $videoMeta['segment'] = [
+                'from' => (float) ($segmentsMeta[0]['from'] ?? 0),
+                'to' => (float) ($segmentsMeta[count($segmentsMeta) - 1]['to'] ?? 0),
+            ];
+        }
         $meta['video'] = $videoMeta;
         $this->meta = $meta;
         $this->saveQuietly();
+    }
+
+    protected function normalizeVideoSegments(array $segments): array
+    {
+        $normalized = [];
+        foreach ($segments as $segment) {
+            if (!is_array($segment)) {
+                continue;
+            }
+            $from = isset($segment['from']) ? (float) $segment['from'] : null;
+            $to = isset($segment['to']) ? (float) $segment['to'] : null;
+            if ($from === null || $to === null) {
+                continue;
+            }
+            $from = max(0.0, $from);
+            $to = max(0.0, $to);
+            if ($to <= $from) {
+                continue;
+            }
+            $normalized[] = ['from' => $from, 'to' => $to];
+        }
+
+        usort($normalized, fn (array $a, array $b) => $a['from'] <=> $b['from']);
+        $merged = [];
+        foreach ($normalized as $segment) {
+            $lastIndex = count($merged) - 1;
+            if ($lastIndex < 0) {
+                $merged[] = $segment;
+                continue;
+            }
+            $last = $merged[$lastIndex];
+            if ($segment['from'] <= $last['to']) {
+                $merged[$lastIndex]['to'] = max($last['to'], $segment['to']);
+                continue;
+            }
+            $merged[] = $segment;
+        }
+
+        return $merged;
     }
 
     static function fromUrl($url, $type='media', $storage="public", $private=true) {

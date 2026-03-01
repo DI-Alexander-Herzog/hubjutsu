@@ -74,6 +74,9 @@ class MediaController extends Controller
             'meta.video.segment' => ['nullable', 'array'],
             'meta.video.segment.from' => ['nullable', 'numeric', 'min:0'],
             'meta.video.segment.to' => ['nullable', 'numeric', 'min:0'],
+            'meta.video.segments' => ['nullable', 'array'],
+            'meta.video.segments.*.from' => ['nullable', 'numeric', 'min:0'],
+            'meta.video.segments.*.to' => ['nullable', 'numeric', 'min:0'],
             'meta.video.subtitles' => ['nullable', 'array'],
             'meta.video.subtitles.*.label' => ['nullable', 'string', 'max:100'],
             'meta.video.subtitles.*.lang' => ['nullable', 'string', 'max:20'],
@@ -89,6 +92,20 @@ class MediaController extends Controller
                 ->withErrors([
                     'meta.video.segment.to' => 'Segment Ende muss größer oder gleich Segment Start sein.',
                 ]);
+        }
+        $segments = data_get($validated, 'meta.video.segments', []);
+        if (is_array($segments)) {
+            foreach ($segments as $index => $segment) {
+                $from = is_array($segment) && array_key_exists('from', $segment) ? $segment['from'] : null;
+                $to = is_array($segment) && array_key_exists('to', $segment) ? $segment['to'] : null;
+                if ($from !== null && $to !== null && (float) $to < (float) $from) {
+                    return back()
+                        ->withInput()
+                        ->withErrors([
+                            "meta.video.segments.{$index}.to" => 'Segment Ende muss größer oder gleich Segment Start sein.',
+                        ]);
+                }
+            }
         }
 
         $tags = $validated['tags'] ?? null;
