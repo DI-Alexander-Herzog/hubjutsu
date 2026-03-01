@@ -90,6 +90,9 @@ Route::get('/media/recording/{uuid}/download-signed', [MediaRecordingController:
     ->middleware(['signed', 'throttle:30,1'])
     ->name('mediarecording.download.signed');
 
+Route::get('/media/{media}/file', [MediaController::class, 'file'])->name('media.file');
+Route::get('/media/{media}/variant/{variant}', [MediaController::class, 'variant'])->name('media.variant');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -117,9 +120,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/media/upload', [MediaController::class, 'upload'])->name('media.upload');
     Route::post('/media/chunked-upload', [MediaController::class, 'chunkedUpload'])->name('media.chunked-upload');
     Route::get('/media/{media}/edit', [MediaController::class, 'edit'])->name('media.edit');
-    Route::get('/media/{media}/file', [MediaController::class, 'file'])->name('media.file');
-    Route::get('/media/{media}/variant/{variant}', [MediaController::class, 'variant'])->name('media.variant');
     Route::addRoute(['PUT', 'PATCH'], '/media/{media}', [MediaController::class, 'update'])->name('media.update');
+    Route::post('/media/{media}/generate-hls', [MediaController::class, 'generateHls'])->name('media.generate-hls');
 
     Route::name('mediarecording.')->prefix('media/recording')->group(function() {
         Route::post('init', [MediaRecordingController::class, 'init'])->name('init');

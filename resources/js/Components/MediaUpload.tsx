@@ -53,6 +53,9 @@ function getMediaMimeType(media?: Record<string, any> | null): string {
 
 function getMediaUrl(media?: Record<string, any> | null): string | null {
   if (!media) return null;
+  if (media.id) {
+    return route('media.file', [media.id]);
+  }
   if (typeof media.url === 'string' && media.url) return media.url;
   if (typeof media.src === 'string' && media.src) return media.src;
   if (typeof media.original_url === 'string' && media.original_url) return media.original_url;

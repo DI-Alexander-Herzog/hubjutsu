@@ -335,7 +335,8 @@ class MediaRecordingController extends Controller
             'tags' => ['recording', 'screen_cam'],
             'storage' => 'public',
             'filename' => $publicFilename,
-            'private' => true,
+            // Recordings are surfaced as lesson videos, so they must be public by default.
+            'private' => false,
             'mimetype' => 'video/mp4',
         ]);
         $media->save();

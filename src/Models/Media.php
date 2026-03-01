@@ -14,6 +14,7 @@ use phpDocumentor\Reflection\DocBlock\Tags\Var_;
 use Storage;
 use Str;
 use Symfony\Component\Mime\MimeTypes;
+use Symfony\Component\Process\Process;
 
 /**
  * @property int $id
@@ -125,7 +126,7 @@ class Media extends Base {
             if (is_string($thumbPath) && $thumbPath !== '' && $this->storage) {
                 $normalizedThumbPath = ltrim($thumbPath, '/');
                 if (Storage::disk($this->storage)->exists($normalizedThumbPath)) {
-                    if (\Illuminate\Support\Facades\Route::has('media.variant')) {
+                    if ($this->private && \Illuminate\Support\Facades\Route::has('media.variant')) {
                         return route('media.variant', [$this->getKey(), 'thumb']);
                     }
                     return Storage::disk($this->storage)->url($normalizedThumbPath);
@@ -137,7 +138,10 @@ class Media extends Base {
     }
 
     public function getUrl() {
-        return Storage::disk($this->storage)->url($this->filename);
+        if ($this->private && \Illuminate\Support\Facades\Route::has('media.file')) {
+            return route('media.file', [$this->getKey()]);
+        }
+        return Storage::disk($this->storage)->url(ltrim((string) $this->filename, '/'));
     }
 
     public function getPath() {
@@ -161,21 +165,39 @@ class Media extends Base {
 
     protected function relocateFileIfNecessary(): void
     {
-        $currentStorage = $this->storage;
-        $file = $this->filename;
+        $currentStorage = (string) $this->storage;
+        $file = (string) $this->filename;
         $category = $this->category;
+        if (!$currentStorage || !$file) {
+            return;
+        }
 
         $disks = config("filesystems.disks");
         $filenamePrefix = "";
-        if (!isset($disks[$category])) {
-            $filenamePrefix = '/' . $category;
-            $storage = 'public';
-        } else {
+        if ($category && isset($disks[$category])) {
             $storage = $category;
+        } else {
+            if ($category) {
+                $filenamePrefix = '/' . $category;
+            }
+            $storage = $this->private ? 'local' : 'public';
         }
 
-        if ($currentStorage !== $storage || ($category && !str_starts_with($file, $filenamePrefix . '/'))) {
-            $contents = Storage::disk($currentStorage)->get($file);
+        $originalStorage = (string) ($this->getOriginal('storage') ?? '');
+        $originalFilename = (string) ($this->getOriginal('filename') ?? '');
+        $sourceStorage = $originalStorage !== '' ? $originalStorage : $currentStorage;
+        $sourceFile = ltrim($originalFilename !== '' ? $originalFilename : $file, '/');
+        $normalizedCurrentFile = ltrim($file, '/');
+
+        if ($sourceStorage !== $storage || ($category && !str_starts_with($file, $filenamePrefix . '/'))) {
+            if (!Storage::disk($sourceStorage)->exists($sourceFile)) {
+                // Nothing to move if source file already exists at target location.
+                if (Storage::disk($storage)->exists($normalizedCurrentFile)) {
+                    return;
+                }
+                return;
+            }
+
             // Keep each media file in its own scoped folder to avoid filename collisions on relocate.
             $newFilename = $filenamePrefix
                 . '/'
@@ -183,14 +205,129 @@ class Media extends Base {
                 . '/'
                 . $this->getKey()
                 . '/'
-                . basename($file);
-            Storage::disk($storage)->put($newFilename, $contents);
+                . basename($sourceFile);
+            $newFilename = '/' . ltrim($newFilename, '/');
+            $targetFile = ltrim($newFilename, '/');
+
+            $this->moveFileBetweenDisks($sourceStorage, $sourceFile, $storage, $targetFile);
+            $this->relocateDerivedAssets($sourceStorage, $sourceFile, $storage, $targetFile);
+
             $this->storage = $storage;
             $this->filename = $newFilename;
-            $this->save();
-            Storage::disk($currentStorage)->delete($file);
+            $this->saveQuietly();
         }
 
+    }
+
+    protected function relocateDerivedAssets(
+        string $sourceDisk,
+        string $sourceMainFile,
+        string $targetDisk,
+        string $targetMainFile
+    ): void {
+        $meta = is_array($this->meta) ? $this->meta : [];
+        $sourceBaseDir = trim((string) dirname($sourceMainFile), '/');
+        $targetBaseDir = trim((string) dirname($targetMainFile), '/');
+        if ($sourceBaseDir === '' || $targetBaseDir === '') {
+            return;
+        }
+
+        $variants = (array) data_get($meta, 'image.variants', []);
+        foreach ($variants as $key => $variant) {
+            $path = is_array($variant) ? ($variant['path'] ?? null) : null;
+            if (!is_string($path) || $path === '') {
+                continue;
+            }
+
+            $movedPath = $this->relocatePathByBaseDir($sourceDisk, $targetDisk, $path, $sourceBaseDir, $targetBaseDir);
+            if ($movedPath !== null && is_array($variant)) {
+                $variant['path'] = $movedPath;
+                $variants[$key] = $variant;
+            }
+        }
+        data_set($meta, 'image.variants', $variants);
+
+        $hlsPlaylist = data_get($meta, 'video.hls.playlist');
+        if (is_string($hlsPlaylist) && $hlsPlaylist !== '') {
+            $sourcePlaylist = ltrim($hlsPlaylist, '/');
+            $sourceHlsDir = trim((string) dirname($sourcePlaylist), '/');
+            if ($sourceHlsDir !== '' && ($sourceHlsDir === $sourceBaseDir || str_starts_with($sourceHlsDir, $sourceBaseDir . '/'))) {
+                $relativeHlsDir = ltrim(substr($sourceHlsDir, strlen($sourceBaseDir)), '/');
+                $targetHlsDir = trim($targetBaseDir . '/' . $relativeHlsDir, '/');
+                $this->moveDirectoryBetweenDisks($sourceDisk, $sourceHlsDir, $targetDisk, $targetHlsDir);
+
+                $playlistBasename = basename($sourcePlaylist);
+                data_set($meta, 'video.hls.playlist', '/' . trim($targetHlsDir . '/' . $playlistBasename, '/'));
+            }
+        }
+
+        $this->meta = $meta;
+    }
+
+    protected function relocatePathByBaseDir(
+        string $sourceDisk,
+        string $targetDisk,
+        string $path,
+        string $sourceBaseDir,
+        string $targetBaseDir
+    ): ?string {
+        $sourcePath = ltrim($path, '/');
+        if (!($sourcePath === $sourceBaseDir || str_starts_with($sourcePath, $sourceBaseDir . '/'))) {
+            return null;
+        }
+
+        $relativePath = ltrim(substr($sourcePath, strlen($sourceBaseDir)), '/');
+        $targetPath = trim($targetBaseDir . '/' . $relativePath, '/');
+        $this->moveFileBetweenDisks($sourceDisk, $sourcePath, $targetDisk, $targetPath);
+
+        return '/' . $targetPath;
+    }
+
+    protected function moveFileBetweenDisks(string $sourceDisk, string $sourcePath, string $targetDisk, string $targetPath): void
+    {
+        $sourcePath = ltrim($sourcePath, '/');
+        $targetPath = ltrim($targetPath, '/');
+        if ($sourcePath === '' || $targetPath === '') {
+            return;
+        }
+        if (!Storage::disk($sourceDisk)->exists($sourcePath)) {
+            return;
+        }
+
+        Storage::disk($targetDisk)->makeDirectory(trim((string) dirname($targetPath), '/'));
+        if ($sourceDisk === $targetDisk) {
+            if ($sourcePath !== $targetPath) {
+                Storage::disk($sourceDisk)->move($sourcePath, $targetPath);
+            }
+            return;
+        }
+
+        Storage::disk($targetDisk)->put($targetPath, Storage::disk($sourceDisk)->get($sourcePath));
+        Storage::disk($sourceDisk)->delete($sourcePath);
+    }
+
+    protected function moveDirectoryBetweenDisks(string $sourceDisk, string $sourceDir, string $targetDisk, string $targetDir): void
+    {
+        $sourceDir = trim($sourceDir, '/');
+        $targetDir = trim($targetDir, '/');
+        if ($sourceDir === '' || $targetDir === '') {
+            return;
+        }
+        if (!Storage::disk($sourceDisk)->exists($sourceDir)) {
+            return;
+        }
+        if ($sourceDisk === $targetDisk && $sourceDir === $targetDir) {
+            return;
+        }
+
+        $files = Storage::disk($sourceDisk)->allFiles($sourceDir);
+        foreach ($files as $file) {
+            $relative = ltrim(substr($file, strlen($sourceDir)), '/');
+            $targetFile = trim($targetDir . '/' . $relative, '/');
+            $this->moveFileBetweenDisks($sourceDisk, $file, $targetDisk, $targetFile);
+        }
+
+        Storage::disk($sourceDisk)->deleteDirectory($sourceDir);
     }
 
     public function setContent($content, $filename=null) {
@@ -372,6 +509,77 @@ class Media extends Base {
             return null;
         }
         return $w / $h;
+    }
+
+    public function generateHlsFromVideo(): void
+    {
+        if (!$this->storage || !$this->filename) {
+            throw new \RuntimeException('Video-Datei ist nicht verfügbar.');
+        }
+
+        $sourceFile = ltrim((string) $this->filename, '/');
+        if (!Storage::disk($this->storage)->exists($sourceFile)) {
+            throw new \RuntimeException('Video-Datei wurde nicht gefunden.');
+        }
+
+        $baseName = pathinfo($sourceFile, PATHINFO_FILENAME);
+        $directory = trim((string) dirname($sourceFile), '/');
+        $hlsDirectory = ($directory ? $directory . '/' : '') . 'hls/' . $baseName;
+        $playlistRelativePath = $hlsDirectory . '/index.m3u8';
+        $segmentPatternRelativePath = $hlsDirectory . '/segment_%05d.ts';
+
+        Storage::disk($this->storage)->deleteDirectory($hlsDirectory);
+        Storage::disk($this->storage)->makeDirectory($hlsDirectory);
+
+        $meta = is_array($this->meta) ? $this->meta : [];
+        $videoMeta = is_array($meta['video'] ?? null) ? $meta['video'] : [];
+        $segmentMeta = is_array($videoMeta['segment'] ?? null) ? $videoMeta['segment'] : [];
+
+        $segmentFrom = isset($segmentMeta['from']) ? (float) $segmentMeta['from'] : null;
+        $segmentTo = isset($segmentMeta['to']) ? (float) $segmentMeta['to'] : null;
+        if ($segmentFrom !== null && $segmentFrom < 0) {
+            $segmentFrom = 0.0;
+        }
+        if ($segmentTo !== null && $segmentTo < 0) {
+            $segmentTo = 0.0;
+        }
+
+        $scriptPath = (string) config('hubjutsu.media_hls_script');
+        if ($scriptPath === '') {
+            $scriptPath = dirname(__DIR__, 2) . '/scripts/generate-hls.sh';
+        } elseif (!str_starts_with($scriptPath, '/')) {
+            $scriptPath = base_path($scriptPath);
+        }
+        if (!is_file($scriptPath)) {
+            throw new \RuntimeException("HLS-Skript nicht gefunden: {$scriptPath}");
+        }
+
+        $process = new Process([
+            $scriptPath,
+            Storage::disk($this->storage)->path($sourceFile),
+            Storage::disk($this->storage)->path($playlistRelativePath),
+            Storage::disk($this->storage)->path($segmentPatternRelativePath),
+            $segmentFrom !== null && $segmentFrom > 0 ? (string) $segmentFrom : '',
+            $segmentTo !== null && $segmentTo > 0 ? (string) $segmentTo : '',
+        ]);
+        $process->setTimeout(3600);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            throw new \RuntimeException(trim($process->getErrorOutput()) ?: 'HLS-Generierung fehlgeschlagen.');
+        }
+
+        if (!Storage::disk($this->storage)->exists($playlistRelativePath)) {
+            throw new \RuntimeException('HLS-Playlist wurde nicht erzeugt.');
+        }
+
+        $videoMeta['hls'] = [
+            'playlist' => '/' . ltrim($playlistRelativePath, '/'),
+            'generated_at' => now()->toIso8601String(),
+        ];
+        $meta['video'] = $videoMeta;
+        $this->meta = $meta;
+        $this->saveQuietly();
     }
 
     static function fromUrl($url, $type='media', $storage="public", $private=true) {

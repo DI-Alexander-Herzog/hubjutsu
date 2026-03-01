@@ -88,7 +88,7 @@ trait MediaTrait
     }
 
 
-    public function setMedia(mixed $media, $category="main", $sort=1) {
+    public function setMedia(mixed $media, $category="main", $sort=1, bool $private = false) {
         $media = $this->hydrateMedia($media, $category);
         if (!$media) {
             return;
@@ -111,12 +111,13 @@ trait MediaTrait
         }
 
         $media->category = $category;
+        $this->applyMediaStorageAndPrivacy($media, (string) $category, $private);
         $media->mediable_sort = $sort;
         $media->mediable()->associate($this);
         $media->save();
     }
 
-    public function setMediaList(array $medias, $category="main", $sortStart=1): void
+    public function setMediaList(array $medias, $category="main", $sortStart=1, bool $private = false): void
     {
         foreach ($medias as $idx => $media) {
             if (!$media) {
@@ -136,24 +137,40 @@ trait MediaTrait
             $sort = is_array($media) && isset($media['mediable_sort'])
                 ? intval($media['mediable_sort'])
                 : $sortStart + $idx;
-
             $entryMedia->category = $category;
+            $this->applyMediaStorageAndPrivacy($entryMedia, (string) $category, $private);
             $entryMedia->mediable_sort = $sort;
             $entryMedia->mediable()->associate($this);
             $entryMedia->save();
         }
     }
 
-    public function addMedia(Media $media, $category="main", $sort=1) {
+    public function addMedia(Media $media, $category="main", $sort=1, bool $private = false) {
         if ($media->mediable) {
             get_class($this) == get_class($media->mediable) || throw new \Exception("Media already has another mediable");
             $this->getKey() == $media->mediable->getKey() || throw new \Exception("Media already has annother mediable");
         }
 
         $media->category = $category;
+        $this->applyMediaStorageAndPrivacy($media, (string) $category, $private);
         $media->mediable_sort = $sort;
         $media->mediable()->associate($this);
         $media->save();
+    }
+
+    protected function applyMediaStorageAndPrivacy(Media $media, string $category, bool $private): void
+    {
+        $disks = (array) config('filesystems.disks', []);
+        $resolvedPrivate = $private;
+
+        if (array_key_exists($category, $disks)) {
+            $targetStorage = $category;
+        } else {
+            $targetStorage = $resolvedPrivate ? 'local' : 'public';
+        }
+
+        $media->private = $resolvedPrivate;
+        $media->storage = $targetStorage;
     }
 
     protected function hydrateMedia(mixed $media, ?string $category = null): ?Media

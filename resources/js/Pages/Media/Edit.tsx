@@ -13,6 +13,7 @@ interface MediaEditProps {
 }
 
 type CropBox = { x: number; y: number; w: number; h: number };
+type SubtitleTrack = { label: string; lang: string; format: string; src: string };
 
 function getMediaUrl(media: Record<string, any>): string | null {
   if (media?.id) {
@@ -45,6 +46,10 @@ function toNumberOrNull(value: unknown): number | null {
 
 function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, value));
+}
+
+function clampNonNegative(value: number): number {
+  return Math.max(0, value);
 }
 
 function formatPercent(value: number): string {
@@ -98,6 +103,31 @@ function clampPointToCrop(point: { x: number; y: number }, crop: CropBox): { x: 
     x: clampPercent(Math.min(Math.max(point.x, crop.x), crop.x + crop.w)),
     y: clampPercent(Math.min(Math.max(point.y, crop.y), crop.y + crop.h)),
   };
+}
+
+function formatSeconds(value: number): string {
+  const safe = Number.isFinite(value) ? Math.max(0, value) : 0;
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe - minutes * 60;
+  return `${String(minutes).padStart(2, '0')}:${seconds.toFixed(1).padStart(4, '0')}`;
+}
+
+function parseSubtitlesJson(value: unknown): SubtitleTrack[] | null {
+  if (!value || typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return null;
+    return parsed
+      .map((entry) => ({
+        label: typeof entry?.label === 'string' ? entry.label : '',
+        lang: typeof entry?.lang === 'string' ? entry.lang : '',
+        format: typeof entry?.format === 'string' ? entry.format : 'webvtt',
+        src: typeof entry?.src === 'string' ? entry.src : '',
+      }))
+      .filter((entry) => entry.src !== '');
+  } catch (error) {
+    return null;
+  }
 }
 
 function VisualImageEditor({
@@ -355,6 +385,135 @@ function VisualImageEditor({
   );
 }
 
+function VisualVideoEditor({
+  mediaUrl,
+  data,
+  setData,
+  subtitles,
+}: {
+  mediaUrl: string;
+  data: Record<string, any>;
+  setData: (key: string, value: any) => void;
+  subtitles: SubtitleTrack[];
+}) {
+  const [duration, setDuration] = useState(0);
+
+  const rawFrom = toNumberOrNull(data.video_segment_from);
+  const rawTo = toNumberOrNull(data.video_segment_to);
+  const max = duration > 0 ? duration : 0;
+
+  const from = rawFrom !== null ? clampNonNegative(rawFrom) : 0;
+  const toCandidate = rawTo !== null ? clampNonNegative(rawTo) : max;
+  const to = Math.max(from, max > 0 ? Math.min(toCandidate, max) : toCandidate);
+  const safeFrom = max > 0 ? Math.min(from, max) : from;
+
+  const syncFrom = (nextValue: number) => {
+    const clamped = max > 0 ? Math.min(clampNonNegative(nextValue), max) : clampNonNegative(nextValue);
+    setData('video_segment_from', clamped.toFixed(2));
+    if (rawTo !== null && rawTo < clamped) {
+      setData('video_segment_to', clamped.toFixed(2));
+    }
+  };
+
+  const syncTo = (nextValue: number) => {
+    const clamped = max > 0 ? Math.min(clampNonNegative(nextValue), max) : clampNonNegative(nextValue);
+    setData('video_segment_to', Math.max(clamped, safeFrom).toFixed(2));
+  };
+
+  const clearSegment = () => {
+    setData('video_segment_from', '');
+    setData('video_segment_to', '');
+  };
+
+  return (
+    <div className="space-y-3">
+      <video
+        src={mediaUrl}
+        controls
+        className="max-h-72 w-full rounded border border-secondary/20 bg-black"
+        onLoadedMetadata={(event) => {
+          const nextDuration = event.currentTarget.duration;
+          if (Number.isFinite(nextDuration) && nextDuration > 0) {
+            setDuration(nextDuration);
+            if (rawTo === null) {
+              setData('video_segment_to', nextDuration.toFixed(2));
+            }
+          }
+        }}
+      >
+        {subtitles.map((track, index) => (
+          <track
+            key={`${track.src}-${index}`}
+            kind="subtitles"
+            srcLang={track.lang || undefined}
+            label={track.label || track.lang || `Track ${index + 1}`}
+            src={track.src}
+          />
+        ))}
+      </video>
+
+      {max > 0 && (
+        <div className="space-y-2 rounded border border-secondary/20 p-3">
+          <div className="text-xs text-text-500 dark:text-gray-400">
+            Segment-Schieber: {formatSeconds(safeFrom)} bis {formatSeconds(to)} (Dauer {formatSeconds(max)})
+          </div>
+          <div className="relative h-8">
+            <input
+              type="range"
+              min={0}
+              max={max}
+              step={0.1}
+              value={safeFrom}
+              onChange={(event) => syncFrom(Number(event.target.value))}
+              className="absolute inset-0 w-full"
+            />
+            <input
+              type="range"
+              min={0}
+              max={max}
+              step={0.1}
+              value={to}
+              onChange={(event) => syncTo(Number(event.target.value))}
+              className="absolute inset-0 w-full"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <label className="text-xs text-text-500">
+              Von (Sek.)
+              <input
+                type="number"
+                min={0}
+                max={max}
+                step={0.1}
+                value={rawFrom ?? ''}
+                onChange={(event) => syncFrom(Number(event.target.value))}
+                className="mt-1 w-full rounded border border-secondary/30 bg-background px-2 py-1 text-sm"
+              />
+            </label>
+            <label className="text-xs text-text-500">
+              Bis (Sek.)
+              <input
+                type="number"
+                min={0}
+                max={max}
+                step={0.1}
+                value={rawTo ?? ''}
+                onChange={(event) => syncTo(Number(event.target.value))}
+                className="mt-1 w-full rounded border border-secondary/30 bg-background px-2 py-1 text-sm"
+              />
+            </label>
+            <div className="flex items-end">
+              <SecondaryButton type="button" onClick={clearSegment}>
+                Segment zurücksetzen
+              </SecondaryButton>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MediaEdit({ media, isAttached }: MediaEditProps) {
   const initialCropX = media?.meta?.image?.crop?.x ?? 0;
   const initialCropY = media?.meta?.image?.crop?.y ?? 0;
@@ -380,6 +539,13 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
   })();
   const initialFocalX = initialAbsoluteFocal ? formatPercent(initialAbsoluteFocal.x) : '';
   const initialFocalY = initialAbsoluteFocal ? formatPercent(initialAbsoluteFocal.y) : '';
+  const mimeType = typeof media?.mimetype === 'string' ? media.mimetype : '';
+  const isImage = mimeType.startsWith('image/');
+  const isVideo = mimeType.startsWith('video/');
+  const initialSegmentFrom = media?.meta?.video?.segment?.from ?? '';
+  const initialSegmentTo = media?.meta?.video?.segment?.to ?? '';
+  const initialSubtitles = Array.isArray(media?.meta?.video?.subtitles) ? media.meta.video.subtitles : [];
+  const initialSubtitlesJson = JSON.stringify(initialSubtitles, null, 2);
 
   const { data, setData, put, transform, processing, errors } = useForm({
     name: media?.name ?? '',
@@ -392,51 +558,75 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
     crop_w: initialCropW,
     crop_h: initialCropH,
     crop_aspect: initialCropAspect,
+    video_segment_from: initialSegmentFrom,
+    video_segment_to: initialSegmentTo,
+    video_subtitles_json: initialSubtitlesJson,
   });
+  const { post: postHls, processing: processingHls } = useForm({});
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    const parsedSubtitles = parseSubtitlesJson(data.video_subtitles_json);
+    if (parsedSubtitles === null) {
+      window.alert('Untertitel JSON ist ungültig. Erwartet wird ein Array mit { label, lang, format, src }.');
+      return;
+    }
 
     transform((formData) => {
       const currentMeta = media?.meta && typeof media.meta === 'object' ? media.meta : {};
-      const currentImageMeta = currentMeta?.image && typeof currentMeta.image === 'object' ? currentMeta.image : {};
+      const nextMeta: Record<string, any> = { ...currentMeta };
 
-      const focalX = toNumberOrNull(formData.focal_x);
-      const focalY = toNumberOrNull(formData.focal_y);
-      const cropX = toNumberOrNull(formData.crop_x);
-      const cropY = toNumberOrNull(formData.crop_y);
-      const cropW = toNumberOrNull(formData.crop_w);
-      const cropH = toNumberOrNull(formData.crop_h);
-      const cropAspect = typeof formData.crop_aspect === 'string' ? formData.crop_aspect : 'free';
-      const crop = normalizeCrop({
-        x: cropX ?? 0,
-        y: cropY ?? 0,
-        w: cropW ?? 100,
-        h: cropH ?? 100,
-      });
-      const focalAbs = focalX !== null && focalY !== null ? clampPointToCrop({ x: focalX, y: focalY }, crop) : null;
-      const focalInCrop = focalAbs ? toRelativeFocalInCrop(focalAbs, crop) : null;
+      if (isImage) {
+        const currentImageMeta = currentMeta?.image && typeof currentMeta.image === 'object' ? currentMeta.image : {};
+        const focalX = toNumberOrNull(formData.focal_x);
+        const focalY = toNumberOrNull(formData.focal_y);
+        const cropX = toNumberOrNull(formData.crop_x);
+        const cropY = toNumberOrNull(formData.crop_y);
+        const cropW = toNumberOrNull(formData.crop_w);
+        const cropH = toNumberOrNull(formData.crop_h);
+        const cropAspect = typeof formData.crop_aspect === 'string' ? formData.crop_aspect : 'free';
+        const crop = normalizeCrop({
+          x: cropX ?? 0,
+          y: cropY ?? 0,
+          w: cropW ?? 100,
+          h: cropH ?? 100,
+        });
+        const focalAbs = focalX !== null && focalY !== null ? clampPointToCrop({ x: focalX, y: focalY }, crop) : null;
+        const focalInCrop = focalAbs ? toRelativeFocalInCrop(focalAbs, crop) : null;
 
-      const nextImageMeta: Record<string, any> = { ...currentImageMeta };
-      nextImageMeta.focal_point = {
-        x: focalInCrop?.x ?? null,
-        y: focalInCrop?.y ?? null,
-      };
-      nextImageMeta.crop = {
-        x: crop.x,
-        y: crop.y,
-        w: crop.w,
-        h: crop.h,
-        unit: 'percent',
-        aspect: cropAspect,
-      };
+        const nextImageMeta: Record<string, any> = { ...currentImageMeta };
+        nextImageMeta.focal_point = {
+          x: focalInCrop?.x ?? null,
+          y: focalInCrop?.y ?? null,
+        };
+        nextImageMeta.crop = {
+          x: crop.x,
+          y: crop.y,
+          w: crop.w,
+          h: crop.h,
+          unit: 'percent',
+          aspect: cropAspect,
+        };
+        nextMeta.image = nextImageMeta;
+      }
+
+      if (isVideo) {
+        const currentVideoMeta = currentMeta?.video && typeof currentMeta.video === 'object' ? currentMeta.video : {};
+        const segmentFrom = toNumberOrNull(formData.video_segment_from);
+        const segmentTo = toNumberOrNull(formData.video_segment_to);
+        nextMeta.video = {
+          ...currentVideoMeta,
+          segment: {
+            from: segmentFrom,
+            to: segmentTo !== null && segmentFrom !== null && segmentTo < segmentFrom ? segmentFrom : segmentTo,
+          },
+          subtitles: parsedSubtitles,
+        };
+      }
 
       return {
         ...formData,
-        meta: {
-          ...currentMeta,
-          image: nextImageMeta,
-        },
+        meta: nextMeta,
       };
     });
 
@@ -445,11 +635,12 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
 
   const mediaUrl = getMediaUrl(media);
   const mediaUrlWithCache = withCacheBuster(mediaUrl, media?.updated_at ?? media?.id);
-  const mimeType = typeof media?.mimetype === 'string' ? media.mimetype : '';
-  const isImage = mimeType.startsWith('image/');
   const variants = media?.meta?.image?.variants && typeof media.meta.image.variants === 'object'
     ? (media.meta.image.variants as Record<string, { path?: string; width?: number; height?: number; max?: number }>)
     : {};
+  const subtitlesForPreview = parseSubtitlesJson(data.video_subtitles_json) ?? [];
+  const hlsPlaylistPath = typeof media?.meta?.video?.hls?.playlist === 'string' ? media.meta.video.hls.playlist : '';
+  const hlsGeneratedAt = typeof media?.meta?.video?.hls?.generated_at === 'string' ? media.meta.video.hls.generated_at : '';
 
   return (
     <AuthenticatedLayout
@@ -475,8 +666,8 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
               {mediaUrlWithCache && mimeType.startsWith('image/') && (
                 <VisualImageEditor mediaUrl={mediaUrlWithCache} data={data} setData={setData as any} />
               )}
-              {mediaUrlWithCache && mimeType.startsWith('video/') && (
-                <video src={mediaUrlWithCache} controls className="max-h-72 w-full rounded border border-secondary/20 bg-black" />
+              {mediaUrlWithCache && isVideo && (
+                <VisualVideoEditor mediaUrl={mediaUrlWithCache} data={data} setData={setData as any} subtitles={subtitlesForPreview} />
               )}
               {mediaUrlWithCache && !mimeType.startsWith('image/') && !mimeType.startsWith('video/') && (
                 <a
@@ -539,6 +730,38 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
                     </div>
                   );
                 })}
+              </div>
+            </FormSection>
+          )}
+
+          {isVideo && (
+            <FormSection title="Video-Meta" subtitle="Segmente, Untertitel und HLS">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-text-500 dark:text-gray-400">Untertitel (JSON Array)</label>
+                  <textarea
+                    rows={8}
+                    value={String(data.video_subtitles_json ?? '')}
+                    onChange={(event) => setData('video_subtitles_json', event.target.value)}
+                    className="mt-1 w-full rounded border border-secondary/30 bg-background px-3 py-2 font-mono text-xs"
+                    placeholder='[{"label":"Deutsch","lang":"de","format":"webvtt","src":"https://example.com/sub.vtt"}]'
+                  />
+                </div>
+
+                <div className="rounded border border-secondary/20 p-3 text-xs text-text-500 dark:text-gray-400">
+                  <div>HLS Playlist: {hlsPlaylistPath || 'noch nicht generiert'}</div>
+                  <div>Letzte Generierung: {hlsGeneratedAt || '-'}</div>
+                </div>
+
+                <div>
+                  <SecondaryButton
+                    type="button"
+                    disabled={processingHls}
+                    onClick={() => postHls(route('media.generate-hls', [media.id]))}
+                  >
+                    M3U8 neu generieren
+                  </SecondaryButton>
+                </div>
               </div>
             </FormSection>
           )}

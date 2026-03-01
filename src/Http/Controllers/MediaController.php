@@ -14,16 +14,30 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Storage;
 use Str;
+use Throwable;
 
 class MediaController extends Controller
 {
     protected function canEditMedia(Media $media): bool
     {
-        if (!$media->user_id) {
+        if (!$media->created_by) {
             return true;
         }
 
-        return (int) $media->user_id === (int) Auth::id();
+        return (int) $media->created_by === (int) Auth::id();
+    }
+
+    protected function canViewMedia(Media $media): bool
+    {
+        if (!$media->private) {
+            return true;
+        }
+
+        if (!Auth::check()) {
+            return false;
+        }
+
+        return $this->canEditMedia($media);
     }
 
     public function edit(Media $media): Response
@@ -56,7 +70,26 @@ class MediaController extends Controller
             'meta.image.crop.h' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'meta.image.crop.unit' => ['nullable', 'in:percent'],
             'meta.image.crop.aspect' => ['nullable', 'in:free,original,1:1,4:3,16:9,3:4,9:16'],
+            'meta.video' => ['nullable', 'array'],
+            'meta.video.segment' => ['nullable', 'array'],
+            'meta.video.segment.from' => ['nullable', 'numeric', 'min:0'],
+            'meta.video.segment.to' => ['nullable', 'numeric', 'min:0'],
+            'meta.video.subtitles' => ['nullable', 'array'],
+            'meta.video.subtitles.*.label' => ['nullable', 'string', 'max:100'],
+            'meta.video.subtitles.*.lang' => ['nullable', 'string', 'max:20'],
+            'meta.video.subtitles.*.format' => ['nullable', 'string', 'max:20'],
+            'meta.video.subtitles.*.src' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        $segmentFrom = data_get($validated, 'meta.video.segment.from');
+        $segmentTo = data_get($validated, 'meta.video.segment.to');
+        if ($segmentFrom !== null && $segmentTo !== null && (float) $segmentTo < (float) $segmentFrom) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'meta.video.segment.to' => 'Segment Ende muss größer oder gleich Segment Start sein.',
+                ]);
+        }
 
         $tags = $validated['tags'] ?? null;
         if (is_string($tags)) {
@@ -81,14 +114,59 @@ class MediaController extends Controller
         return redirect()->route('media.edit', [$media->id]);
     }
 
-    public function file(Media $media)
+    public function generateHls(Media $media): RedirectResponse
     {
         abort_unless($this->canEditMedia($media), 403);
+
+        if (!is_string($media->mimetype) || !str_starts_with($media->mimetype, 'video/')) {
+            return back()->with('error', 'HLS kann nur für Videos erzeugt werden.');
+        }
+
+        try {
+            $media->generateHlsFromVideo();
+        } catch (Throwable $e) {
+            report($e);
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'M3U8 wurde neu erzeugt.');
+    }
+
+    public function file(Media $media)
+    {
+        abort_unless($this->canViewMedia($media), 403);
         abort_unless($media->storage && $media->filename, 404);
         $path = ltrim((string) $media->filename, '/');
-        abort_unless(Storage::disk($media->storage)->exists($path), 404);
+        $diskName = (string) $media->storage;
 
-        return response()->file(Storage::disk($media->storage)->path($path), [
+        if (!Storage::disk($diskName)->exists($path)) {
+            foreach (['public', 'local'] as $candidate) {
+                if ($candidate === $diskName) {
+                    continue;
+                }
+                if (!array_key_exists($candidate, (array) config('filesystems.disks', []))) {
+                    continue;
+                }
+                if (!Storage::disk($candidate)->exists($path)) {
+                    continue;
+                }
+
+                try {
+                    Storage::disk($diskName)->makeDirectory(trim((string) dirname($path), '/'));
+                    Storage::disk($diskName)->put($path, Storage::disk($candidate)->get($path));
+                    Storage::disk($candidate)->delete($path);
+                } catch (Throwable $e) {
+                    report($e);
+                    $diskName = $candidate;
+                    $media->storage = $candidate;
+                    $media->saveQuietly();
+                }
+                break;
+            }
+        }
+        abort_unless(Storage::disk($diskName)->exists($path), 404);
+
+        return response()->file(Storage::disk($diskName)->path($path), [
             'Content-Type' => $media->mimetype ?: 'application/octet-stream',
             'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
         ]);
@@ -96,7 +174,7 @@ class MediaController extends Controller
 
     public function variant(Media $media, string $variant)
     {
-        abort_unless($this->canEditMedia($media), 403);
+        abort_unless($this->canViewMedia($media), 403);
         abort_unless($variant !== '', 404);
 
         $variantMeta = data_get($media->meta, "image.variants.{$variant}");
