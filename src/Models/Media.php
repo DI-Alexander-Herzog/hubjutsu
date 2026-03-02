@@ -129,7 +129,7 @@ class Media extends Base {
                     if ($this->private && \Illuminate\Support\Facades\Route::has('media.variant')) {
                         return route('media.variant', [$this->getKey(), 'thumb']);
                     }
-                    return Storage::disk($this->storage)->url($normalizedThumbPath);
+                    return $this->appendCacheBuster(Storage::disk($this->storage)->url($normalizedThumbPath));
                 }
             }
             return $this->getUrl();
@@ -141,7 +141,19 @@ class Media extends Base {
         if ($this->private && \Illuminate\Support\Facades\Route::has('media.file')) {
             return route('media.file', [$this->getKey()]);
         }
-        return Storage::disk($this->storage)->url(ltrim((string) $this->filename, '/'));
+        $url = Storage::disk($this->storage)->url(ltrim((string) $this->filename, '/'));
+        return $this->appendCacheBuster($url);
+    }
+
+    protected function appendCacheBuster(string $url): string
+    {
+        $token = $this->updated_at?->getTimestamp();
+        if (!$token) {
+            return $url;
+        }
+
+        $separator = str_contains($url, '?') ? '&' : '?';
+        return $url . $separator . 't=' . $token;
     }
 
     public function getPath() {
