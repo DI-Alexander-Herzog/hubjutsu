@@ -12,6 +12,23 @@ interface MediaEditProps {
   isAttached: boolean;
 }
 
+type MediaEditFormData = {
+  name: string;
+  description: string;
+  tags: string;
+  focal_x: string;
+  focal_y: string;
+  crop_x: string | number;
+  crop_y: string | number;
+  crop_w: string | number;
+  crop_h: string | number;
+  crop_aspect: string;
+  video_segment_from: string | number;
+  video_segment_to: string | number;
+  video_segments_json: string;
+  video_subtitles_json: string;
+};
+
 type CropBox = { x: number; y: number; w: number; h: number };
 type SubtitleTrack = { label: string; lang: string; format: string; src: string };
 type VideoSegment = { from: number; to: number };
@@ -825,7 +842,7 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
   const initialSubtitles = Array.isArray(media?.meta?.video?.subtitles) ? media.meta.video.subtitles : [];
   const initialSubtitlesJson = JSON.stringify(initialSubtitles, null, 2);
 
-  const { data, setData, put, transform, processing, errors } = useForm({
+  const { data, setData, put, transform, processing, errors } = useForm<MediaEditFormData>({
     name: media?.name ?? '',
     description: media?.description ?? '',
     tags: Array.isArray(media?.tags) ? media.tags.join(', ') : media?.tags ?? '',
