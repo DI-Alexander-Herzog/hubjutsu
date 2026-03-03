@@ -343,9 +343,119 @@ class MediaRecordingController extends Controller
         $media->setContent($disk->get($rec->mp4_path), $publicFilename);
         $media->save();
 
+        $transcriptPayload = $this->readTranscriptPayload($uuid);
+        if ($transcriptPayload !== null) {
+            $entries = is_array($transcriptPayload['entries'] ?? null) ? $transcriptPayload['entries'] : [];
+            $lang = is_string($transcriptPayload['lang'] ?? null) && $transcriptPayload['lang'] !== ''
+                ? (string) $transcriptPayload['lang']
+                : 'de';
+
+            if (count($entries) > 0) {
+                $vttFilename = '/recordings/' . date('Y/m') . '/' . $baseName . '_' . Str::uuid()->toString() . '.vtt';
+                Storage::disk((string) $media->storage)->put(
+                    ltrim($vttFilename, '/'),
+                    $this->buildWebVtt($entries)
+                );
+
+                $meta = is_array($media->meta) ? $media->meta : [];
+                $videoMeta = is_array($meta['video'] ?? null) ? $meta['video'] : [];
+                $subtitles = is_array($videoMeta['subtitles'] ?? null) ? $videoMeta['subtitles'] : [];
+                $subtitles[] = [
+                    'label' => 'Transcript',
+                    'lang' => $lang,
+                    'format' => 'webvtt',
+                    'src' => Storage::disk((string) $media->storage)->url(ltrim($vttFilename, '/')),
+                ];
+
+                $videoMeta['subtitles'] = $subtitles;
+                $videoMeta['transcript'] = [
+                    'lang' => $lang,
+                    'entries' => $entries,
+                    'vtt_path' => $vttFilename,
+                    'vtt_url' => Storage::disk((string) $media->storage)->url(ltrim($vttFilename, '/')),
+                ];
+                $meta['video'] = $videoMeta;
+                $media->meta = $meta;
+                $media->save();
+            }
+        }
+
         return response()->json([
             'media' => $media->toArray(),
         ]);
+    }
+
+    private function readTranscriptPayload(string $uuid): ?array
+    {
+        $disk = Storage::disk('recordings_private');
+        $path = "recordings/{$uuid}/transcript.json";
+        if (!$disk->exists($path)) {
+            return null;
+        }
+
+        $raw = $disk->get($path);
+        $payload = json_decode($raw, true);
+        if (!is_array($payload)) {
+            return null;
+        }
+        return $payload;
+    }
+
+    private function buildWebVtt(array $entries): string
+    {
+        $normalized = collect($entries)
+            ->filter(fn ($entry) => is_array($entry))
+            ->map(fn (array $entry) => [
+                'seconds' => max(0, (float) ($entry['seconds'] ?? 0)),
+                'text' => trim((string) ($entry['text'] ?? '')),
+            ])
+            ->filter(fn (array $entry) => $entry['text'] !== '')
+            ->sortBy('seconds')
+            ->values()
+            ->all();
+
+        $lines = ['WEBVTT', ''];
+        $count = count($normalized);
+        for ($i = 0; $i < $count; $i++) {
+            $current = $normalized[$i];
+            $next = $normalized[$i + 1] ?? null;
+            $start = (float) $current['seconds'];
+            $end = $next ? max($start + 0.3, (float) $next['seconds']) : ($start + 2.5);
+            $text = preg_replace('/\R+/', ' ', (string) $current['text']) ?? '';
+            if ($text === '') {
+                continue;
+            }
+
+            $lines[] = (string) ($i + 1);
+            $lines[] = $this->formatVttTime($start) . ' --> ' . $this->formatVttTime($end);
+            $lines[] = $text;
+            $lines[] = '';
+        }
+
+        return implode(PHP_EOL, $lines) . PHP_EOL;
+    }
+
+    private function formatVttTime(float $seconds): string
+    {
+        $seconds = max(0, $seconds);
+        $hours = (int) floor($seconds / 3600);
+        $minutes = (int) floor(($seconds % 3600) / 60);
+        $secs = (int) floor($seconds % 60);
+        $millis = (int) round(($seconds - floor($seconds)) * 1000);
+        if ($millis >= 1000) {
+            $millis = 0;
+            $secs++;
+            if ($secs >= 60) {
+                $secs = 0;
+                $minutes++;
+                if ($minutes >= 60) {
+                    $minutes = 0;
+                    $hours++;
+                }
+            }
+        }
+
+        return sprintf('%02d:%02d:%02d.%03d', $hours, $minutes, $secs, $millis);
     }
 
     public function download(Request $request, string $uuid)

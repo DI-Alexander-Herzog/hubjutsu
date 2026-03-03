@@ -190,6 +190,8 @@ export default function ScreenCamRecorder({
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const camVideoRef = useRef<HTMLVideoElement | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
+  const leftColumnRef = useRef<HTMLDivElement | null>(null);
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
 
   const isRecordingRef = useRef<boolean>(false);
   const clickPulsesRef = useRef<ClickPulse[]>([]);
@@ -210,6 +212,7 @@ export default function ScreenCamRecorder({
   const abortRecordingRequestedRef = useRef<boolean>(false);
   const shareCopiedTimerRef = useRef<number | null>(null);
   const [shareCopiedNotice, setShareCopiedNotice] = useState<boolean>(false);
+  const [transcriptPanelMaxHeight, setTranscriptPanelMaxHeight] = useState<number>(480);
 
   const mimeType = pickMimeType();
   const previewConfigKey = [
@@ -1243,6 +1246,37 @@ export default function ScreenCamRecorder({
     };
   }, [previewConfigKey, viewStep, isRecording, isStarting, isPreparingPreview]);
 
+  useEffect(() => {
+    const leftEl = leftColumnRef.current;
+    if (!leftEl) return;
+
+    const updateHeight = () => {
+      const next = Math.max(280, Math.floor(leftEl.getBoundingClientRect().height));
+      setTranscriptPanelMaxHeight(next);
+    };
+
+    updateHeight();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateHeight);
+      return () => window.removeEventListener("resize", updateHeight);
+    }
+
+    const observer = new ResizeObserver(() => updateHeight());
+    observer.observe(leftEl);
+    window.addEventListener("resize", updateHeight);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateHeight);
+    };
+  }, [viewStep, settingsOpen, isRecording, isStarting, status, transcriptLines.length, liveFragment]);
+
+  useEffect(() => {
+    const scroller = transcriptScrollRef.current;
+    if (!scroller) return;
+    scroller.scrollTop = scroller.scrollHeight;
+  }, [transcriptLines, liveFragment]);
+
   async function pollStatus(uuid: string): Promise<void> {
     setStatus("processing");
     stopStatusPolling();
@@ -1415,8 +1449,15 @@ export default function ScreenCamRecorder({
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
       <div style={{ position: "relative", marginTop: 12 }}>
-        <div style={{ display: "flex", gap: 16, alignItems: "stretch", flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 620px", minWidth: 0 }}>
+        <div
+          style={{
+            display: "grid",
+            gap: 16,
+            alignItems: "start",
+            gridTemplateColumns: "minmax(0, 1fr) minmax(250px, 300px)",
+          }}
+        >
+        <div ref={leftColumnRef} style={{ minWidth: 0 }}>
           <div
             style={{
               position: "relative",
@@ -1842,34 +1883,37 @@ export default function ScreenCamRecorder({
 
         <div
           style={{
-            width: 252,
-            maxHeight: 480,
-            overflowY: "auto",
+            maxHeight: transcriptPanelMaxHeight,
+            height: transcriptPanelMaxHeight,
             border: "1px solid #e5e7eb",
             borderRadius: 12,
             padding: 12,
             background: "#fff",
-            flex: "1 1 280px",
             visibility: status === "idle" ? "hidden" : "visible",
             pointerEvents: status === "idle" ? "none" : "auto",
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
           }}
         >
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Transcript (Timestamps)</div>
           <div style={{ marginBottom: 10, padding: 8, borderRadius: 8, background: "#f9fafb", fontSize: 13 }}>
             <strong>LIVE:</strong> {liveFragment || "[...]"}
           </div>
-          {transcriptLines.length === 0 ? (
-            <div style={{ opacity: 0.6, fontSize: 13 }}>Noch keine Eintraege.</div>
-          ) : (
-            transcriptLines.map((line, idx) => (
-              <div key={`${line.seconds}-${idx}`} style={{ marginBottom: 10, fontSize: 13, lineHeight: 1.35 }}>
-                <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "#6b7280" }}>
-                  {formatTimestamp(line.seconds)}
+          <div ref={transcriptScrollRef} style={{ overflowY: "auto", flex: 1, minHeight: 0, paddingRight: 4 }}>
+            {transcriptLines.length === 0 ? (
+              <div style={{ opacity: 0.6, fontSize: 13 }}>Noch keine Eintraege.</div>
+            ) : (
+              transcriptLines.map((line, idx) => (
+                <div key={`${line.seconds}-${idx}`} style={{ marginBottom: 10, fontSize: 13, lineHeight: 1.35 }}>
+                  <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "#6b7280" }}>
+                    {formatTimestamp(line.seconds)}
+                  </div>
+                  <div>{line.text}</div>
                 </div>
-                <div>{line.text}</div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
         </div>
         {viewStep === "new" && (

@@ -122,6 +122,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/media/{media}/edit', [MediaController::class, 'edit'])->name('media.edit');
     Route::addRoute(['PUT', 'PATCH'], '/media/{media}', [MediaController::class, 'update'])->name('media.update');
     Route::post('/media/{media}/generate-hls', [MediaController::class, 'generateHls'])->name('media.generate-hls');
+    Route::get('/media/{media}/download-audio-mp3', [MediaController::class, 'downloadAudioMp3'])->name('media.download-audio-mp3');
 
     Route::name('mediarecording.')->prefix('media/recording')->group(function() {
         Route::post('init', [MediaRecordingController::class, 'init'])->name('init');

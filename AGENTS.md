@@ -37,3 +37,8 @@ Sprich, immer zuerst den @/* Pfad verwenden, um auf eigene Komponenten zuzugreif
 Also auch in hubjutsu selbst immer zuerst @/Components/... anstelle von ./... importieren, damit die Ableitung gewährleistet ist.
 
 Keine Importpfade aus dem hubjutsu-Namespace nutzen.
+
+# APIs in react
+Nutze vorranging die hubjutsu api Klassen. 
+
+Nutze niemals fetch() - immer axios oder die hubjutsu api Klassen, damit die Ableitung gewährleistet ist.

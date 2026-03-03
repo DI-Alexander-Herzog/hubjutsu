@@ -25,7 +25,7 @@ export default function Modal({
 	primaryButtonType = "danger",
 }: PropsWithChildren<{
 	show: boolean;
-	maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl";
+	maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "screen";
 	closeable?: boolean;
 	onClose: CallableFunction;
 	title?: string;
@@ -49,6 +49,7 @@ export default function Modal({
 		lg: "sm:max-w-lg",
 		xl: "sm:max-w-xl",
 		"2xl": "sm:max-w-2xl",
+		screen: "w-[95vw] sm:w-[90vw] lg:w-[80vw] sm:max-w-[80vw]",
 	}[maxWidth];
 
 	const renderPrimaryButton = () => {

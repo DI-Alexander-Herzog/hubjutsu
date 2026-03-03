@@ -617,6 +617,101 @@ class Media extends Base {
         $this->saveQuietly();
     }
 
+    public function generateAudioMp3FromVideo(): string
+    {
+        if (!$this->storage || !$this->filename) {
+            throw new \RuntimeException('Video-Datei ist nicht verfügbar.');
+        }
+        if (!is_string($this->mimetype) || !str_starts_with($this->mimetype, 'video/')) {
+            throw new \RuntimeException('MP3 kann nur aus Video-Dateien erzeugt werden.');
+        }
+
+        $sourceRelativePath = ltrim((string) $this->filename, '/');
+        if (!Storage::disk($this->storage)->exists($sourceRelativePath)) {
+            throw new \RuntimeException('Video-Datei wurde nicht gefunden.');
+        }
+
+        $baseName = pathinfo($sourceRelativePath, PATHINFO_FILENAME);
+        $directory = trim((string) dirname($sourceRelativePath), '/');
+        $audioDirectory = ($directory ? $directory . '/' : '') . 'audio';
+        $audioRelativePath = $audioDirectory . '/' . $baseName . '.mp3';
+
+        Storage::disk($this->storage)->makeDirectory($audioDirectory);
+
+        $meta = is_array($this->meta) ? $this->meta : [];
+        $videoMeta = is_array($meta['video'] ?? null) ? $meta['video'] : [];
+        $segments = $this->normalizeVideoSegments((array) ($videoMeta['segments'] ?? []));
+        if (count($segments) === 0) {
+            $legacy = is_array($videoMeta['segment'] ?? null) ? $videoMeta['segment'] : [];
+            $from = isset($legacy['from']) ? (float) $legacy['from'] : null;
+            $to = isset($legacy['to']) ? (float) $legacy['to'] : null;
+            if ($from !== null && $to !== null && $to > $from) {
+                $segments = [['from' => $from, 'to' => $to]];
+            }
+        }
+
+        $sourceAbsolutePath = Storage::disk($this->storage)->path($sourceRelativePath);
+        $audioAbsolutePath = Storage::disk($this->storage)->path($audioRelativePath);
+        $command = ['ffmpeg', '-y'];
+
+        if (count($segments) > 0) {
+            foreach ($segments as $segment) {
+                $command[] = '-ss';
+                $command[] = (string) $segment['from'];
+                $command[] = '-to';
+                $command[] = (string) $segment['to'];
+                $command[] = '-i';
+                $command[] = $sourceAbsolutePath;
+            }
+
+            $streamRefs = [];
+            for ($index = 0; $index < count($segments); $index++) {
+                $streamRefs[] = "[{$index}:a]";
+            }
+            $command[] = '-filter_complex';
+            $command[] = implode('', $streamRefs) . 'concat=n=' . count($segments) . ':v=0:a=1[aout]';
+            $command[] = '-map';
+            $command[] = '[aout]';
+        } else {
+            $command[] = '-i';
+            $command[] = $sourceAbsolutePath;
+            $command[] = '-vn';
+        }
+
+        $command[] = '-ac';
+        $command[] = '1';
+        $command[] = '-ar';
+        $command[] = '44100';
+        $command[] = '-b:a';
+        $command[] = '192k';
+        $command[] = $audioAbsolutePath;
+
+        $process = new Process($command);
+        $process->setTimeout(3600);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            $stderr = trim($process->getErrorOutput());
+            if ($stderr !== '') {
+                throw new \RuntimeException('MP3-Generierung fehlgeschlagen: ' . Str::limit($stderr, 1200));
+            }
+            throw new \RuntimeException('MP3-Generierung fehlgeschlagen.');
+        }
+        if (!Storage::disk($this->storage)->exists($audioRelativePath)) {
+            throw new \RuntimeException('MP3-Datei wurde nicht erzeugt.');
+        }
+
+        $videoMeta['audio'] = [
+            'mp3' => '/' . ltrim($audioRelativePath, '/'),
+            'generated_at' => now()->toIso8601String(),
+        ];
+        $meta['video'] = $videoMeta;
+        $this->meta = $meta;
+        $this->saveQuietly();
+
+        return $audioRelativePath;
+    }
+
     protected function normalizeVideoSegments(array $segments): array
     {
         $normalized = [];

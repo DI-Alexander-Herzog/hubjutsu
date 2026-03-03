@@ -24,6 +24,8 @@ export default function NeutralButton({
     display = 'solid',
     ...props
 }: NeutralButtonProps) {
+    const hasZeroPaddingOverride = /(?:^|\s)p-0(?:\s|$)/.test(className);
+
     return (
         <button
             {...props}
@@ -43,7 +45,7 @@ export default function NeutralButton({
                             'hover:bg-background-600 dark:hover:bg-gray-700',
                             'active:bg-background-600 dark:active:bg-gray-600',
                         ],
-                    sizeClasses[size],
+                    !hasZeroPaddingOverride && sizeClasses[size],
                     {
                         'opacity-25': disabled,
                     },

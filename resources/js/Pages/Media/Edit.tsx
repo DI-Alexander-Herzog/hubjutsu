@@ -1,11 +1,13 @@
-import { FormEvent, MouseEvent, PointerEvent, useRef, useState } from 'react';
+import { FormEvent, MouseEvent, PointerEvent, useEffect, useRef, useState } from 'react';
 import { useForm } from '@inertiajs/react';
+import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import FormContainer from '@/Components/FormContainer';
 import FormSection from '@/Components/FormSection';
 import Input from '@/Components/Input';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import Checkbox from '@/Components/Checkbox';
 
 interface MediaEditProps {
   media: Record<string, any>;
@@ -456,20 +458,31 @@ function VisualVideoEditor({
   data,
   setData,
   subtitles,
+  mp3DownloadUrl,
 }: {
   mediaUrl: string;
   data: Record<string, any>;
   setData: (key: string, value: any) => void;
   subtitles: SubtitleTrack[];
+  mp3DownloadUrl?: string | null;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
+  const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const seekingInternallyRef = useRef(false);
+  const loopStartRef = useRef<number | null>(null);
+  const loopPlaybackActiveRef = useRef(false);
   const dragBoundaryRef = useRef<{ segmentIndex: number; edge: 'from' | 'to' } | null>(null);
   const [duration, setDuration] = useState(0);
   const [playhead, setPlayhead] = useState(0);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
   const [previewSegmentsOnly, setPreviewSegmentsOnly] = useState(true);
+  const [isLoopPlaying, setIsLoopPlaying] = useState(false);
+  const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
+  const [waveformLoading, setWaveformLoading] = useState(false);
+  const [waveformError, setWaveformError] = useState<string | null>(null);
+  const [mp3Downloading, setMp3Downloading] = useState(false);
+  const [mp3DownloadError, setMp3DownloadError] = useState<string | null>(null);
 
   const parsedSegments = parseVideoSegmentsJson(data.video_segments_json) ?? [];
   const segments = normalizeVideoSegments(parsedSegments, duration);
@@ -506,6 +519,18 @@ function VisualVideoEditor({
     return null;
   };
 
+  const restartLoopFromCursor = (keepPlaying: boolean): boolean => {
+    const start = loopStartRef.current;
+    if (start === null) return false;
+    const target = Math.max(0, Math.min(start, duration > 0 ? duration : start));
+    seekTo(target);
+    if (keepPlaying && videoRef.current) {
+      videoRef.current.play().catch(() => {});
+      setIsLoopPlaying(true);
+    }
+    return true;
+  };
+
   const enforceSegmentPreview = (time: number, keepPlaying: boolean) => {
     if (!previewSegmentsOnly || segments.length === 0 || !videoRef.current) return;
     const idx = findSegmentIndexAt(time);
@@ -519,30 +544,101 @@ function VisualVideoEditor({
             videoRef.current.play().catch(() => {});
           }
         } else {
-          videoRef.current.pause();
-          seekTo(current.to);
+          if (!restartLoopFromCursor(keepPlaying)) {
+            videoRef.current.pause();
+            seekTo(current.to);
+            loopPlaybackActiveRef.current = false;
+            setIsLoopPlaying(false);
+          }
         }
       }
       return;
     }
 
     const target = jumpToNearestSegmentFrom(time);
-    if (target === null) return;
+    if (target === null) {
+      if (!restartLoopFromCursor(keepPlaying)) {
+        loopPlaybackActiveRef.current = false;
+        setIsLoopPlaying(false);
+      }
+      return;
+    }
+    if (!loopPlaybackActiveRef.current) {
+      loopStartRef.current = target;
+    }
     seekTo(target);
-    if (keepPlaying) {
+    if (keepPlaying && videoRef.current) {
       videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const startLoopFromCursor = () => {
+    const start = Math.max(0, Math.min(playhead, duration > 0 ? duration : playhead));
+    loopStartRef.current = start;
+    loopPlaybackActiveRef.current = true;
+    setIsLoopPlaying(true);
+    seekTo(start);
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const stopLoopPlayback = () => {
+    loopPlaybackActiveRef.current = false;
+    setIsLoopPlaying(false);
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+  };
+
+  const parseDownloadFilename = (header?: string): string => {
+    if (!header) return 'audio.mp3';
+    const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1]);
+    const plainMatch = header.match(/filename="?([^"]+)"?/i);
+    if (plainMatch?.[1]) return plainMatch[1];
+    return 'audio.mp3';
+  };
+
+  const handleMp3Download = async () => {
+    if (!mp3DownloadUrl || mp3Downloading) return;
+    setMp3DownloadError(null);
+    setMp3Downloading(true);
+
+    try {
+      const response = await axios.get<Blob>(mp3DownloadUrl, {
+        responseType: 'blob',
+        withCredentials: true,
+      });
+      const contentType = String(response.headers['content-type'] ?? '');
+      if (!contentType.includes('audio/')) {
+        throw new Error('Server hat keine MP3-Datei geliefert.');
+      }
+
+      const blobUrl = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = parseDownloadFilename(response.headers['content-disposition'] as string | undefined);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error: any) {
+      const message = error?.response?.data?.message
+        ?? error?.message
+        ?? 'MP3-Download fehlgeschlagen.';
+      setMp3DownloadError(String(message));
+    } finally {
+      setMp3Downloading(false);
     }
   };
 
   const cutAtPlayhead = () => {
     const segmentIndex = findSegmentIndexAt(playhead);
-    console.log('idx', segmentIndex);
     if (segmentIndex < 0) return;
     const segmentToSplit = segments[segmentIndex];
-    console.log('split', segmentToSplit);
     if (!segmentToSplit) return;
     if (playhead <= segmentToSplit.from + SEGMENT_MIN_GAP || playhead >= segmentToSplit.to - SEGMENT_MIN_GAP) {
-      console.log('zu knapp', playhead);
       return;
     }
 
@@ -553,7 +649,6 @@ function VisualVideoEditor({
       { from: splitAt, to: roundSegmentValue(segmentToSplit.to) },
       ...segments.slice(segmentIndex + 1),
     ];
-    console.log('next', next);
     writeSegments(next);
     setActiveSegmentIndex(segmentIndex + 1);
   };
@@ -574,6 +669,21 @@ function VisualVideoEditor({
     if (!rect || rect.width <= 0 || duration <= 0) return null;
     const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
     return ratio * duration;
+  };
+
+  const seekFromTimelineClick = (clientX: number, fallbackIndex?: number) => {
+    timelineSeek(clientX);
+    const seconds = timelineSecondsFromClientX(clientX);
+    if (seconds === null) {
+      if (Number.isFinite(fallbackIndex)) setActiveSegmentIndex(Number(fallbackIndex));
+      return;
+    }
+    const idx = findSegmentIndexAt(seconds);
+    if (idx >= 0) {
+      setActiveSegmentIndex(idx);
+      return;
+    }
+    if (Number.isFinite(fallbackIndex)) setActiveSegmentIndex(Number(fallbackIndex));
   };
 
   const updateSegmentBoundary = (segmentIndex: number, edge: 'from' | 'to', seconds: number) => {
@@ -609,12 +719,150 @@ function VisualVideoEditor({
     writeSegments(next);
   };
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (segments.length === 0) return;
+      if (activeSegmentIndex < 0 || activeSegmentIndex >= segments.length) return;
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+          return;
+        }
+      }
+
+      event.preventDefault();
+      removeSegment(activeSegmentIndex);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [activeSegmentIndex, segments]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const abortController = new AbortController();
+
+    const loadWaveform = async () => {
+      setWaveformLoading(true);
+      setWaveformError(null);
+
+      try {
+        const response = await axios.get<ArrayBuffer>(mediaUrl, {
+          signal: abortController.signal,
+          responseType: 'arraybuffer',
+          withCredentials: true,
+        });
+        const fileBuffer = response.data;
+        const audioContextCtor = window.AudioContext
+          || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!audioContextCtor) {
+          throw new Error('AudioContext unavailable');
+        }
+
+        const audioContext = new audioContextCtor();
+        let decodedBuffer: AudioBuffer;
+        try {
+          decodedBuffer = await audioContext.decodeAudioData(fileBuffer.slice(0));
+        } finally {
+          audioContext.close().catch(() => {});
+        }
+
+        if (cancelled) return;
+
+        const channels = Math.max(1, decodedBuffer.numberOfChannels);
+        const totalSamples = decodedBuffer.length;
+        const barCount = 640;
+        const bucketSize = Math.max(1, Math.floor(totalSamples / barCount));
+        const peaks: number[] = [];
+
+        for (let sampleIndex = 0; sampleIndex < totalSamples; sampleIndex += bucketSize) {
+          const bucketEnd = Math.min(totalSamples, sampleIndex + bucketSize);
+          let maxValue = 0;
+
+          for (let channelIndex = 0; channelIndex < channels; channelIndex++) {
+            const channel = decodedBuffer.getChannelData(channelIndex);
+            for (let i = sampleIndex; i < bucketEnd; i++) {
+              const value = Math.abs(channel[i] ?? 0);
+              if (value > maxValue) maxValue = value;
+            }
+          }
+
+          peaks.push(maxValue);
+        }
+
+        const maxPeak = Math.max(0.0001, ...peaks);
+        setWaveformPeaks(peaks.map((value) => Math.min(1, value / maxPeak)));
+      } catch (error) {
+        if (cancelled || abortController.signal.aborted) return;
+        setWaveformPeaks([]);
+        setWaveformError('Waveform konnte nicht geladen werden.');
+      } finally {
+        if (!cancelled) setWaveformLoading(false);
+      }
+    };
+
+    loadWaveform();
+
+    return () => {
+      cancelled = true;
+      abortController.abort();
+    };
+  }, [mediaUrl]);
+
+  useEffect(() => {
+    const timeline = timelineRef.current;
+    const canvas = waveformCanvasRef.current;
+    if (!timeline || !canvas) return;
+
+    const drawWaveform = () => {
+      const width = timeline.clientWidth;
+      const height = timeline.clientHeight;
+      if (width <= 0 || height <= 0) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(width * dpr));
+      canvas.height = Math.max(1, Math.round(height * dpr));
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (waveformPeaks.length === 0) return;
+
+      const centerY = canvas.height / 2;
+      const maxWaveHeight = canvas.height * 0.86;
+      const barStep = canvas.width / waveformPeaks.length;
+      const barWidth = Math.max(1, barStep * 0.72);
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
+
+      for (let i = 0; i < waveformPeaks.length; i++) {
+        const peak = waveformPeaks[i] ?? 0;
+        const barHeight = Math.max(1, peak * maxWaveHeight);
+        const x = i * barStep;
+        const y = centerY - barHeight / 2;
+        ctx.fillRect(x, y, barWidth, barHeight);
+      }
+    };
+
+    drawWaveform();
+    window.addEventListener('resize', drawWaveform);
+    return () => {
+      window.removeEventListener('resize', drawWaveform);
+    };
+  }, [duration, waveformPeaks]);
+
   return (
     <div className="space-y-3">
       <video
         ref={videoRef}
         src={mediaUrl}
-        controls
         className="max-h-72 w-full rounded border border-secondary/20 bg-black"
         onLoadedMetadata={(event) => {
           const nextDuration = event.currentTarget.duration;
@@ -626,6 +874,16 @@ function VisualVideoEditor({
           }
         }}
         onPlay={(event) => enforceSegmentPreview(event.currentTarget.currentTime, true)}
+        onPause={() => {
+          if (!loopPlaybackActiveRef.current) {
+            setIsLoopPlaying(false);
+          }
+        }}
+        onEnded={() => {
+          if (loopPlaybackActiveRef.current && restartLoopFromCursor(true)) return;
+          loopPlaybackActiveRef.current = false;
+          setIsLoopPlaying(false);
+        }}
         onSeeking={(event) => {
           const nextTime = event.currentTarget.currentTime;
           setPlayhead(nextTime);
@@ -663,11 +921,7 @@ function VisualVideoEditor({
             aria-valuenow={playhead}
             className="relative h-8 cursor-pointer rounded border border-secondary/30 bg-secondary/10"
             onClick={(event) => {
-              timelineSeek(event.clientX);
-              const seconds = timelineSecondsFromClientX(event.clientX);
-              if (seconds === null) return;
-              const idx = findSegmentIndexAt(seconds);
-              if (idx >= 0) setActiveSegmentIndex(idx);
+              seekFromTimelineClick(event.clientX);
             }}
             onPointerMove={(event) => {
               const drag = dragBoundaryRef.current;
@@ -693,6 +947,11 @@ function VisualVideoEditor({
               }
             }}
           >
+            <canvas
+              ref={waveformCanvasRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+            />
             {segments.map((segment, index) => {
               const left = (segment.from / duration) * 100;
               const width = ((segment.to - segment.from) / duration) * 100;
@@ -706,7 +965,7 @@ function VisualVideoEditor({
                   style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }}
                   onClick={(event) => {
                     event.stopPropagation();
-                    setActiveSegmentIndex(index);
+                    seekFromTimelineClick(event.clientX, index);
                   }}
                 />
               );
@@ -741,64 +1000,58 @@ function VisualVideoEditor({
               className="pointer-events-none absolute bottom-0 top-0 w-[2px] bg-red-500"
               style={{ left: `${(playhead / duration) * 100}%` }}
             />
+            {waveformLoading && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] font-medium text-text-500">
+                Waveform wird geladen...
+              </div>
+            )}
+            {waveformError && !waveformLoading && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] font-medium text-red-600">
+                {waveformError}
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
+            <SecondaryButton
+              type="button"
+              onClick={isLoopPlaying ? stopLoopPlayback : startLoopFromCursor}
+              title={isLoopPlaying ? 'Pause' : 'Play ab Cursor (Loop)'}
+              aria-label={isLoopPlaying ? 'Pause' : 'Play ab Cursor (Loop)'}
+              className="h-10 w-10 shrink-0 justify-center p-0"
+            >
+              {isLoopPlaying ? (
+                <svg viewBox="0 0 24 24" className="h-8 w-8 fill-current" aria-hidden="true">
+                  <path d="M7 5h4v14H7zM13 5h4v14h-4z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="h-8 w-8 fill-current" aria-hidden="true">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </SecondaryButton>
             <SecondaryButton type="button" onClick={cutAtPlayhead} disabled={!canCutAtPlayhead}>Schnittmarke setzen</SecondaryButton>
+            {mp3DownloadUrl && (
+              <SecondaryButton
+                type="button"
+                onClick={handleMp3Download}
+                disabled={mp3Downloading}
+              >
+                {mp3Downloading ? 'MP3 wird erzeugt...' : 'MP3 herunterladen'}
+              </SecondaryButton>
+            )}
             <label className="ml-2 inline-flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={previewSegmentsOnly}
                 onChange={(event) => setPreviewSegmentsOnly(event.target.checked)}
               />
               Vorschau nur Segmente
             </label>
           </div>
-          <div className="space-y-2">
-            {segments.map((segment, index) => (
-              <div key={`segment-row-${index}`} className={`grid grid-cols-1 gap-2 rounded border p-2 md:grid-cols-6 ${index === activeSegmentIndex ? 'border-primary/60' : 'border-secondary/20'}`}>
-                <button type="button" className="text-left text-xs font-semibold" onClick={() => setActiveSegmentIndex(index)}>
-                  Segment {index + 1}
-                </button>
-                <label className="text-xs md:col-span-2">
-                  Von
-                  <input
-                    type="number"
-                    min={0}
-                    max={duration}
-                    step={0.001}
-                    value={segment.from.toFixed(SEGMENT_DECIMALS)}
-                    onChange={(event) => updateSegmentField(index, 'from', Number(event.target.value))}
-                    className="mt-1 w-full rounded border border-secondary/30 bg-background px-2 py-1 text-sm"
-                  />
-                </label>
-                <label className="text-xs md:col-span-2">
-                  Bis
-                  <input
-                    type="number"
-                    min={0}
-                    max={duration}
-                    step={0.001}
-                    value={segment.to.toFixed(SEGMENT_DECIMALS)}
-                    onChange={(event) => updateSegmentField(index, 'to', Number(event.target.value))}
-                    className="mt-1 w-full rounded border border-secondary/30 bg-background px-2 py-1 text-sm"
-                  />
-                </label>
-                <div className="flex items-end">
-                  <SecondaryButton type="button" onClick={() => removeSegment(index)}>
-                    Segment löschen
-                  </SecondaryButton>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="hidden">
-            <input
-              type="text"
-              value={String(data.video_segments_json ?? '[]')}
-              readOnly
-              className="w-full"
-            />
-          </div>
+          {mp3DownloadError && (
+            <div className="text-xs text-red-600">
+              {mp3DownloadError}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -860,6 +1113,69 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
   });
   const { post: postHls, processing: processingHls } = useForm({});
 
+  const buildMetaPayload = (
+    formData: MediaEditFormData,
+    parsedSubtitles: SubtitleTrack[],
+    parsedSegments: VideoSegment[],
+  ): Record<string, any> => {
+    const currentMeta = media?.meta && typeof media.meta === 'object' ? media.meta : {};
+    const nextMeta: Record<string, any> = { ...currentMeta };
+
+    if (isImage) {
+      const currentImageMeta = currentMeta?.image && typeof currentMeta.image === 'object' ? currentMeta.image : {};
+      const focalX = toNumberOrNull(formData.focal_x);
+      const focalY = toNumberOrNull(formData.focal_y);
+      const cropX = toNumberOrNull(formData.crop_x);
+      const cropY = toNumberOrNull(formData.crop_y);
+      const cropW = toNumberOrNull(formData.crop_w);
+      const cropH = toNumberOrNull(formData.crop_h);
+      const cropAspect = typeof formData.crop_aspect === 'string' ? formData.crop_aspect : 'free';
+      const crop = normalizeCrop({
+        x: cropX ?? 0,
+        y: cropY ?? 0,
+        w: cropW ?? 100,
+        h: cropH ?? 100,
+      });
+      const focalAbs = focalX !== null && focalY !== null ? clampPointToCrop({ x: focalX, y: focalY }, crop) : null;
+      const focalInCrop = focalAbs ? toRelativeFocalInCrop(focalAbs, crop) : null;
+
+      const nextImageMeta: Record<string, any> = { ...currentImageMeta };
+      nextImageMeta.focal_point = {
+        x: focalInCrop?.x ?? null,
+        y: focalInCrop?.y ?? null,
+      };
+      nextImageMeta.crop = {
+        x: crop.x,
+        y: crop.y,
+        w: crop.w,
+        h: crop.h,
+        unit: 'percent',
+        aspect: cropAspect,
+      };
+      nextMeta.image = nextImageMeta;
+    }
+
+    if (isVideo) {
+      const currentVideoMeta = currentMeta?.video && typeof currentMeta.video === 'object' ? currentMeta.video : {};
+      const segmentFrom = toNumberOrNull(formData.video_segment_from);
+      const segmentTo = toNumberOrNull(formData.video_segment_to);
+      const segments = normalizeVideoSegments(parsedSegments);
+      const legacyFrom = segments[0]?.from ?? segmentFrom;
+      const legacyTo = segments[segments.length - 1]?.to ?? segmentTo;
+      nextMeta.video = {
+        ...currentVideoMeta,
+        segment: {
+          from: legacyFrom,
+          to: legacyTo !== null && legacyFrom !== null && legacyTo < legacyFrom ? legacyFrom : legacyTo,
+        },
+        segments,
+        subtitles: parsedSubtitles,
+      };
+    }
+
+    return nextMeta;
+  };
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const parsedSubtitles = parseSubtitlesJson(data.video_subtitles_json);
@@ -874,60 +1190,7 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
     }
 
     transform((formData) => {
-      const currentMeta = media?.meta && typeof media.meta === 'object' ? media.meta : {};
-      const nextMeta: Record<string, any> = { ...currentMeta };
-
-      if (isImage) {
-        const currentImageMeta = currentMeta?.image && typeof currentMeta.image === 'object' ? currentMeta.image : {};
-        const focalX = toNumberOrNull(formData.focal_x);
-        const focalY = toNumberOrNull(formData.focal_y);
-        const cropX = toNumberOrNull(formData.crop_x);
-        const cropY = toNumberOrNull(formData.crop_y);
-        const cropW = toNumberOrNull(formData.crop_w);
-        const cropH = toNumberOrNull(formData.crop_h);
-        const cropAspect = typeof formData.crop_aspect === 'string' ? formData.crop_aspect : 'free';
-        const crop = normalizeCrop({
-          x: cropX ?? 0,
-          y: cropY ?? 0,
-          w: cropW ?? 100,
-          h: cropH ?? 100,
-        });
-        const focalAbs = focalX !== null && focalY !== null ? clampPointToCrop({ x: focalX, y: focalY }, crop) : null;
-        const focalInCrop = focalAbs ? toRelativeFocalInCrop(focalAbs, crop) : null;
-
-        const nextImageMeta: Record<string, any> = { ...currentImageMeta };
-        nextImageMeta.focal_point = {
-          x: focalInCrop?.x ?? null,
-          y: focalInCrop?.y ?? null,
-        };
-        nextImageMeta.crop = {
-          x: crop.x,
-          y: crop.y,
-          w: crop.w,
-          h: crop.h,
-          unit: 'percent',
-          aspect: cropAspect,
-        };
-        nextMeta.image = nextImageMeta;
-      }
-
-      if (isVideo) {
-        const currentVideoMeta = currentMeta?.video && typeof currentMeta.video === 'object' ? currentMeta.video : {};
-        const segmentFrom = toNumberOrNull(formData.video_segment_from);
-        const segmentTo = toNumberOrNull(formData.video_segment_to);
-        const segments = normalizeVideoSegments(parsedSegments);
-        const legacyFrom = segments[0]?.from ?? segmentFrom;
-        const legacyTo = segments[segments.length - 1]?.to ?? segmentTo;
-        nextMeta.video = {
-          ...currentVideoMeta,
-          segment: {
-            from: legacyFrom,
-            to: legacyTo !== null && legacyFrom !== null && legacyTo < legacyFrom ? legacyFrom : legacyTo,
-          },
-          segments,
-          subtitles: parsedSubtitles,
-        };
-      }
+      const nextMeta = buildMetaPayload(formData, parsedSubtitles, parsedSegments);
 
       return {
         ...formData,
@@ -944,6 +1207,12 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
     ? (media.meta.image.variants as Record<string, { path?: string; width?: number; height?: number; max?: number }>)
     : {};
   const subtitlesForPreview = parseSubtitlesJson(data.video_subtitles_json) ?? [];
+  const parsedSubtitlesForMeta = parseSubtitlesJson(data.video_subtitles_json);
+  const parsedSegmentsForMeta = parseVideoSegmentsJson(data.video_segments_json);
+  const metaJsonValue = parsedSubtitlesForMeta !== null && parsedSegmentsForMeta !== null
+    ? JSON.stringify(buildMetaPayload(data as MediaEditFormData, parsedSubtitlesForMeta, parsedSegmentsForMeta), null, 2)
+    : JSON.stringify(media?.meta ?? {}, null, 2);
+  const mp3DownloadUrl = media?.id ? route('media.download-audio-mp3', [media.id]) : null;
   const hlsPlaylistPath = typeof media?.meta?.video?.hls?.playlist === 'string' ? media.meta.video.hls.playlist : '';
   const hlsGeneratedAt = typeof media?.meta?.video?.hls?.generated_at === 'string' ? media.meta.video.hls.generated_at : '';
 
@@ -972,7 +1241,7 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
                 <VisualImageEditor mediaUrl={mediaUrlWithCache} data={data} setData={setData as any} />
               )}
               {mediaUrlWithCache && isVideo && (
-                <VisualVideoEditor mediaUrl={mediaUrlWithCache} data={data} setData={setData as any} subtitles={subtitlesForPreview} />
+                <VisualVideoEditor mediaUrl={mediaUrlWithCache} data={data} setData={setData as any} subtitles={subtitlesForPreview} mp3DownloadUrl={mp3DownloadUrl} />
               )}
               {mediaUrlWithCache && !mimeType.startsWith('image/') && !mimeType.startsWith('video/') && (
                 <a
@@ -1067,6 +1336,24 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
                     M3U8 neu generieren
                   </SecondaryButton>
                 </div>
+              </div>
+            </FormSection>
+          )}
+
+          {(isImage || isVideo) && (
+            <FormSection title="Meta JSON" subtitle="Aktueller Meta-Stand aus den Formdaten">
+              <div className="space-y-2">
+                {(parsedSubtitlesForMeta === null || parsedSegmentsForMeta === null) && (
+                  <div className="text-xs text-red-600">
+                    JSON in Untertitel oder Segmente ist ungültig. Es wird der zuletzt gespeicherte Meta-Stand angezeigt.
+                  </div>
+                )}
+                <textarea
+                  rows={16}
+                  readOnly
+                  value={metaJsonValue}
+                  className="w-full rounded border border-secondary/30 bg-background px-3 py-2 font-mono text-xs"
+                />
               </div>
             </FormSection>
           )}

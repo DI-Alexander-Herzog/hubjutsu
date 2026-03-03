@@ -23,6 +23,8 @@ export default function PrimaryButton({
     display = 'solid',
     ...props
 }: PrimaryButtonProps) {
+    const hasZeroPaddingOverride = /(?:^|\s)p-0(?:\s|$)/.test(className);
+
     return (
         <button
             {...props}
@@ -46,7 +48,7 @@ export default function PrimaryButton({
                             'active:brightness-90',
                             'focus:text-onprimary',
                         ],
-                    sizeClasses[size],
+                    !hasZeroPaddingOverride && sizeClasses[size],
                     
                     {
                         'opacity-25 cursor-not-allowed': disabled,

@@ -24,6 +24,8 @@ export default function SecondaryButton({
     display = 'solid',
     ...props
 }: SecondaryButtonProps) {
+    const hasZeroPaddingOverride = /(?:^|\s)p-0(?:\s|$)/.test(className);
+
     return (
         <button
             {...props}
@@ -43,7 +45,7 @@ export default function SecondaryButton({
                             'hover:bg-secondary-300 hover:text-onsecondary-300 dark:hover:bg-onsecondary-300 dark:hover:text-secondary-300',
                             'active:bg-secondary-900 active:text-onsecondary-900 dark:active:bg-onsecondary-300 dark:active:text-secondary-300',
                         ],
-                    sizeClasses[size],
+                    !hasZeroPaddingOverride && sizeClasses[size],
                     {
                         'opacity-25': disabled,
                     },

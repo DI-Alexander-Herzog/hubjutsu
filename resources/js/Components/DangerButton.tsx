@@ -23,6 +23,8 @@ export default function DangerButton({
     display = 'solid',
     ...props
 }: DangerButtonProps) {
+    const hasZeroPaddingOverride = /(?:^|\s)p-0(?:\s|$)/.test(className);
+
     return (
         <button
             {...props}
@@ -40,7 +42,7 @@ export default function DangerButton({
                             'bg-red-600 border border-transparent text-white',
                             'hover:bg-red-500 active:bg-red-700',
                         ],
-                    sizeClasses[size],
+                    !hasZeroPaddingOverride && sizeClasses[size],
                     {
                         'opacity-25': disabled,
                     },

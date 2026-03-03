@@ -149,6 +149,35 @@ class MediaController extends Controller
         return back()->with('success', 'M3U8 wurde neu erzeugt.');
     }
 
+    public function downloadAudioMp3(Media $media)
+    {
+        abort_unless($this->canViewMedia($media), 403);
+
+        if (!is_string($media->mimetype) || !str_starts_with($media->mimetype, 'video/')) {
+            return back()->with('error', 'MP3-Download ist nur für Videos verfügbar.');
+        }
+
+        try {
+            $audioRelativePath = $media->generateAudioMp3FromVideo();
+        } catch (Throwable $e) {
+            report($e);
+            return back()->with('error', $e->getMessage());
+        }
+
+        if (!$media->storage || !Storage::disk($media->storage)->exists($audioRelativePath)) {
+            return back()->with('error', 'MP3-Datei konnte nicht gefunden werden.');
+        }
+
+        $sourceName = pathinfo((string) $media->filename, PATHINFO_FILENAME);
+        $downloadName = ($sourceName !== '' ? $sourceName : ('media-' . $media->id)) . '.mp3';
+
+        return response()->download(
+            Storage::disk($media->storage)->path($audioRelativePath),
+            $downloadName,
+            ['Content-Type' => 'audio/mpeg']
+        );
+    }
+
     public function file(Media $media)
     {
         abort_unless($this->canViewMedia($media), 403);

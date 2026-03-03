@@ -68,7 +68,7 @@ function LearningLectionFormBody({ learning_lection }: { learning_lection: any }
             <Modal
                 show={showRecorder}
                 onClose={() => setShowRecorder(false)}
-                maxWidth="2xl"
+                maxWidth="screen"
                 title="Lektion aufnehmen"
                 subtitle="Aufnahme wird direkt als Video-Media übernommen."
             >
