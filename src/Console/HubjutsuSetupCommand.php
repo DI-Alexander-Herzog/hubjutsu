@@ -202,6 +202,23 @@ class HubjutsuSetupCommand extends Command
         });
     }
 
+    protected function syncAgentsStubTemplate(): void
+    {
+        $filesystem = $this->getFilesystem();
+        $projectAgentsPath = base_path('AGENTS.md');
+        $stubAgentsPath = __DIR__.'/../../stubs/AGENTS.md';
+        if (! $filesystem->exists($stubAgentsPath)) return;
+
+        $shouldCopyToProject =
+            ! $filesystem->exists($projectAgentsPath)
+            || $filesystem->lastModified($stubAgentsPath) > $filesystem->lastModified($projectAgentsPath);
+
+        if ($shouldCopyToProject) {
+            $filesystem->copy($stubAgentsPath, $projectAgentsPath);
+            $this->components->info('Synced AGENTS.md from package stubs.');
+        }
+    }
+
 
     /**
      * Install the installation.
@@ -212,6 +229,8 @@ class HubjutsuSetupCommand extends Command
     {
 
         $setup = !$this->option('update');
+
+        $this->syncAgentsStubTemplate();
 
 
 
