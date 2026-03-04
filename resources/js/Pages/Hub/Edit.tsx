@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import HubForm from './Form';
 import { CogIcon, FolderIcon } from '@heroicons/react/20/solid';
 import RoleAssignmentSection from '@/Components/RoleAssignmentModal';
+import IntegrationServiceSection from '@/Components/IntegrationServiceSection';
 
 export default function HubEdit({ hubEntry }: { hubEntry?: any }) {
     return (
@@ -18,6 +19,17 @@ export default function HubEdit({ hubEntry }: { hubEntry?: any }) {
 
             {hubEntry?.id && (
                 <RoleAssignmentSection
+                    scope={{
+                        type: hubEntry?.morph_class ?? 'App\\Models\\Hub',
+                        id: hubEntry.id,
+                        label: hubEntry.name,
+                    }}
+                />
+            )}
+
+            {hubEntry?.id && (
+                <IntegrationServiceSection
+                    className="mt-8"
                     scope={{
                         type: hubEntry?.morph_class ?? 'App\\Models\\Hub',
                         id: hubEntry.id,

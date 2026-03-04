@@ -3,8 +3,13 @@
 namespace AHerzog\Hubjutsu\Models;
 
 use AHerzog\Hubjutsu\DTO\Colors;
+use AHerzog\Hubjutsu\App\Services\Integrations\GoogleOAuthService;
+use AHerzog\Hubjutsu\App\Services\Integrations\MetaAdsOAuthService;
+use AHerzog\Hubjutsu\App\Services\Integrations\MetaLoginOAuthService;
+use AHerzog\Hubjutsu\Models\Traits\CredentialTrait;
 use AHerzog\Hubjutsu\Models\Traits\HasRoleAssignments;
 use AHerzog\Hubjutsu\Models\Traits\MediaTrait;
+use App\Models\Credential;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Base;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
@@ -14,6 +19,36 @@ class Hub extends Base
     use HasFactory;
     use MediaTrait;
     use HasRoleAssignments;
+    use CredentialTrait;
+
+    public function getGoogleService()
+    {
+        return $this->getServiceByProvider(GoogleOAuthService::SERVICE_KEY);
+    }
+
+    public function getMetaAdsService()
+    {
+        return $this->getServiceByProvider(MetaAdsOAuthService::SERVICE_KEY);
+    }
+
+    public function getMetaLoginService()
+    {
+        return $this->getServiceByProvider(MetaLoginOAuthService::SERVICE_KEY);
+    }
+
+    public function getMetaService()
+    {
+        return $this->getMetaAdsService();
+    }
+
+    protected function credentialServiceProviders(): array
+    {
+        return [
+            MetaAdsOAuthService::SERVICE_KEY,
+            MetaLoginOAuthService::SERVICE_KEY,
+            GoogleOAuthService::SERVICE_KEY,
+        ];
+    }
 
     protected $fillable = [
         'created_at',

@@ -42,3 +42,10 @@ Keine Importpfade aus dem hubjutsu-Namespace nutzen.
 Nutze vorranging die hubjutsu api Klassen. 
 
 Nutze niemals fetch() - immer axios oder die hubjutsu api Klassen, damit die Ableitung gewährleistet ist.
+
+# UI Components in React
+Für Formulare und Interaktionen immer die vorhandenen Komponenten aus `@/Components/...` nutzen.
+
+Keine nativen HTML-Controls direkt bauen (`<input>`, `<select>`, `<textarea>`, `<button>`), wenn es dafür bereits eine bestehende Komponente gibt.
+
+Bevorzugte Komponenten sind z. B. `Input`, `InputSelect`, `InputTextarea`, `PrimaryButton`, `NeutralButton`, `Modal`, `FormSection`, `FormContainer`.

@@ -4,6 +4,7 @@ namespace AHerzog\Hubjutsu;
 
 use AHerzog\Hubjutsu\App\Auth\Permission;
 use AHerzog\Hubjutsu\App\Menu\MenuManager;
+use AHerzog\Hubjutsu\App\Services\Integrations\IntegrationServiceRegistry as PackageIntegrationServiceRegistry;
 use AHerzog\Hubjutsu\Console\HubjutsuAppModelCommand;
 use AHerzog\Hubjutsu\Console\CleanupRecordingsCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuGenerateTypesCommand;
@@ -41,6 +42,7 @@ class HubjutsuServiceProvider extends ServiceProvider
         Permission::addModel(\App\Models\Hub::class, __('Hub'));
         Permission::addModel(\App\Models\User::class, __('User'));
         Permission::addModel(\App\Models\Role::class, __('Role'));
+        Permission::addModel(\App\Models\Credential::class, __('Credential'));
         Permission::addModel(\App\Models\LearningBundle::class, __('Learning Bundle'));
         Permission::addModel(\App\Models\LearningCourse::class, __('Learning Course'));
         Permission::addModel(\App\Models\LearningModule::class, __('Learning Module'));
@@ -105,6 +107,37 @@ class HubjutsuServiceProvider extends ServiceProvider
         // Register the main class to use with the facade
         $this->app->singleton(MenuManager::class, function () {
             return new MenuManager();
+        });
+
+        if (!$this->app->bound(PackageIntegrationServiceRegistry::class)) {
+            $this->app->singleton(
+                PackageIntegrationServiceRegistry::class,
+                fn () => new PackageIntegrationServiceRegistry()
+            );
+        }
+
+        if (class_exists(\App\Services\Integrations\IntegrationServiceRegistry::class)
+            && !$this->app->bound(\App\Services\Integrations\IntegrationServiceRegistry::class)) {
+            $this->app->singleton(
+                \App\Services\Integrations\IntegrationServiceRegistry::class,
+                fn ($app) => $app->make(PackageIntegrationServiceRegistry::class)
+            );
+        }
+
+        $this->app->afterResolving(PackageIntegrationServiceRegistry::class, function ($registry) {
+            if (!method_exists($registry, 'register')) {
+                return;
+            }
+
+            if (class_exists(\App\Services\Integrations\MetaAdsOAuthService::class)) {
+                $registry->register(\App\Services\Integrations\MetaAdsOAuthService::class);
+            }
+            if (class_exists(\App\Services\Integrations\MetaLoginOAuthService::class)) {
+                $registry->register(\App\Services\Integrations\MetaLoginOAuthService::class);
+            }
+            if (class_exists(\App\Services\Integrations\GoogleOAuthService::class)) {
+                $registry->register(\App\Services\Integrations\GoogleOAuthService::class);
+            }
         });
 
         if (class_exists("App\Services\HubManager")) {

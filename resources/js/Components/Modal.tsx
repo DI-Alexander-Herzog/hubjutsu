@@ -109,7 +109,7 @@ export default function Modal({
 						className={`mb-6 bg-background dark:bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full sm:mx-auto ${maxWidthClass}`}
 					>
 						{(title || subtitle) && (
-							<div className="p-6">
+							<div className="p-6 pb-3">
 								{title && (
 									<h2 className="text-lg font-medium text-text-900 dark:text-gray-100">
 										{title}
@@ -123,7 +123,7 @@ export default function Modal({
 							</div>
 						)}
 
-						<div className="p-6">{children}</div>
+						<div className="p-6 pt-3">{children}</div>
 
 						{(primaryButtonText || secondaryButtonText) && (
 							<div className="px-6 py-4 flex justify-end">

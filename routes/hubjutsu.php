@@ -26,6 +26,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleAssignmentController;
+use App\Http\Controllers\IntegrationCredentialController;
 use App\Services\HubManager;
 use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
@@ -134,6 +135,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
 });
+
+Route::middleware(['auth', 'verified'])
+    ->prefix('integrations')
+    ->name('integrations.')
+    ->group(function () {
+        Route::get('/services', [IntegrationCredentialController::class, 'services'])->name('services');
+        Route::match(['get', 'post'], '/{provider}/connect', [IntegrationCredentialController::class, 'connect'])->name('oauth.connect');
+        Route::delete('/{provider}/disconnect', [IntegrationCredentialController::class, 'disconnect'])->name('oauth.disconnect');
+        Route::get('/{provider}/callback', [IntegrationCredentialController::class, 'callback'])->name('oauth.callback');
+    });
 
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])

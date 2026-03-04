@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Models } from '@/types/models';
 import HubForm from './Form';
 import RoleAssignmentSection from '@/Components/RoleAssignmentModal';
+import IntegrationServiceSection from '@/Components/IntegrationServiceSection';
 
 export default function HubView({ hubEntry }: { hubEntry: Models.Hub }) {
     return (
@@ -12,6 +13,17 @@ export default function HubView({ hubEntry }: { hubEntry: Models.Hub }) {
 
             {hubEntry?.id && (
                 <RoleAssignmentSection
+                    scope={{
+                        type: hubEntry?.morph_class ?? 'App\\Models\\Hub',
+                        id: hubEntry.id,
+                        label: hubEntry.name,
+                    }}
+                    disabled
+                />
+            )}
+
+            {hubEntry?.id && (
+                <IntegrationServiceSection
                     scope={{
                         type: hubEntry?.morph_class ?? 'App\\Models\\Hub',
                         id: hubEntry.id,
