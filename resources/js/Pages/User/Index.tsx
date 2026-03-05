@@ -1,10 +1,10 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import DataTable from "@/Components/DataTable";
-import DataTableLink from "@hubjutsu/Components/DataTableLink";
-import InputText from "@hubjutsu/Components/InputText";
-import { DataTableFormatter } from "@hubjutsu/Components/DataTableFormatter";
+import DataTableLink from "@/Components/DataTableLink";
+import InputText from "@/Components/InputText";
+import { DataTableFormatter } from "@/Components/DataTableFormatter";
 import { CogIcon, UserIcon } from "@heroicons/react/20/solid";
-import { Column } from "@hubjutsu/Components/DataTable";
+import { Column } from "@/Components/DataTable";
 
 export default function UserIndex({extraColumns}: {extraColumns?: Column[]	}) {
 	return (

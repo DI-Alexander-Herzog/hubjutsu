@@ -1,6 +1,6 @@
 import React from "react";
 import classNames from "classnames";
-import { handleDoubleClick } from "@hubjutsu/Helper/doubleClick";
+import { handleDoubleClick } from "@/Helper/doubleClick";
 import Checkbox from "@/Components/Checkbox";
 import { DataTableFormatter } from "@/Components/DataTableFormatter";
 import DataTableEditor from "@/Components/DataTableEditor";

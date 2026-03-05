@@ -1,16 +1,12 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import Card from '@/Components/Layout/Card';
+import FormContainer from '@/Components/FormContainer';
 
 export default function UserForm() {
     return (
-        <>
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-background dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-text-900 dark:text-gray-100">FORM</div>
-                    </div>
-                </div>
-            </div>
-        </>
+        <FormContainer className="py-4">
+            <Card>
+                <p className="text-text-900 dark:text-gray-100">FORM</p>
+            </Card>
+        </FormContainer>
     );
 }

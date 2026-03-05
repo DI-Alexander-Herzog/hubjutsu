@@ -1,19 +1,31 @@
 import { HTMLAttributes } from "react";
 import Container from "@/Components/Layout/Container";
+import Card from "@/Components/Layout/Card";
+
+type FormContainerProps = HTMLAttributes<HTMLDivElement> & {
+	size?: "small" | "medium" | "large";
+	gap?: "none" | "sm" | "md" | "lg";
+	stack?: boolean;
+};
 
 export default function FormContainer({
 	children,
 	className,
+	size = "large",
+	gap = "none",
+	stack = false,
 	...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: FormContainerProps) {
 	return (
-		<Container size="large" className={className}>
-			<div
-				{...props}
-				className={"p-4 sm:p-8 bg-background dark:bg-gray-800 shadow sm:rounded-lg w-full"}
-			>
-				{children}
-			</div>
+		<Container size={size} gap={gap} stack={stack} className={className}>
+			<Card className="w-full border-0 dark:bg-gray-800" bodyClassName="p-0">
+				<div
+					{...props}
+					className="p-4 sm:p-8 w-full"
+				>
+					{children}
+				</div>
+			</Card>
 		</Container>
 	);
 }

@@ -3,7 +3,7 @@ import { DateTime } from "luxon";
 import axios from "axios";
 import { DataTableFormatter } from "./DataTableFormatter";
 import ColorInput from "./ColorInput";
-import modelAPI from "@hubjutsu/api/modelAPI";
+import modelAPI from "@/api/modelAPI";
 import { createPortal } from "react-dom";
 import { useDropzone } from "react-dropzone";
 import { v4 as uuidv4 } from "uuid";

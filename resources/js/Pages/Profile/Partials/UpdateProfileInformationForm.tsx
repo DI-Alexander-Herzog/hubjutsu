@@ -3,7 +3,7 @@ import { PageProps } from "@/types";
 import Input from "@/Components/Input";
 import NavLink from "@/Components/NavLink";
 import FormSection from "@/Components/FormSection";
-import PrimaryButton from "@hubjutsu/Components/PrimaryButton";
+import PrimaryButton from "@/Components/PrimaryButton";
 import { Transition } from "@headlessui/react";
 import { FormEventHandler } from "react";
 

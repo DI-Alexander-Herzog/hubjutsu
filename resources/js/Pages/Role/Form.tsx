@@ -1,10 +1,9 @@
 import { Models } from '@/types/models';
 import FormSection from '@/Components/FormSection';
 import { useForm } from '@inertiajs/react';
-import FormContainer from '@hubjutsu/Components/FormContainer';
+import FormContainer from '@/Components/FormContainer';
 import Checkbox from '@/Components/Checkbox';
-import PrimaryButton from '@hubjutsu/Components/PrimaryButton';
-import { useEffect } from 'react';
+import PrimaryButton from '@/Components/PrimaryButton';
 
 type PermissionTableType = {
     'name': string,

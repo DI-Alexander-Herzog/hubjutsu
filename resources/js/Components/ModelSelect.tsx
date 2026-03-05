@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import modelAPI from "@hubjutsu/api/modelAPI";
+import modelAPI from "@/api/modelAPI";
 import { DataTableFormatter } from "./DataTableFormatter";
 
 const inputClassName =

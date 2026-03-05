@@ -4,7 +4,9 @@ import UpdatePasswordForm from "@/Pages/Profile/Partials/UpdatePasswordForm";
 import UpdateProfileInformationForm from "@/Pages/Profile/Partials/UpdateProfileInformationForm";
 import { PageProps } from "@/types";
 import UpdateAvatarForm from "./Partials/UpdateAvatarForm";
+
 import FormContainer from "@/Components/FormContainer";
+import Separator from "@/Components/Separator";
 
 export default function Edit({
 	mustVerifyEmail,
@@ -12,22 +14,16 @@ export default function Edit({
 }: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
 	return (
 		<AuthenticatedLayout title="Profile">
-			<FormContainer>
+			<FormContainer size="large" stack gap="md" className="py-4">
 				<UpdateProfileInformationForm
 					mustVerifyEmail={mustVerifyEmail}
 					status={status}
 				/>
-			</FormContainer>
-
-			<FormContainer>
+				<Separator />
 				<UpdateAvatarForm />
-			</FormContainer>
-
-			<FormContainer>
+				<Separator />
 				<UpdatePasswordForm />
-			</FormContainer>
-
-			<FormContainer>
+				<Separator />
 				<DeleteUserForm />
 			</FormContainer>
 		</AuthenticatedLayout>

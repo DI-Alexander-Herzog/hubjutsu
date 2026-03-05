@@ -1,10 +1,10 @@
 import { useState } from "react";
-import DangerButton from "@hubjutsu/Components/DangerButton";
-import Modal from "@hubjutsu/Components/Modal";
-import NeutralButton from "@hubjutsu/Components/NeutralButton";
+import DangerButton from "@/Components/DangerButton";
+import Modal from "@/Components/Modal";
+import NeutralButton from "@/Components/NeutralButton";
 import { useForm } from "@inertiajs/react";
-import FormSection from "@hubjutsu/Components/FormSection";
-import Input from "@hubjutsu/Components/Input";
+import FormSection from "@/Components/FormSection";
+import Input from "@/Components/Input";
 
 export default function DeleteUserForm({
 	className = "",

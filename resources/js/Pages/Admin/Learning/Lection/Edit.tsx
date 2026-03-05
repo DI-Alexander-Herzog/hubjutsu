@@ -1,3 +1,3 @@
-import LearningLectionEdit from '@hubjutsu/Pages/LearningLection/Edit';
+import LearningLectionEdit from '@/Pages/LearningLection/Edit';
 
 export default LearningLectionEdit;

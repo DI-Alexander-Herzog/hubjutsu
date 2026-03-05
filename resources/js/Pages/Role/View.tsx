@@ -1,6 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Models } from '@/types/models';
-import { Head } from '@inertiajs/react';
 import RoleForm from './Form';
 import { CogIcon,ShieldCheckIcon } from '@heroicons/react/20/solid';
 

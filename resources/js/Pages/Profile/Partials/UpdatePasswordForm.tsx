@@ -1,7 +1,7 @@
 import { useForm } from "@inertiajs/react";
-import FormSection from "@hubjutsu/Components/FormSection";
-import Input from "@hubjutsu/Components/Input";
-import PrimaryButton from "@hubjutsu/Components/PrimaryButton";
+import FormSection from "@/Components/FormSection";
+import Input from "@/Components/Input";
+import PrimaryButton from "@/Components/PrimaryButton";
 import { Transition } from "@headlessui/react";
 import { FormEventHandler, useRef } from "react";
 

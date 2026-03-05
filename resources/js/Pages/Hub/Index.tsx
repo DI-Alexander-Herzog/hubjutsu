@@ -3,7 +3,7 @@ import DataTable from "@/Components/DataTable";
 import { DataTableDynamicFormatter } from "@/Components/DataTableDynamicFormatter";
 
 import IconLibrary from "@/Components/IconLibrary";
-import { Column } from "@hubjutsu/Components/DataTable";
+import { Column } from "@/Components/DataTable";
 import { DataTableFormatter } from "@/Components/DataTableFormatter";
 
 export default function HubIndex({extraColumns}: {extraColumns?: Column[]	}) {

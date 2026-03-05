@@ -2,7 +2,7 @@ import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
 import { XMarkIcon as XMarkIconSmall, PlusIcon } from "@heroicons/react/20/solid";
 import { useLaravelReactI18n } from "laravel-react-i18n";
-import modelAPI from "@hubjutsu/api/modelAPI";
+import modelAPI from "@/api/modelAPI";
 
 import PrimaryButton from "@/Components/PrimaryButton";
 import NeutralButton from "@/Components/NeutralButton";

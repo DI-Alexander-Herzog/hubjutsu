@@ -1,19 +1,17 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import FormContainer from '@/Components/FormContainer';
+import Card from '@/Components/Layout/Card';
 
 export default function RoleAssignmentCreate() {
     return (
         <AuthenticatedLayout
             title="RoleAssignment"
         >
-
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-background dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-text-900 dark:text-gray-100">IRGENDWELCHE SETTINGS!</div>
-                    </div>
-                </div>
-            </div>
+            <FormContainer className="py-4">
+                <Card>
+                    <p className="text-text-900 dark:text-gray-100">IRGENDWELCHE SETTINGS!</p>
+                </Card>
+            </FormContainer>
         </AuthenticatedLayout>
     );
 }

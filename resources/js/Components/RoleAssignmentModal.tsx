@@ -3,6 +3,7 @@ import axios from "axios";
 import FormSection from "@/Components/FormSection";
 import FormContainer from "@/Components/FormContainer";
 import DataTable from "@/Components/DataTable";
+import Card from "@/Components/Layout/Card";
 import type { Column } from "@/Components/DataTable";
 
 type ScopeConfig = {
@@ -184,7 +185,7 @@ export default function RoleAssignmentSection({
 					</div>
 				)}
 
-				<div className="rounded-md border border-gray-200 bg-background-600 p-4 text-sm dark:border-gray-700 dark:bg-gray-900">
+				<Card variant="muted" bodyClassName="p-4" className="text-sm">
 					<div className="flex items-center justify-between gap-4">
 						<div>
 							<p className="text-xs uppercase tracking-wide text-text-500">
@@ -203,7 +204,7 @@ export default function RoleAssignmentSection({
 							</p>
 						</div>
 					</div>
-				</div>
+				</Card>
 
 				<div className="space-y-2">
 					<div className="text-sm font-medium text-text-900 dark:text-gray-50">
@@ -214,9 +215,9 @@ export default function RoleAssignmentSection({
 					) : stackData?.ancestors?.length ? (
 						<div className="space-y-3">
 							{stackData.ancestors.map((ancestor) => (
-								<div
-									className="rounded-md border border-gray-200 p-3 dark:border-gray-700"
+								<Card
 									key={`${ancestor.type}-${ancestor.id}`}
+									bodyClassName="p-3"
 								>
 									<div className="text-xs uppercase tracking-wide text-text-500">
 										{ancestor.type_label}
@@ -244,7 +245,7 @@ export default function RoleAssignmentSection({
 											</div>
 										))}
 									</div>
-								</div>
+								</Card>
 							))}
 						</div>
 					) : (

@@ -1,7 +1,7 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { CogIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
-import DataTable from "@hubjutsu/Components/DataTable";
-import DataTableLink from "@hubjutsu/Components/DataTableLink";
+import DataTable from "@/Components/DataTable";
+import DataTableLink from "@/Components/DataTableLink";
 
 export default function RoleIndex() {
 	return (

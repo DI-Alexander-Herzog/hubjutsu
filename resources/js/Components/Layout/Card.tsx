@@ -83,7 +83,7 @@ export default function Card({
     ...props
 }: CardProps) {
     const baseClass = classNames(
-        'overflow-hidden rounded-xl ',
+        'overflow-hidden rounded-xl',
         VARIANT_CLASS[variant],
         className
     );

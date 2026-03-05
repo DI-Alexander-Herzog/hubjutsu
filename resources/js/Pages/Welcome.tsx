@@ -1,7 +1,7 @@
 import { Link, Head, useForm, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import ApplicationLogo from '@/Components/ApplicationLogo';
-import ThemeModeButton from '@hubjutsu/Components/ThemeMode';
+import ThemeModeButton from '@/Components/ThemeMode';
 import Input from '@/Components/Input';
 import { FormEventHandler } from 'react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
