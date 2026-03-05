@@ -318,6 +318,7 @@ class HubjutsuSetupCommand extends Command
         $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/resources/js/Components', resource_path('js/Components'));
         $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/resources/js/Layouts', resource_path('js/Layouts'));
         $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/resources/js/Pages', resource_path('js/Pages'));
+        $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/resources/js/api', resource_path('js/api'));
         $this->copyDirectoryIfNotExists(__DIR__.'/../../stubs/resources/js/types', resource_path('js/types'));
     
 
