@@ -92,17 +92,32 @@ export default function Input({ className = '', label='', inputId = '', inputNam
     }
 
     const editor = (() => {
-         if (type == "select") {
+        if (type == "select") {
+            const isMultiple = Boolean(props.multiple);
+            const selectedValue = (() => {
+                if (!isMultiple) {
+                    return _useForm.data && _useForm.data[inputName] ? _useForm.data[inputName] : '';
+                }
+
+                const current = _useForm.data ? _useForm.data[inputName] : [];
+                if (Array.isArray(current)) {
+                    return current.map((item) => String(item));
+                }
+                return [];
+            })();
+
             return <InputSelect
                 id={id}
                 name={inputName}
-                value={_useForm.data && _useForm.data[inputName] ? _useForm.data[inputName] : '' }
+                value={selectedValue}
                 className={`mt-1 block w-full ${className}`}
                 {...props}
                 options={options}
                 onChange={(e) => _useForm.setData((data: { [key: string]: any }) => ({
                     ...data,
-                    [inputName]: e.target.value
+                    [inputName]: isMultiple
+                        ? Array.from(e.target.selectedOptions).map((option) => option.value)
+                        : e.target.value
                 }))}
             />;
         } else if (type == "textarea") {

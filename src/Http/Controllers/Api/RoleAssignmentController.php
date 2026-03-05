@@ -4,6 +4,7 @@ namespace AHerzog\Hubjutsu\Http\Controllers\Api;
 
 use App\Models\RoleAssignment;
 use AHerzog\Hubjutsu\Models\Traits\HasRoleAssignments;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
@@ -76,27 +77,59 @@ class RoleAssignmentController extends HubjutsuApiController
 
         $ancestors = [];
         foreach ($model::roleAssignmentAncestors() as $path) {
-            $current = $model;
-            foreach (array_filter(explode('.', $path)) as $segment) {
-                if (!method_exists($current, $segment)) {
-                    $current = null;
-                    break;
+            $segments = array_values(array_filter(explode('.', $path)));
+            $resolved = $this->expandPathNodes([$model], $segments);
+            foreach ($resolved as $ancestor) {
+                if (!$ancestor instanceof Model) {
+                    continue;
                 }
-                $related = $current->{$segment};
-                if (!$related) {
-                    $current = null;
-                    break;
-                }
-                $current = $related;
-            }
-
-            if ($current) {
-                $key = $current::class . ':' . $current->getKey();
-                $ancestors[$key] = $current;
+                $key = $ancestor::class . ':' . $ancestor->getKey();
+                $ancestors[$key] = $ancestor;
             }
         }
 
         return array_values($ancestors);
+    }
+
+    /**
+     * @param array<int, Model> $nodes
+     * @param array<int, string> $segments
+     * @return array<int, Model>
+     */
+    protected function expandPathNodes(array $nodes, array $segments): array
+    {
+        if (empty($segments)) {
+            return array_values(array_filter($nodes, fn ($node) => $node instanceof Model));
+        }
+
+        $segment = array_shift($segments);
+        $nextNodes = [];
+
+        foreach ($nodes as $node) {
+            if (!($node instanceof Model) || !method_exists($node, $segment)) {
+                continue;
+            }
+
+            $related = $node->{$segment};
+            if ($related instanceof Model) {
+                $nextNodes[] = $related;
+                continue;
+            }
+
+            if ($related instanceof Collection) {
+                foreach ($related as $item) {
+                    if ($item instanceof Model) {
+                        $nextNodes[] = $item;
+                    }
+                }
+            }
+        }
+
+        if (empty($nextNodes)) {
+            return [];
+        }
+
+        return $this->expandPathNodes($nextNodes, $segments);
     }
 
     protected function labelFor(Model $model): string

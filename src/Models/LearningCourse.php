@@ -2,6 +2,7 @@
 
 namespace AHerzog\Hubjutsu\Models;
 
+use AHerzog\Hubjutsu\Models\Traits\HasRoleAssignments;
 use AHerzog\Hubjutsu\Models\Traits\MediaTrait;
 use App\Models\Base;
 use App\Models\LearningBundle;
@@ -14,7 +15,11 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class LearningCourse extends Base
 {
-    use HasFactory, MediaTrait;
+    use HasFactory, MediaTrait, HasRoleAssignments;
+
+    protected static array $roleAssignmentAncestors = [
+        'bundles',
+    ];
 
     protected $fillable = [
         'created_at',

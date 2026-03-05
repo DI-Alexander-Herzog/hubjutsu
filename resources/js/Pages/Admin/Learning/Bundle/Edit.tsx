@@ -1,7 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import LearningBundleForm from './Form';
+import RoleAssignmentSection from '@/Components/RoleAssignmentModal';
 
-export default function LearningBundleEdit({ learning_bundle }: { learning_bundle: any }) {
+export default function LearningBundleEdit({
+    learning_bundle,
+}: {
+    learning_bundle: any;
+}) {
     return (
         <AuthenticatedLayout
             title="Learning Bundle"
@@ -11,7 +16,20 @@ export default function LearningBundleEdit({ learning_bundle }: { learning_bundl
                 { label: learning_bundle?.name || 'Bundle' },
             ]}
         >
-            <LearningBundleForm learning_bundle={learning_bundle} disabled={false} />
+            <LearningBundleForm
+                learning_bundle={learning_bundle}
+                disabled={false}
+            />
+
+            {learning_bundle?.id && (
+                <RoleAssignmentSection
+                    scope={{
+                        type: learning_bundle?.morph_class ?? 'App\\Models\\LearningBundle',
+                        id: learning_bundle.id,
+                        label: learning_bundle.name,
+                    }}
+                />
+            )}
         </AuthenticatedLayout>
     );
 }
