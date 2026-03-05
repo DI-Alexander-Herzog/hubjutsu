@@ -7,7 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-abstract class BaseMetaOAuthService extends CredentialService
+abstract class BaseMetaOAuthService extends OAuthCredentialService
 {
     protected const AUTHORIZE_URL = 'https://www.facebook.com/v22.0/dialog/oauth';
     protected const TOKEN_URL = 'https://graph.facebook.com/v22.0/oauth/access_token';
@@ -189,6 +189,115 @@ abstract class BaseMetaOAuthService extends CredentialService
         ]);
     }
 
+    public function currentAccessToken(bool $forceRefresh = false): string
+    {
+        $credential = $this->resolveLatestCredential($this->resolveCredential());
+        return $this->currentAccessTokenForCredential($credential, $forceRefresh);
+    }
+
+    public function requiresTokenRefresh(): bool
+    {
+        return true;
+    }
+
+    public function refreshNow(): bool
+    {
+        $credential = $this->resolveLatestCredential($this->resolveCredential());
+
+        $systemUserToken = data_get($credential->secret_data, 'system_user_token');
+        if (is_string($systemUserToken) && trim($systemUserToken) !== '') {
+            return false;
+        }
+
+        $this->currentAccessTokenForCredential($credential, true);
+        return true;
+    }
+
+    protected function currentAccessTokenForCredential(Credential $credential, bool $forceRefresh = false): string
+    {
+        $systemUserToken = data_get($credential->secret_data, 'system_user_token');
+        if (is_string($systemUserToken) && trim($systemUserToken) !== '') {
+            return trim($systemUserToken);
+        }
+
+        $currentToken = $this->readRequiredString(
+            data_get($credential->secret_data, 'access_token'),
+            'Meta access_token fehlt im Credential.'
+        );
+
+        $expiresAt = $this->parseDateTime(data_get($credential->secret_data, 'access_token_expires_at'));
+        if (!$forceRefresh && !$this->isExpiringSoon($expiresAt, self::TOKEN_REFRESH_LEEWAY_SECONDS)) {
+            return $currentToken;
+        }
+
+        return $this->withCredentialLock(
+            $credential,
+            'token-refresh',
+            function () use ($credential, $forceRefresh): string {
+                $fresh = $credential->fresh();
+                if (!$fresh instanceof Credential) {
+                    throw new RuntimeException('Credential konnte nicht aktualisiert werden.');
+                }
+
+                $fresh = $this->resolveLatestCredential($fresh);
+
+                $systemUserToken = data_get($fresh->secret_data, 'system_user_token');
+                if (is_string($systemUserToken) && trim($systemUserToken) !== '') {
+                    return trim($systemUserToken);
+                }
+
+                $token = $this->readRequiredString(
+                    data_get($fresh->secret_data, 'access_token'),
+                    'Meta access_token fehlt im Credential.'
+                );
+
+                $expiresAt = $this->parseDateTime(data_get($fresh->secret_data, 'access_token_expires_at'));
+                if (!$forceRefresh && !$this->isExpiringSoon($expiresAt, self::TOKEN_REFRESH_LEEWAY_SECONDS)) {
+                    return $token;
+                }
+
+                $payload = $this->refreshMetaAccessTokenPayload($fresh, $token);
+                $newToken = $this->readRequiredString(
+                    $payload['access_token'] ?? null,
+                    'Meta Token-Refresh lieferte keinen access_token.'
+                );
+
+                $now = Carbon::now();
+                $expiresIn = isset($payload['expires_in']) ? intval($payload['expires_in']) : null;
+                $validUntil = $expiresIn && $expiresIn > 0 ? $now->copy()->addSeconds($expiresIn) : null;
+
+                $secretData = is_array($fresh->secret_data) ? $fresh->secret_data : [];
+                $secretData['access_token'] = $newToken;
+                $secretData['expires_in'] = $expiresIn;
+                $secretData['is_long_lived'] = true;
+                $secretData['access_token_obtained_at'] = $now->toIso8601String();
+                $secretData['access_token_expires_at'] = $validUntil?->toIso8601String();
+                $fresh->secret_data = $secretData;
+
+                $meta = is_array($fresh->meta) ? $fresh->meta : [];
+                $oauthMeta = is_array(data_get($meta, 'oauth')) ? data_get($meta, 'oauth') : [];
+                $oauthMeta['provider'] = $this->provider();
+                $oauthMeta['token_url'] = self::TOKEN_URL;
+                $oauthMeta['authorize_url'] = self::AUTHORIZE_URL;
+                $oauthMeta['updated_at'] = $now->toIso8601String();
+                $oauthMeta['refresh_reason'] = 'pre_use_expired_or_soon_expired';
+                $meta['oauth'] = $oauthMeta;
+                $fresh->meta = $meta;
+
+                $fresh->status = Credential::STATUS_ACTIVE;
+                $fresh->valid_until = $validUntil;
+                $fresh->last_used_at = $now;
+                $fresh->save();
+
+                $this->activeCredential = $fresh;
+
+                return $newToken;
+            },
+            self::TOKEN_REFRESH_LOCK_SECONDS,
+            self::TOKEN_REFRESH_WAIT_SECONDS
+        );
+    }
+
     public function applyTokenPayload(Credential $credential, array $tokenPayload): void
     {
         $now = Carbon::now();
@@ -280,5 +389,29 @@ abstract class BaseMetaOAuthService extends CredentialService
             $this->getSecret($credential, 'client_secret'),
             'Meta client_secret fehlt im Credential (secret_data.client_secret).'
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function refreshMetaAccessTokenPayload(Credential $credential, string $accessToken): array
+    {
+        $response = Http::get(self::TOKEN_URL, [
+            'grant_type' => 'fb_exchange_token',
+            'client_id' => $this->resolveClientId($credential),
+            'client_secret' => $this->resolveClientSecret($credential),
+            'fb_exchange_token' => $accessToken,
+        ]);
+
+        if (!$response->successful()) {
+            throw new RuntimeException('Meta Long-Lived Token-Refresh fehlgeschlagen: ' . $response->body());
+        }
+
+        $payload = $response->json();
+        if (!is_array($payload)) {
+            throw new RuntimeException('Meta Token-Refresh Response ist ungültig.');
+        }
+
+        return $payload;
     }
 }

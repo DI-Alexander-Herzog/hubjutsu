@@ -4,11 +4,17 @@ namespace AHerzog\Hubjutsu\App\Services\Integrations;
 
 use App\Models\Credential;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 abstract class CredentialService
 {
+    protected const TOKEN_REFRESH_LEEWAY_SECONDS = 300;
+    protected const TOKEN_REFRESH_LOCK_SECONDS = 30;
+    protected const TOKEN_REFRESH_WAIT_SECONDS = 10;
+
     protected ?Credential $activeCredential = null;
 
     public function __construct(?Credential $credential = null)
@@ -71,6 +77,16 @@ abstract class CredentialService
         return [];
     }
 
+    public function requiresTokenRefresh(): bool
+    {
+        return false;
+    }
+
+    public function refreshNow(): bool
+    {
+        return false;
+    }
+
     public function applyConnectInput(Credential $credential, array $input): void
     {
         // Provider-specific mapping
@@ -90,12 +106,6 @@ abstract class CredentialService
     {
         // Optional provider-specific direct connect
     }
-
-    abstract public function buildAuthorizationUrl(Credential $credential, string $state): string;
-
-    abstract public function exchangeCodeForToken(Credential $credential, string $code): array;
-
-    abstract public function applyTokenPayload(Credential $credential, array $tokenPayload): void;
 
     public function ensureCredentialDefaults(Credential $credential, Model $credentialable, ?string $name = null): void
     {
@@ -217,7 +227,7 @@ abstract class CredentialService
 
     public function redirectUri(): string
     {
-        return route('integrations.oauth.callback', ['provider' => $this->provider()]);
+        return '';
     }
 
     protected function resolveRedirectUri(string $configPath, string $provider): string
@@ -229,5 +239,71 @@ abstract class CredentialService
 
         return route('integrations.oauth.callback', ['provider' => $provider]);
     }
-}
 
+    protected function resolveLatestCredential(Credential $credential): Credential
+    {
+        if (!$credential->exists) {
+            return $credential;
+        }
+
+        $latest = Credential::query()
+            ->where('credentialable_type', $credential->credentialable_type)
+            ->where('credentialable_id', $credential->credentialable_id)
+            ->where('provider', $credential->provider)
+            ->where('type', $credential->type)
+            ->latest('id')
+            ->first();
+
+        if ($latest instanceof Credential) {
+            $this->activeCredential = $latest;
+            return $latest;
+        }
+
+        return $credential;
+    }
+
+    protected function withCredentialLock(
+        Credential $credential,
+        string $purpose,
+        callable $callback,
+        int $lockSeconds = 30,
+        int $waitSeconds = 10
+    ): mixed {
+        $lockKey = $this->credentialLockKey($credential, $purpose);
+        return Cache::lock($lockKey, $lockSeconds)->block($waitSeconds, $callback);
+    }
+
+    protected function credentialLockKey(Credential $credential, string $purpose): string
+    {
+        $scope = implode(':', [
+            (string) $credential->credentialable_type,
+            (string) $credential->credentialable_id,
+            (string) $credential->provider,
+            (string) $credential->type,
+        ]);
+
+        return 'credential:' . md5($scope) . ':' . trim($purpose);
+    }
+
+    protected function parseDateTime(mixed $value): ?Carbon
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    protected function isExpiringSoon(?Carbon $expiresAt, int $leewaySeconds = 300): bool
+    {
+        if (!$expiresAt) {
+            return false;
+        }
+
+        return now()->greaterThanOrEqualTo($expiresAt->copy()->subSeconds(max(0, $leewaySeconds)));
+    }
+}

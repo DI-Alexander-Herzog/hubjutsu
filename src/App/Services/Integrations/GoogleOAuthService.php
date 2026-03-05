@@ -7,7 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-class GoogleOAuthService extends CredentialService
+class GoogleOAuthService extends OAuthCredentialService
 {
     public const SERVICE_KEY = 'google';
 
@@ -208,6 +208,110 @@ class GoogleOAuthService extends CredentialService
         ]);
     }
 
+    public function currentAccessToken(bool $forceRefresh = false): string
+    {
+        $credential = $this->resolveLatestCredential($this->resolveCredential());
+
+        $currentToken = $this->readRequiredString(
+            data_get($credential->secret_data, 'access_token'),
+            'Google access_token fehlt im Credential.'
+        );
+
+        $expiresAt = $this->parseDateTime(data_get($credential->secret_data, 'access_token_expires_at'));
+        if (!$forceRefresh && !$this->isExpiringSoon($expiresAt, self::TOKEN_REFRESH_LEEWAY_SECONDS)) {
+            return $currentToken;
+        }
+
+        return $this->refreshGoogleAccessToken($credential, $forceRefresh);
+    }
+
+    public function requiresTokenRefresh(): bool
+    {
+        return true;
+    }
+
+    public function refreshNow(): bool
+    {
+        $this->currentAccessToken(true);
+        return true;
+    }
+
+    protected function refreshGoogleAccessToken(Credential $credential, bool $forceRefresh = false): string
+    {
+        return $this->withCredentialLock(
+            $credential,
+            'token-refresh',
+            function () use ($credential, $forceRefresh): string {
+                $fresh = $credential->fresh();
+                if (!$fresh instanceof Credential) {
+                    throw new RuntimeException('Credential konnte nicht aktualisiert werden.');
+                }
+
+                $fresh = $this->resolveLatestCredential($fresh);
+
+                $token = $this->readRequiredString(
+                    data_get($fresh->secret_data, 'access_token'),
+                    'Google access_token fehlt im Credential.'
+                );
+
+                $expiresAt = $this->parseDateTime(data_get($fresh->secret_data, 'access_token_expires_at'));
+                if (!$forceRefresh && !$this->isExpiringSoon($expiresAt, self::TOKEN_REFRESH_LEEWAY_SECONDS)) {
+                    return $token;
+                }
+
+                $refreshToken = $this->readRequiredString(
+                    data_get($fresh->secret_data, 'refresh_token'),
+                    'Google refresh_token fehlt im Credential.'
+                );
+
+                $payload = $this->refreshGoogleAccessTokenPayload($fresh, $refreshToken);
+                $newToken = $this->readRequiredString(
+                    $payload['access_token'] ?? null,
+                    'Google Token-Refresh lieferte keinen access_token.'
+                );
+
+                $now = Carbon::now();
+                $expiresIn = isset($payload['expires_in']) ? intval($payload['expires_in']) : null;
+                $validUntil = $expiresIn && $expiresIn > 0 ? $now->copy()->addSeconds($expiresIn) : null;
+
+                $secretData = is_array($fresh->secret_data) ? $fresh->secret_data : [];
+                $secretData['access_token'] = $newToken;
+                $secretData['token_type'] = $payload['token_type'] ?? ($secretData['token_type'] ?? null);
+                $secretData['expires_in'] = $expiresIn;
+                $secretData['access_token_obtained_at'] = $now->toIso8601String();
+                $secretData['access_token_expires_at'] = $validUntil?->toIso8601String();
+                if (!empty($payload['id_token'])) {
+                    $secretData['id_token'] = $payload['id_token'];
+                }
+                if (!empty($payload['refresh_token'])) {
+                    $secretData['refresh_token'] = $payload['refresh_token'];
+                }
+                $fresh->secret_data = $secretData;
+
+                $meta = is_array($fresh->meta) ? $fresh->meta : [];
+                $oauthMeta = is_array(data_get($meta, 'oauth')) ? data_get($meta, 'oauth') : [];
+                $oauthMeta['provider'] = self::SERVICE_KEY;
+                $oauthMeta['token_url'] = self::TOKEN_URL;
+                $oauthMeta['authorize_url'] = self::AUTHORIZE_URL;
+                $oauthMeta['updated_at'] = $now->toIso8601String();
+                $oauthMeta['refresh_reason'] = 'pre_use_expired_or_soon_expired';
+                $meta['oauth'] = $oauthMeta;
+                $fresh->meta = $meta;
+
+                $fresh->status = Credential::STATUS_ACTIVE;
+                $fresh->valid_until = $validUntil;
+                $fresh->last_used_at = $now;
+                $fresh->save();
+
+                $this->activeCredential = $fresh;
+
+                return $newToken;
+            },
+            self::TOKEN_REFRESH_LOCK_SECONDS,
+            self::TOKEN_REFRESH_WAIT_SECONDS
+        );
+    }
+
     protected function normalizedScope(Credential $credential): string
     {
         $scopeConfig = $this->normalizeScopes($this->getPublic($credential, 'scope'));
@@ -250,5 +354,29 @@ class GoogleOAuthService extends CredentialService
             $this->getSecret($credential, 'client_secret'),
             'Google client_secret fehlt im Credential (secret_data.client_secret).'
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function refreshGoogleAccessTokenPayload(Credential $credential, string $refreshToken): array
+    {
+        $response = Http::asForm()->post(self::TOKEN_URL, [
+            'client_id' => $this->resolveClientId($credential),
+            'client_secret' => $this->resolveClientSecret($credential),
+            'refresh_token' => $refreshToken,
+            'grant_type' => 'refresh_token',
+        ]);
+
+        if (!$response->successful()) {
+            throw new RuntimeException('Google Token-Refresh fehlgeschlagen: ' . $response->body());
+        }
+
+        $payload = $response->json();
+        if (!is_array($payload)) {
+            throw new RuntimeException('Google Token-Refresh Response ist ungültig.');
+        }
+
+        return $payload;
     }
 }

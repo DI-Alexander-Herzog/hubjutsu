@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller as BaseController;
 use App\Models\Credential;
 use AHerzog\Hubjutsu\App\Services\Integrations\CredentialService;
 use AHerzog\Hubjutsu\App\Services\Integrations\IntegrationServiceRegistry;
+use AHerzog\Hubjutsu\App\Services\Integrations\OAuthCredentialService;
 use Gate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -194,6 +195,11 @@ class IntegrationCredentialController extends BaseController
         ], JSON_THROW_ON_ERROR));
 
         try {
+            if (!$service instanceof OAuthCredentialService) {
+                throw ValidationException::withMessages([
+                    'integration' => 'Dieser Service unterstützt keinen OAuth-Flow.',
+                ]);
+            }
             $authorizeUrl = $service->buildAuthorizationUrl($credential, $state);
         } catch (RuntimeException $e) {
             throw ValidationException::withMessages([
@@ -219,10 +225,17 @@ class IntegrationCredentialController extends BaseController
         return redirect()->away($authorizeUrl);
     }
 
-    public function disconnect(Request $request, string $provider): JsonResponse
+    public function disconnect(Request $request, string $provider): JsonResponse|RedirectResponse|Response  
     {
         $provider = strtolower(trim($provider));
         $service = $this->resolveProviderService($provider);
+        if (!$service instanceof OAuthCredentialService) {
+            return $this->oauthCallbackResponse($this->appendQuery(route('settings.index'), [
+                'integration' => $provider,
+                'status' => 'error',
+                'message' => 'oauth_not_supported',
+            ]));
+        }
 
         $validated = $request->validate([
             'credentialable_type' => ['required', 'string', 'max:255'],
@@ -256,6 +269,13 @@ class IntegrationCredentialController extends BaseController
     {
         $provider = strtolower(trim($provider));
         $service = $this->resolveProviderService($provider);
+        if (!($service instanceof OAuthCredentialService)) {
+            return $this->oauthCallbackResponse($this->appendQuery(route('settings.index'), [
+                'integration' => $provider,
+                'status' => 'error',
+                'message' => 'oauth_not_supported',
+            ]));
+        }
 
         $request->validate([
             'state' => ['required', 'string'],

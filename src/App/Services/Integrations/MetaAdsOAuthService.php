@@ -1057,11 +1057,8 @@ class MetaAdsOAuthService extends BaseMetaOAuthService
         ?string $after,
         array $extraParams = []
     ): array {
-        $systemUserToken = data_get($credential->secret_data, 'system_user_token');
-        $oauthToken = data_get($credential->secret_data, 'access_token');
-        $accessToken = is_string($systemUserToken) && trim($systemUserToken) !== ''
-            ? trim($systemUserToken)
-            : $this->readRequiredString($oauthToken, 'Meta access_token fehlt im Credential.');
+        $credential = $this->resolveLatestCredential($credential);
+        $accessToken = $this->currentAccessTokenForCredential($credential);
 
         $params = [
             'access_token' => $accessToken,
