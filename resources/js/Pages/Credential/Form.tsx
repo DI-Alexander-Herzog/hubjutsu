@@ -5,7 +5,7 @@ import Separator from "@/Components/Separator";
 import { FormContext, FormContextSubmitButton } from "@/Components/FormContext";
 import CredentialSecretViewer from "@/Components/CredentialSecretViewer";
 
-const typeOptions = [
+const typeOptions: [value: string, label: string][] = [
 	["app", "App"],
 	["api_key", "API Key"],
 	["basic_auth", "Basic Auth"],
@@ -14,7 +14,7 @@ const typeOptions = [
 	["ftp_basic", "FTP Basic"],
 ];
 
-const statusOptions = [
+const statusOptions: [value: string, label: string][] = [
 	["active", "Active"],
 	["expired", "Expired"],
 	["revoked", "Revoked"],

@@ -8,7 +8,7 @@ Alle Agents MÜSSEN zuerst folgendes Verzeichnis lesen und als primäre Quelle d
 packages/aherzog/hubjutsu
 ```
 
-Berücksichtige das AGENTS.md als Leitfaden für die Entwicklung und Wartung von Agents in diesem Projekt. Es definiert die Regeln und Prinzipien, die bei der Arbeit mit Agents zu beachten sind, insbesondere im Hinblick auf die Ableitung von Klassen und die Nutzung von Ressourcen.
+Berücksichtige das packages/aherzog/hubjutsu/AGENTS.md als Leitfaden für die Entwicklung und Wartung von Agents in diesem Projekt. Es definiert die Regeln und Prinzipien, die bei der Arbeit mit Agents zu beachten sind, insbesondere im Hinblick auf die Ableitung von Klassen und die Nutzung von Ressourcen.
 
 Bevor Änderungen irgendwo anders im Repository vorgenommen werden, sind die relevanten Dateien in diesem Verzeichnis zu prüfen.
 
@@ -23,6 +23,9 @@ packages/aherzog/hubjutsu
 ```
 
 ableiten, müssen **zuerst in hubjutsu** geändert werden.
+
+Achtung: `vendor/aherzog/hubjutsu` ist ein symlink zu `packages/aherzog/hubjutsu`. 
+Änderungen müssen in `packages/aherzog/hubjutsu` erfolgen, damit sie korrekt reflektiert werden.
 
 Reihenfolge der Änderungen:
 
