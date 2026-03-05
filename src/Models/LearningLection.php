@@ -5,9 +5,11 @@ namespace AHerzog\Hubjutsu\Models;
 use AHerzog\Hubjutsu\Models\Traits\MediaTrait;
 use App\Models\Base;
 use App\Models\Media;
+use App\Models\LearningLectionUserProgress;
 use App\Models\LearningSection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
@@ -85,6 +87,11 @@ class LearningLection extends Base
         return $this->medias()
             ->where('category', 'lection_attachment')
             ->orderBy('mediable_sort');
+    }
+
+    public function userProgress(): HasMany
+    {
+        return $this->hasMany(LearningLectionUserProgress::class, 'learning_lection_id');
     }
 
     public function setImage(Media $media): void

@@ -1,16 +1,23 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Card from '@/Components/Layout/Card';
 import Container from '@/Components/Layout/Container';
+import CourseProgressBadge from '@/Components/Learning/CourseProgressBadge';
 import { PageProps } from '@/types';
 import { usePage } from '@inertiajs/react';
 
 type CourseEntry = {
     id: number;
+    slug: string;
     name: string;
     description?: string | null;
     modules_count?: number;
     cover?: { thumbnail?: string | null; url?: string | null } | null;
     bundles?: Array<{ id: number; name: string }>;
+    progress?: {
+        started?: boolean;
+        status?: 'not_started' | 'started' | 'finished' | 'completed';
+        progress_percent?: number;
+    };
 };
 
 export default function LearningCourseFrontendIndex({ courses = [] }: { courses?: CourseEntry[] }) {
@@ -21,7 +28,6 @@ export default function LearningCourseFrontendIndex({ courses = [] }: { courses?
         <AuthenticatedLayout
             title="Learning"
             breadcrumbs={[
-                { label: 'Dashboard', url: route('dashboard') },
                 { label: 'Learning' },
             ]}
         >
@@ -52,10 +58,16 @@ export default function LearningCourseFrontendIndex({ courses = [] }: { courses?
                                     imageAlt={course.name}
                                     title={course.name}
                                     subtitle={course.description || 'Keine Beschreibung vorhanden.'}
+                                    href={route('learning.courses.show', { learningcourse: course.slug })}
                                 >
                                     <div className="text-xs text-text-500 dark:text-gray-400">
                                         <span>Module: {course.modules_count || 0}</span>
                                     </div>
+
+                                    <CourseProgressBadge
+                                        status={course.progress?.status}
+                                        progressPercent={course.progress?.progress_percent || 0}
+                                    />
 
                                     {bundles.length > 0 ? (
                                         <div className="flex flex-wrap gap-1">
@@ -73,6 +85,7 @@ export default function LearningCourseFrontendIndex({ courses = [] }: { courses?
                                             Kein Bundle zugeordnet.
                                         </p>
                                     )}
+
                                 </Card>
                             );
                         })}

@@ -23,6 +23,7 @@ class LearningModule extends Base
         'updated_by',
         'learning_course_id',
         'name',
+        'slug',
         'description',
         'active',
         'sort',
@@ -47,15 +48,37 @@ class LearningModule extends Base
     protected static function booted(): void
     {
         static::saving(function (LearningModule $module) {
-            if (!empty($module->sort) && intval($module->sort) !== 0) {
+            if (empty($module->sort) || intval($module->sort) === 0) {
+                $module->sort = static::query()
+                    ->where('learning_course_id', $module->learning_course_id)
+                    ->when($module->exists, fn ($q) => $q->whereKeyNot($module->getKey()))
+                    ->count() + 1;
+                $module->sort *= 10;
+            }
+
+            if (!$module->slug && $module->name) {
+                $module->slug = \Str::slug($module->name);
+            }
+
+            if (!$module->slug) {
                 return;
             }
 
-            $module->sort = static::query()
+            $baseSlug = \Str::slug($module->slug) ?: \Str::slug($module->name ?: 'module');
+            $slug = $baseSlug;
+            $suffix = 1;
+
+            while (static::query()
                 ->where('learning_course_id', $module->learning_course_id)
+                ->where('slug', $slug)
                 ->when($module->exists, fn ($q) => $q->whereKeyNot($module->getKey()))
-                ->count() + 1;
-            $module->sort *= 10;
+                ->exists()
+            ) {
+                $slug = $baseSlug . '-' . $suffix;
+                $suffix++;
+            }
+
+            $module->slug = $slug;
         });
     }
 

@@ -4,8 +4,11 @@ namespace AHerzog\Hubjutsu\Models;
 
 use AHerzog\Hubjutsu\Models\Traits\MediaTrait;
 use App\Models\Base;
+use App\Models\LearningCourseUserProgress;
+use App\Models\LearningLectionUserProgress;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
@@ -90,6 +93,16 @@ class User extends Base implements
     }
     public function setAvatar(Media $media) {
         $this->setMedia($media, 'avatar', 1);
+    }
+
+    public function learningCourseProgress(): HasMany
+    {
+        return $this->hasMany(LearningCourseUserProgress::class, 'user_id');
+    }
+
+    public function learningLectionProgress(): HasMany
+    {
+        return $this->hasMany(LearningLectionUserProgress::class, 'user_id');
     }
 
     

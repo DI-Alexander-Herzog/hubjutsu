@@ -41,6 +41,25 @@ class LearningBundle extends Base
             if (!$bundle->slug && $bundle->name) {
                 $bundle->slug = \Str::slug($bundle->name);
             }
+
+            if (!$bundle->slug) {
+                return;
+            }
+
+            $baseSlug = \Str::slug($bundle->slug) ?: \Str::slug($bundle->name ?: 'bundle');
+            $slug = $baseSlug;
+            $suffix = 1;
+
+            while (static::query()
+                ->where('slug', $slug)
+                ->when($bundle->exists, fn ($q) => $q->whereKeyNot($bundle->getKey()))
+                ->exists()
+            ) {
+                $slug = $baseSlug . '-' . $suffix;
+                $suffix++;
+            }
+
+            $bundle->slug = $slug;
         });
     }
 

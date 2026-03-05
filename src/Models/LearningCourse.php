@@ -8,6 +8,7 @@ use App\Models\Base;
 use App\Models\LearningBundle;
 use App\Models\Media;
 use App\Models\LearningModule;
+use App\Models\LearningCourseUserProgress;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -52,6 +53,25 @@ class LearningCourse extends Base
             if (!$course->slug && $course->name) {
                 $course->slug = \Str::slug($course->name);
             }
+
+            if (!$course->slug) {
+                return;
+            }
+
+            $baseSlug = \Str::slug($course->slug) ?: \Str::slug($course->name ?: 'course');
+            $slug = $baseSlug;
+            $suffix = 1;
+
+            while (static::query()
+                ->where('slug', $slug)
+                ->when($course->exists, fn ($q) => $q->whereKeyNot($course->getKey()))
+                ->exists()
+            ) {
+                $slug = $baseSlug . '-' . $suffix;
+                $suffix++;
+            }
+
+            $course->slug = $slug;
         });
     }
 
@@ -73,6 +93,11 @@ class LearningCourse extends Base
     public function cover(): MorphOne
     {
         return $this->media('cover');
+    }
+
+    public function userProgress(): HasMany
+    {
+        return $this->hasMany(LearningCourseUserProgress::class, 'learning_course_id');
     }
 
     public function setCover(Media $media): void

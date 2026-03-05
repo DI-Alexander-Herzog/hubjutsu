@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import { ReactNode } from 'react';
 
 type CardVariant = 'default' | 'muted';
+type CardImagePosition = 'top' | 'left';
 
 type CardProps = {
     className?: string;
@@ -14,7 +15,9 @@ type CardProps = {
     imageUrl?: string | null;
     imageAlt?: string;
     imageHeightClassName?: string;
+    imageWidthClassName?: string;
     imageFallback?: ReactNode;
+    imagePosition?: CardImagePosition;
     href?: string;
     variant?: CardVariant;
     children?: ReactNode;
@@ -33,30 +36,47 @@ function CardInner({
     imageUrl,
     imageAlt,
     imageHeightClassName,
+    imageWidthClassName,
     imageFallback,
+    imagePosition = 'top',
     bodyClassName,
     children,
-}: Omit<CardProps, 'className' | 'href' | 'variant'>) {
-    return (
-        <>
-            {imageUrl !== undefined && (
-                <div className={classNames('w-full bg-background-600 dark:bg-gray-700', imageHeightClassName || 'h-44')}>
-                    {imageUrl ? (
-                        <img
-                            src={imageUrl}
-                            alt={imageAlt || ''}
-                            className="h-full w-full object-cover"
-                        />
-                    ) : (
-                        imageFallback || (
-                            <div className="flex h-full w-full items-center justify-center text-sm text-text-500 dark:text-gray-400">
-                                Kein Cover
-                            </div>
-                        )
-                    )}
-                </div>
+    interactive = false,
+}: Omit<CardProps, 'className' | 'href' | 'variant'> & { interactive?: boolean }) {
+    const imageNode = imageUrl !== undefined && (
+        <div
+            className={classNames(
+                'bg-background-600 dark:bg-gray-700',
+                imagePosition === 'left'
+                    ? (imageWidthClassName || 'w-full md:w-72 shrink-0')
+                    : 'w-full',
+                imagePosition === 'left'
+                    ? (imageHeightClassName || 'h-52 md:h-auto')
+                    : (imageHeightClassName || 'h-44')
             )}
+        >
+            {imageUrl ? (
+                <img
+                    src={imageUrl}
+                    alt={imageAlt || ''}
+                    className={classNames(
+                        'h-full w-full object-cover transition-transform duration-300 ease-out',
+                        interactive && 'group-hover:scale-[1.02]'
+                    )}
+                />
+            ) : (
+                imageFallback || (
+                    <div className="flex h-full w-full items-center justify-center text-sm text-text-500 dark:text-gray-400">
+                        Kein Cover
+                    </div>
+                )
+            )}
+        </div>
+    );
 
+    return (
+        <div className={classNames(imagePosition === 'left' ? 'md:flex' : undefined)}>
+            {imageNode}
             {(title || subtitle || children) && (
                 <div className={classNames('space-y-3 p-4', bodyClassName)}>
                     {title && (
@@ -72,7 +92,7 @@ function CardInner({
                     {children}
                 </div>
             )}
-        </>
+        </div>
     );
 }
 
@@ -85,13 +105,14 @@ export default function Card({
     const baseClass = classNames(
         'overflow-hidden rounded-xl',
         VARIANT_CLASS[variant],
+        href && 'block transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
         className
     );
 
     if (href) {
         return (
-            <Link href={href} className={baseClass}>
-                <CardInner {...props} />
+            <Link href={href} className={classNames('group', baseClass)}>
+                <CardInner {...props} interactive />
             </Link>
         );
     }
