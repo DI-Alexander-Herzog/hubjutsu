@@ -13,6 +13,7 @@ class HandleInertiaRequests extends \AHerzog\Hubjutsu\Http\Middleware\HandleIner
         $menu = $menuManager->addMenu('Main Menu');
         $dashboard = $menu->addItem('Dashboard');
         $dashboard->setRoute('dashboard');
+        $menu->addItem('Learning', ['learning.courses.index']);
     }
     
 }

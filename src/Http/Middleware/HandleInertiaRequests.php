@@ -90,5 +90,6 @@ class HandleInertiaRequests extends Middleware
         $menu = $menuManager->addMenu('Main Menu');
         $dashboard = $menu->addItem('Dashboard');
         $dashboard->setRoute('dashboard');
+        $menu->addItem('Learning', ['learning.courses.index']);
     }
 }

@@ -27,6 +27,7 @@ use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleAssignmentController;
 use App\Http\Controllers\IntegrationCredentialController;
+use App\Http\Controllers\LearningCourseFrontendController;
 use App\Services\HubManager;
 use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
@@ -104,6 +105,10 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [HomeController::class, 'dashboard'])->name('dashboard');
+    Route::name('learning.')->prefix('learning')->group(function () {
+        Route::get('/courses', [LearningCourseFrontendController::class, 'index'])->name('courses.index');
+    });
+
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::name('settings.')->prefix('settings')->group(function () {
         Route::get('/learning-bundles', [LearningBundleController::class, 'index'])->name('learningbundles.index');
