@@ -21,8 +21,8 @@ type CardProps = {
 };
 
 const VARIANT_CLASS: Record<CardVariant, string> = {
-    default: 'bg-background shadow-md',
-    muted: 'bg-background-600/80 shadow-md',
+    default: 'bg-background dark:bg-gray-800 shadow-sm',
+    muted: 'bg-background-600/80 dark:bg-gray-800/80 shadow-sm',
 };
 
 function CardInner({
@@ -40,7 +40,7 @@ function CardInner({
     return (
         <>
             {imageUrl !== undefined && (
-                <div className={classNames('w-full bg-background-600', imageHeightClassName || 'h-44')}>
+                <div className={classNames('w-full bg-background-600 dark:bg-gray-700', imageHeightClassName || 'h-44')}>
                     {imageUrl ? (
                         <img
                             src={imageUrl}
@@ -49,7 +49,7 @@ function CardInner({
                         />
                     ) : (
                         imageFallback || (
-                            <div className="flex h-full w-full items-center justify-center text-sm text-text-500">
+                            <div className="flex h-full w-full items-center justify-center text-sm text-text-500 dark:text-gray-400">
                                 Kein Cover
                             </div>
                         )
@@ -60,12 +60,12 @@ function CardInner({
             {(title || subtitle || children) && (
                 <div className={classNames('space-y-3 p-4', bodyClassName)}>
                     {title && (
-                        <h2 className={classNames('text-lg font-semibold text-text-900', titleClassName)}>
+                        <h2 className={classNames('text-lg font-semibold text-text-900 dark:text-gray-100', titleClassName)}>
                             {title}
                         </h2>
                     )}
                     {subtitle && (
-                        <p className={classNames('text-sm text-text-500', subtitleClassName)}>
+                        <p className={classNames('text-sm text-text-500 dark:text-gray-400', subtitleClassName)}>
                             {subtitle}
                         </p>
                     )}

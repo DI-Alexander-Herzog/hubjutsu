@@ -35,7 +35,7 @@ export default function LearningCourseFrontendIndex({ courses = [] }: { courses?
 
                 {courses.length === 0 ? (
                     <Card>
-                        <p className="text-sm text-text-500">
+                        <p className="text-sm text-text-500 dark:text-gray-400">
                             Aktuell sind keine Kurse fuer dich freigeschaltet.
                         </p>
                     </Card>
@@ -53,7 +53,7 @@ export default function LearningCourseFrontendIndex({ courses = [] }: { courses?
                                     title={course.name}
                                     subtitle={course.description || 'Keine Beschreibung vorhanden.'}
                                 >
-                                    <div className="text-xs text-text-500">
+                                    <div className="text-xs text-text-500 dark:text-gray-400">
                                         <span>Module: {course.modules_count || 0}</span>
                                     </div>
 
@@ -62,14 +62,14 @@ export default function LearningCourseFrontendIndex({ courses = [] }: { courses?
                                             {bundles.map((bundle) => (
                                                 <span
                                                     key={bundle.id}
-                                                    className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
+                                                    className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary dark:text-primary-300"
                                                 >
                                                     {bundle.name}
                                                 </span>
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-xs text-text-500">
+                                        <p className="text-xs text-text-500 dark:text-gray-400">
                                             Kein Bundle zugeordnet.
                                         </p>
                                     )}

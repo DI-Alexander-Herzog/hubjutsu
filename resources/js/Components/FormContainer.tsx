@@ -18,7 +18,7 @@ export default function FormContainer({
 }: FormContainerProps) {
 	return (
 		<Container size={size} gap={gap} stack={stack} className={className}>
-			<Card className="w-full border-0 dark:bg-gray-800" bodyClassName="p-0">
+			<Card className="w-full" bodyClassName="p-0">
 				<div
 					{...props}
 					className="p-4 sm:p-8 w-full"
