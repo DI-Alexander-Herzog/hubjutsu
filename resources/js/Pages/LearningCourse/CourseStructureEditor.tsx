@@ -767,7 +767,7 @@ export default function CourseStructureEditor({
             </div>
             
             {error && (
-                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
                     {error}
                 </div>
             )}
@@ -790,7 +790,7 @@ export default function CourseStructureEditor({
                             key={module.id}
                             className={`mb-5 space-y-3 rounded-lg border p-4 ${
                                 focusModuleId === module.id
-                                    ? 'border-primary bg-primary-50/30 ring-2 ring-primary-200'
+                                    ? 'border-primary bg-primary-50/30 ring-2 ring-primary-200 dark:bg-primary-900/20 dark:ring-primary-900/50'
                                     : 'border-gray-200 dark:border-gray-700'
                             }`}
                         >

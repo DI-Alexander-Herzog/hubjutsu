@@ -58,7 +58,7 @@ export default function Settings({ settings, extraIcons, extraColors }: { settin
                                                 <div className="flex min-w-0 flex-1 items-center gap-3">
                                                     <div
                                                         className={classNames(
-                                                            colors[setting.color as keyof typeof colors] || 'bg-background text-text',
+                                                            colors[setting.color as keyof typeof colors] || 'bg-background text-text dark:bg-gray-700 dark:text-gray-100',
                                                             'flex size-12 shrink-0 items-center justify-center rounded-md text-sm font-medium',
                                                         )}
                                                     >
@@ -70,17 +70,17 @@ export default function Settings({ settings, extraIcons, extraColors }: { settin
                                                         })()}
                                                     </div>
                                                     <div className="min-w-0 flex-1 truncate">
-                                                        <Link href={setting.href} className="font-medium text-text-900 hover:text-text-600">
+                                                        <Link href={setting.href} className="font-medium text-text-900 hover:text-text-600 dark:text-gray-100 dark:hover:text-gray-300">
                                                             {setting.label}
                                                         </Link>
-                                                        <p className="text-sm text-text-500">{setting.subtitle}</p>
+                                                        <p className="text-sm text-text-500 dark:text-gray-400">{setting.subtitle}</p>
                                                     </div>
                                                 </div>
                                                 <div className="shrink-0">
                                                     <Link
                                                         href={setting.href} 
                                                         type="button"
-                                                        className="inline-flex size-8 items-center justify-center rounded-full bg-transparent text-text-400 hover:text-text-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                                        className="inline-flex size-8 items-center justify-center rounded-full bg-transparent text-text-400 hover:text-text-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-200 dark:focus:ring-offset-gray-900"
                                                     >
                                                         <span className="sr-only">Open options</span>
                                                         <ArrowRightIcon aria-hidden="true" className="size-5" />
