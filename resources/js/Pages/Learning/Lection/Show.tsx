@@ -3,11 +3,11 @@ import Container from '@/Components/Layout/Container';
 import SideCard from '@/Components/Layout/SideCard';
 import Checkbox from '@/Components/Checkbox';
 import IconLibrary from '@/Components/IconLibrary';
-import ProgressCircle from '@/Components/Learning/ProgressCircle';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import classNames from 'classnames';
 import { PageProps } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
+import PrimaryButton from '@/Components/PrimaryButton';
 
 type LearningCourse = {
     id: number;
@@ -24,6 +24,15 @@ type LearningLection = {
     duration_minutes?: number | null;
     image?: { thumbnail?: string | null; url?: string | null } | null;
     video?: { id: number; thumbnail?: string | null; url?: string | null } | null;
+    attachments?: Array<{
+        id: number;
+        name?: string | null;
+        description?: string | null;
+        filename?: string | null;
+        url?: string | null;
+        thumbnail?: string | null;
+        mimetype?: string | null;
+    }> | null;
     progress?: {
         completed?: boolean;
     };
@@ -68,6 +77,36 @@ export default function LearningLectionFrontendShow({
     const nextSection = currentSectionIndex >= 0 ? (sections[currentSectionIndex + 1] || null) : null;
     const firstLectionOfNextSection = nextSection?.lections?.[0] || null;
     const moduleCoverUrl = module.cover?.thumbnail || module.cover?.url || courseCoverUrl || hubLogoUrl;
+    const lectionCompleted = Boolean(lection.progress?.completed);
+    const attachments = lection.attachments || [];
+    const shortDescription = lection.description
+        ? (lection.description.length > 220 ? `${lection.description.slice(0, 220)}...` : lection.description)
+        : null;
+
+    const getAttachmentIcon = (mimetype?: string | null): string => {
+        const normalized = (mimetype || '').toLowerCase();
+        if (normalized.startsWith('image/')) return 'photo';
+        if (normalized.startsWith('video/')) return 'film';
+        if (normalized.startsWith('audio/')) return 'musical-note';
+        if (normalized.includes('pdf')) return 'document-text';
+        if (normalized.includes('word') || normalized.includes('officedocument.wordprocessingml')) return 'document-text';
+        if (normalized.includes('excel') || normalized.includes('spreadsheetml')) return 'table-cells';
+        if (normalized.includes('powerpoint') || normalized.includes('presentationml')) return 'presentation-chart-bar';
+        if (normalized.includes('zip') || normalized.includes('compressed')) return 'archive-box';
+        return 'paper-clip';
+    };
+
+    const isImageAttachment = (mimetype?: string | null): boolean => {
+        return (mimetype || '').toLowerCase().startsWith('image/');
+    };
+
+    const completeLection = () => {
+        router.post(route('learning.lections.complete', {
+            learningcourse: course.slug,
+            learningmoduleslug: module.slug,
+            learninglection: lection.id,
+        }));
+    };
 
     return (
         <AuthenticatedLayout
@@ -86,23 +125,18 @@ export default function LearningLectionFrontendShow({
             ]}
         >
             <Container size="large" className="py-4" stack gap="md">
-                <SideCard
-                    imageUrl={moduleCoverUrl}
-                    imageAlt={module.name}
-                    title={module.name}
-                    subtitle={lection.name}
-                    right={(
-                        <ProgressCircle
-                            percent={module.progress?.percent || 0}
-                            started={module.progress?.started || false}
-                            completed={module.progress?.completed || false}
-                        />
-                    )}
-                />
-
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                    <div className="lg:col-span-2">
-                        <Card>
+                    <div className="space-y-4 lg:col-span-2">
+                        <SideCard
+                            key={`lection-header-${lection.id}`}
+                            imageUrl={moduleCoverUrl}
+                            imageAlt={module.name}
+                            title={module.name}
+                            subtitle={lection.name}
+                            progressPercent={module.progress?.percent || 0}
+                        />
+
+                        <Card key={`lection-content-${lection.id}`}>
                             <h2 className="text-4xl font-semibold text-text-900 dark:text-gray-100">
                                 {lection.name}
                             </h2>
@@ -126,9 +160,9 @@ export default function LearningLectionFrontendShow({
                                 </div>
                             ) : null}
 
-                            {lection.description && (
-                                <p className="text-lg text-text-700 dark:text-gray-300">
-                                    {lection.description}
+                            {shortDescription && (
+                                <p className="text-sm text-text-600 dark:text-gray-300">
+                                    {shortDescription}
                                 </p>
                             )}
 
@@ -144,70 +178,134 @@ export default function LearningLectionFrontendShow({
                                     </p>
                                 )
                             )}
+
+                            {attachments.length > 0 && (
+                                <div className="max-w-[450px] space-y-2 border-t border-background-700 pt-4 pr-2 dark:border-gray-700 sm:pr-4">
+                                    <h3 className="text-sm font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">
+                                        Dokumente
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {attachments.map((attachment) => {
+                                            const filename = attachment.filename?.split('/').pop() || '';
+                                            const label = attachment.name || filename || `Dokument ${attachment.id}`;
+                                            const href = attachment.url || route('media.file', { media: attachment.id });
+                                            const description = attachment.description?.trim() || null;
+                                            const previewUrl = attachment.thumbnail || (isImageAttachment(attachment.mimetype) ? href : null);
+
+                                            return (
+                                                <a
+                                                    key={attachment.id}
+                                                    href={href}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-3 rounded-lg border border-background-700 px-2.5 py-2 text-text-700 transition-colors hover:bg-background-600 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700/70"
+                                                >
+                                                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-background-600 dark:bg-gray-700">
+                                                        {previewUrl ? (
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={label}
+                                                                className="h-full w-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="flex h-full w-full items-center justify-center text-tertiary dark:text-tertiary">
+                                                                <IconLibrary name={getAttachmentIcon(attachment.mimetype)} size="lg" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-sm font-semibold text-text-900 dark:text-gray-100">
+                                                            {label}
+                                                        </p>
+                                                        {description && (
+                                                            <p className="truncate text-xs text-text-600 dark:text-gray-300">
+                                                                {description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="shrink-0 text-text-500 dark:text-gray-300">
+                                                        <IconLibrary name="arrow-top-right-on-square" size="sm" />
+                                                    </div>
+                                                </a>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end border-t border-background-700 pt-4 dark:border-gray-700">
+                                <PrimaryButton onClick={completeLection}>
+                                    {lectionCompleted ? 'Weiter' : 'Lektion abschliessen'}
+                                </PrimaryButton>
+                            </div>
                         </Card>
                     </div>
 
                     <div className="lg:col-span-1">
-                        <Card>
-                            <div className="space-y-3">
-                                <div>
-                                    <h3 className="truncate text-2xl font-semibold text-text-900 dark:text-gray-100">
-                                        {module.name}
-                                    </h3>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">
-                                        {sectionLections.length} Lektionen
-                                    </p>
-                                </div>
+                        <div className="space-y-3">
+                            <Card key={`lection-sidebar-section-${lection.id}`}>
+                                <h3 className="truncate text-2xl font-semibold text-text-900 dark:text-gray-100">
+                                    Sektion
+                                </h3>
+                                <p className="truncate text-base font-medium text-text-700 dark:text-gray-300">
+                                    {currentSection?.name || '-'}
+                                </p>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">
+                                    {sectionLections.length} Lektionen
+                                </p>
+                            </Card>
 
-                                <div className="space-y-2">
-                                    {sectionLections.map((entry) => {
-                                        const active = entry.id === lection.id;
+                            <div className="space-y-2">
+                                {sectionLections.map((entry) => {
+                                    const active = entry.id === lection.id;
 
-                                        return (
-                                            <SideCard
-                                                key={entry.id}
-                                                href={route('learning.lections.show', {
-                                                    learningcourse: course.slug,
-                                                    learningmoduleslug: module.slug,
-                                                    learninglection: entry.id,
-                                                })}
-                                                className={classNames(
-                                                    active
-                                                        ? 'bg-background-600 dark:bg-gray-700/60'
-                                                        : undefined
-                                                )}
-                                                imageUrl={entry.image?.thumbnail || entry.image?.url || moduleCoverUrl}
-                                                fallbackImageUrl={moduleCoverUrl || courseCoverUrl || hubLogoUrl}
-                                                imageAlt={entry.name}
-                                                title={entry.name}
-                                                right={(
-                                                    <Checkbox
-                                                        checked={Boolean(entry.progress?.completed)}
-                                                        disabled
-                                                        readOnly
-                                                        className="h-6 w-6 !rounded-md"
-                                                    />
-                                                )}
-                                            />
-                                        );
-                                    })}
-                                </div>
-
-                                {firstLectionOfNextSection ? (
-                                    <Link
-                                        href={route('learning.lections.show', {
-                                            learningcourse: course.slug,
-                                            learningmoduleslug: module.slug,
-                                            learninglection: firstLectionOfNextSection.id,
-                                        })}
-                                        className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-background-600 px-3 py-2 text-sm font-semibold text-text-700 hover:bg-background-700 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                    >
-                                        <span>Naechste Sektion</span>
-                                        <IconLibrary name="chevron-right" size="sm" />
-                                    </Link>
-                                ) : null}
+                                    return (
+                                        <SideCard
+                                            key={entry.id}
+                                            href={route('learning.lections.show', {
+                                                learningcourse: course.slug,
+                                                learningmoduleslug: module.slug,
+                                                learninglection: entry.id,
+                                            })}
+                                            className={classNames(
+                                                active
+                                                    ? 'bg-background-600 dark:bg-gray-700/60'
+                                                    : undefined
+                                            )}
+                                            imageContainerClassName="w-1/5 min-w-[86px] sm:min-w-[86px] sm:w-1/5"
+                                            imageUrl={entry.image?.thumbnail || entry.image?.url || moduleCoverUrl}
+                                            fallbackImageUrl={moduleCoverUrl || courseCoverUrl || hubLogoUrl}
+                                            imageAlt={entry.name}
+                                            title={entry.name}
+                                            right={(
+                                                <Checkbox
+                                                    checked={Boolean(entry.progress?.completed)}
+                                                    disabled
+                                                    readOnly
+                                                    className="h-6 w-6 !rounded-md"
+                                                />
+                                            )}
+                                        />
+                                    );
+                                })}
                             </div>
-                        </Card>
+
+                            {firstLectionOfNextSection ? (
+                                <Link
+                                    href={route('learning.lections.show', {
+                                        learningcourse: course.slug,
+                                        learningmoduleslug: module.slug,
+                                        learninglection: firstLectionOfNextSection.id,
+                                    })}
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-background-600 px-3 py-2 text-sm font-semibold text-text-700 hover:bg-background-700 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                >
+                                    <span>Naechste Sektion</span>
+                                    <IconLibrary name="chevron-right" size="sm" />
+                                </Link>
+                            ) : null}
+                        </div>
                     </div>
                 </div>
             </Container>

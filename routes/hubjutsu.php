@@ -107,7 +107,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [HomeController::class, 'dashboard'])->name('dashboard');
     Route::name('learning.')->prefix('learning')->group(function () {
         Route::get('/courses', [LearningCourseFrontendController::class, 'index'])->name('courses.index');
+        Route::get('/{learningcourse:slug}/{learningmoduleslug}/sections/{learningsection}/transition', [LearningCourseFrontendController::class, 'sectionTransition'])->name('sections.transition');
         Route::get('/{learningcourse:slug}/{learningmoduleslug}/{learninglection}', [LearningCourseFrontendController::class, 'lection'])->name('lections.show');
+        Route::post('/{learningcourse:slug}/{learningmoduleslug}/{learninglection}/complete', [LearningCourseFrontendController::class, 'completeLection'])->name('lections.complete');
         Route::get('/{learningcourse:slug}/{learningmoduleslug}', [LearningCourseFrontendController::class, 'module'])->name('modules.show');
         Route::get('/{learningcourse:slug}', [LearningCourseFrontendController::class, 'show'])->name('courses.show');
         Route::post('/{learningcourse:slug}/start', [LearningCourseFrontendController::class, 'start'])->name('courses.start');

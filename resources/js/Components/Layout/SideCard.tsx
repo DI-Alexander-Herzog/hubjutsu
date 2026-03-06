@@ -7,24 +7,31 @@ type SideCardProps = {
     href?: string;
     imageUrl?: string | null;
     fallbackImageUrl?: string | null;
+    imageContainerClassName?: string;
     imageHref?: string;
     imageAlt?: string;
     title: ReactNode;
     subtitle?: ReactNode;
     right?: ReactNode;
+    progressPercent?: number | null;
 };
 
 function Inner({
     imageUrl,
     fallbackImageUrl,
+    imageContainerClassName,
     imageHref,
     imageAlt,
     title,
     subtitle,
     right,
+    progressPercent = null,
     interactive = false,
 }: Omit<SideCardProps, 'className' | 'href'> & { interactive?: boolean }) {
     const resolvedImageUrl = imageUrl || fallbackImageUrl || null;
+    const resolvedProgress = typeof progressPercent === 'number'
+        ? Math.max(0, Math.min(100, Math.round(progressPercent)))
+        : null;
 
     const imageContent = (
         <>
@@ -45,9 +52,27 @@ function Inner({
         </>
     );
 
+    const horizontalProgressNode = resolvedProgress !== null && (
+        <div className="h-2 w-full bg-background-700/70 dark:bg-gray-700/80">
+            <div
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${resolvedProgress}%` }}
+            />
+        </div>
+    );
+
+    const verticalProgressNode = resolvedProgress !== null && (
+        <div className="hidden md:flex w-2 shrink-0 bg-background-700/70 dark:bg-gray-700/80">
+            <div
+                className="mt-auto w-full bg-primary transition-all duration-300 ease-out"
+                style={{ height: `${resolvedProgress}%` }}
+            />
+        </div>
+    );
+
     return (
-        <div className="flex items-stretch">
-            <div className="w-28 shrink-0 self-stretch overflow-hidden bg-background-600 dark:bg-gray-700 sm:w-36">
+        <div className="md:flex md:items-stretch">
+            <div className={classNames('w-28 shrink-0 self-stretch overflow-hidden bg-background-600 dark:bg-gray-700 sm:w-36', imageContainerClassName)}>
                 {imageHref ? (
                     <a href={imageHref} className="block h-full w-full">
                         {imageContent}
@@ -56,6 +81,8 @@ function Inner({
                     imageContent
                 )}
             </div>
+            {horizontalProgressNode && <div className="md:hidden">{horizontalProgressNode}</div>}
+            {verticalProgressNode}
 
             <div className="flex min-w-0 flex-1 items-center gap-4 p-3 sm:p-4">
                 <div className="min-w-0 flex-1">
@@ -81,7 +108,7 @@ function Inner({
 
 export default function SideCard({ className, href, ...props }: SideCardProps) {
     const baseClass = classNames(
-        'overflow-hidden rounded-xl bg-background shadow-sm dark:bg-gray-800',
+        'overflow-hidden rounded-xl bg-background card-fade-up shadow-[0_10px_30px_rgba(16,24,40,0.12)] dark:bg-gray-800 dark:shadow-[0_10px_30px_rgba(0,0,0,0.35)] border border-black/5 dark:border-white/10',
         href && 'group block transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
         className
     );

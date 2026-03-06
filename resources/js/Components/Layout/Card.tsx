@@ -18,14 +18,15 @@ type CardProps = {
     imageWidthClassName?: string;
     imageFallback?: ReactNode;
     imagePosition?: CardImagePosition;
+    progressPercent?: number | null;
     href?: string;
     variant?: CardVariant;
     children?: ReactNode;
 };
 
 const VARIANT_CLASS: Record<CardVariant, string> = {
-    default: 'bg-background dark:bg-gray-800 shadow-sm',
-    muted: 'bg-background-600/80 dark:bg-gray-800/80 shadow-sm',
+    default: 'bg-background dark:bg-gray-800 shadow-[0_10px_30px_rgba(16,24,40,0.12)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.35)] border border-black/5 dark:border-white/10',
+    muted: 'bg-background-600/80 dark:bg-gray-800/80 shadow-[0_10px_30px_rgba(16,24,40,0.12)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.35)] border border-black/5 dark:border-white/10',
 };
 
 function CardInner({
@@ -39,10 +40,15 @@ function CardInner({
     imageWidthClassName,
     imageFallback,
     imagePosition = 'top',
+    progressPercent = null,
     bodyClassName,
     children,
     interactive = false,
 }: Omit<CardProps, 'className' | 'href' | 'variant'> & { interactive?: boolean }) {
+    const resolvedProgress = typeof progressPercent === 'number'
+        ? Math.max(0, Math.min(100, Math.round(progressPercent)))
+        : null;
+
     const imageNode = imageUrl !== undefined && (
         <div
             className={classNames(
@@ -74,24 +80,58 @@ function CardInner({
         </div>
     );
 
-    return (
-        <div className={classNames(imagePosition === 'left' ? 'md:flex' : undefined)}>
-            {imageNode}
-            {(title || subtitle || children) && (
-                <div className={classNames('space-y-3 p-4', bodyClassName)}>
-                    {title && (
-                        <h2 className={classNames('text-lg font-semibold text-text-900 dark:text-gray-100', titleClassName)}>
-                            {title}
-                        </h2>
-                    )}
-                    {subtitle && (
-                        <p className={classNames('text-sm text-text-500 dark:text-gray-400', subtitleClassName)}>
-                            {subtitle}
-                        </p>
-                    )}
-                    {children}
-                </div>
+    const contentNode = (title || subtitle || children) && (
+        <div className={classNames('space-y-3 p-4', bodyClassName)}>
+            {title && (
+                <h2 className={classNames('text-lg font-semibold text-text-900 dark:text-gray-100', titleClassName)}>
+                    {title}
+                </h2>
             )}
+            {subtitle && (
+                <p className={classNames('text-sm text-text-500 dark:text-gray-400', subtitleClassName)}>
+                    {subtitle}
+                </p>
+            )}
+            {children}
+        </div>
+    );
+
+    const horizontalProgressNode = resolvedProgress !== null && (
+        <div className="h-2 w-full bg-background-700/70 dark:bg-gray-700/80">
+            <div
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${resolvedProgress}%` }}
+            />
+        </div>
+    );
+
+    const verticalProgressNode = resolvedProgress !== null && (
+        <div className="hidden md:flex w-2 shrink-0 bg-background-700/70 dark:bg-gray-700/80">
+            <div
+                className="mt-auto w-full bg-primary transition-all duration-300 ease-out"
+                style={{ height: `${resolvedProgress}%` }}
+            />
+        </div>
+    );
+
+    if (imagePosition === 'left') {
+        return (
+            <div>
+                <div className="md:flex">
+                    {imageNode}
+                    {horizontalProgressNode && <div className="md:hidden">{horizontalProgressNode}</div>}
+                    {verticalProgressNode}
+                    {contentNode}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            {imageNode}
+            {horizontalProgressNode}
+            {contentNode}
         </div>
     );
 }
@@ -103,7 +143,7 @@ export default function Card({
     ...props
 }: CardProps) {
     const baseClass = classNames(
-        'overflow-hidden rounded-xl',
+        'overflow-hidden rounded-xl card-fade-up',
         VARIANT_CLASS[variant],
         href && 'block transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
         className

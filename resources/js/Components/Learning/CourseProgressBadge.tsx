@@ -29,15 +29,17 @@ const STATUS_CONFIG: Record<CourseProgressStatus, { label: string; icon: string;
 export default function CourseProgressBadge({
     status = 'not_started',
     progressPercent = 0,
+    variant = 'default',
 }: {
     status?: CourseProgressStatus;
     progressPercent?: number;
+    variant?: 'default' | 'flag';
 }) {
     const resolvedStatus = STATUS_CONFIG[status] ? status : 'not_started';
     const config = STATUS_CONFIG[resolvedStatus];
     const clampedProgress = Math.max(0, Math.min(100, progressPercent || 0));
-    const showProgressLabel = resolvedStatus !== 'not_started';
-    const showProgressBar = resolvedStatus !== 'not_started';
+    const showProgressLabel = variant === 'default' && resolvedStatus !== 'not_started';
+    const showProgressBar = variant === 'default' && resolvedStatus !== 'not_started';
 
     return (
         <div className="space-y-2">

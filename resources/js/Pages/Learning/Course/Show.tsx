@@ -2,12 +2,11 @@ import Card from '@/Components/Layout/Card';
 import Container from '@/Components/Layout/Container';
 import SideCard from '@/Components/Layout/SideCard';
 import CourseProgressBadge from '@/Components/Learning/CourseProgressBadge';
-import ProgressCircle from '@/Components/Learning/ProgressCircle';
 import NeutralButton from '@/Components/NeutralButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
-import { Link, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 
 type LearningLection = {
     id: number;
@@ -65,9 +64,18 @@ export default function LearningCourseFrontendShow({ course }: { course: Learnin
     const bundles = course.bundles || [];
     const modules = course.modules || [];
     const progress = course.progress;
+    const courseStarted = Boolean(progress?.started);
+    const nextModule = modules.find((module) => !module.progress?.completed) || modules[0] || null;
 
     const startCourse = () => {
         router.post(route('learning.courses.start', { learningcourse: course.slug }));
+    };
+    const continueCourse = () => {
+        if (!nextModule) return;
+        router.visit(route('learning.modules.show', {
+            learningcourse: course.slug,
+            learningmoduleslug: nextModule.slug,
+        }));
     };
     const resetCourse = () => {
         router.post(route('learning.courses.reset', { learningcourse: course.slug }));
@@ -89,6 +97,7 @@ export default function LearningCourseFrontendShow({ course }: { course: Learnin
                     imageWidthClassName="w-full md:w-80"
                     title={course.name}
                     subtitle={course.description || 'Keine Beschreibung vorhanden.'}
+                    progressPercent={courseStarted ? (progress?.progress_percent || 0) : null}
                 >
                     <CourseProgressBadge
                         status={progress?.status}
@@ -114,7 +123,8 @@ export default function LearningCourseFrontendShow({ course }: { course: Learnin
                         </div>
                     )}
                     {progress?.started && (
-                        <div>
+                        <div className="flex items-center gap-2">
+                            <PrimaryButton onClick={continueCourse} disabled={!nextModule}>Weiter</PrimaryButton>
                             <NeutralButton onClick={resetCourse}>Zuruecksetzen</NeutralButton>
                         </div>
                     )}
@@ -134,41 +144,27 @@ export default function LearningCourseFrontendShow({ course }: { course: Learnin
                             const lectionsCount = module.progress?.total_lections || sections.reduce((count, section) => count + (section.lections?.length || 0), 0);
                             const totalMinutes = module.progress?.total_minutes || 0;
                             const progressPercent = module.progress?.percent || 0;
-                            const moduleStarted = module.progress?.started || false;
-                            const moduleCompleted = module.progress?.completed || false;
+                            const moduleSubtitle = courseStarted
+                                ? `${lectionsCount} Lektionen | ${totalMinutes} Min. | ${progressPercent}%`
+                                : 'Details nach Kursstart verfuegbar';
 
                             return (
                                 <SideCard
                                     key={module.id}
-                                    href={route('learning.modules.show', {
+                                    href={courseStarted ? route('learning.modules.show', {
                                         learningcourse: course.slug,
                                         learningmoduleslug: module.slug,
-                                    })}
+                                    }) : undefined}
                                     imageUrl={cover}
                                     imageAlt={module.name}
                                     title={module.name}
-                                    subtitle={`${lectionsCount} Lektionen | ${totalMinutes} Min.`}
-                                    right={(
-                                        <ProgressCircle
-                                            percent={progressPercent}
-                                            started={moduleStarted}
-                                            completed={moduleCompleted}
-                                        />
-                                    )}
+                                    subtitle={moduleSubtitle}
+                                    progressPercent={courseStarted ? progressPercent : null}
                                 />
                             );
                         })}
                     </div>
                 )}
-
-                <div>
-                    <Link
-                        href={route('learning.courses.index')}
-                        className="text-sm text-primary hover:underline dark:text-primary-300"
-                    >
-                        Zurueck zur Kursuebersicht
-                    </Link>
-                </div>
             </Container>
         </AuthenticatedLayout>
     );

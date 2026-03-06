@@ -50,6 +50,7 @@ export default function LearningCourseFrontendIndex({ courses = [] }: { courses?
                         {courses.map((course) => {
                             const coverUrl = course.cover?.thumbnail || course.cover?.url || hubLogoUrl;
                             const bundles = course.bundles || [];
+                            const courseStarted = Boolean(course.progress?.started);
 
                             return (
                                 <Card
@@ -58,6 +59,7 @@ export default function LearningCourseFrontendIndex({ courses = [] }: { courses?
                                     imageAlt={course.name}
                                     title={course.name}
                                     subtitle={course.description || 'Keine Beschreibung vorhanden.'}
+                                    progressPercent={courseStarted ? (course.progress?.progress_percent || 0) : null}
                                     href={route('learning.courses.show', { learningcourse: course.slug })}
                                 >
                                     <div className="text-xs text-text-500 dark:text-gray-400">
@@ -67,6 +69,7 @@ export default function LearningCourseFrontendIndex({ courses = [] }: { courses?
                                     <CourseProgressBadge
                                         status={course.progress?.status}
                                         progressPercent={course.progress?.progress_percent || 0}
+                                        variant="flag"
                                     />
 
                                     {bundles.length > 0 ? (

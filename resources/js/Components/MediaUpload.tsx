@@ -217,6 +217,17 @@ function getFilesFromClipboard(clipboardData: DataTransfer | null | undefined): 
   return files;
 }
 
+function basename(path?: string | null): string {
+  if (!path) return '';
+  const normalized = String(path);
+  const parts = normalized.split('/');
+  return parts[parts.length - 1] || normalized;
+}
+
+function isAssignedMedia(media?: Record<string, any> | null): boolean {
+  return Boolean(media && media.mediable_id && media.mediable_type);
+}
+
 const BaseMediaUpload = forwardRef<HTMLDivElement, Props>(function BaseMediaUpload(props, ref) {
   if (props.multiple) {
     return <MultipleMediaUpload {...props} />;
@@ -752,6 +763,16 @@ function MultipleMediaUpload({
     });
   };
 
+  const handleEditMedia = (item: MultiUploadItem) => {
+    if (disabled) return;
+    if (!isAssignedMedia(item.media) || !item.media?.id) return;
+    const shouldNavigate = window.confirm(
+      'Zum Media Edit wechseln? Aktuelle Änderungen gehen womöglich verloren.'
+    );
+    if (!shouldNavigate) return;
+    window.location.assign(route('media.edit', [item.media.id]));
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleDrop,
     accept: accept ? { [accept]: [] } : undefined,
@@ -828,61 +849,74 @@ function MultipleMediaUpload({
                 setDraggedItemId(null);
                 setDragOverItemId(null);
               }}
-              className={`flex items-center justify-between rounded border px-3 py-2 text-sm dark:border-gray-700 ${
+              className={`rounded border px-3 py-2 text-sm dark:border-gray-700 ${
                 dragOverItemId === item.id ? 'border-primary bg-primary/5' : 'border-gray-200'
               } ${!disabled && item.status !== 'uploading' ? 'cursor-move' : ''}`}
             >
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                {renderFilePreview({
-                  previewType: item.previewType,
-                  preview: item.preview,
-                  mimeType: item.mimeType,
-                  sizeClass: 'h-10 w-10',
-                  videoOverlay: 'corner',
-                })}
-                <div className="min-w-0 flex-1">
-                  <p className="block w-full truncate font-medium text-text-800 dark:text-gray-100" title={item.fileName}>
-                    {item.fileName}
-                  </p>
-                  {item.status === 'error' ? (
-                    <p className="text-xs text-tertiary">{item.error}</p>
-                  ) : (
-                    <p className="text-xs text-text-500">
-                      {item.status === 'uploaded'
-                        ? t('Bereit')
-                        : `${Math.round(item.progress)}% ${t('hochgeladen')}`}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  {renderFilePreview({
+                    previewType: item.previewType,
+                    preview: item.preview,
+                    mimeType: item.mimeType,
+                    sizeClass: 'h-10 w-10',
+                    videoOverlay: 'corner',
+                  })}
+                  <div className="min-w-0 flex-1">
+                    <p className="block w-full truncate font-medium text-text-800 dark:text-gray-100" title={item.fileName}>
+                      {item.media?.name || item.fileName}
                     </p>
+                    {item.status === 'error' ? (
+                      <p className="text-xs text-tertiary">{item.error}</p>
+                    ) : (
+                      <p className="text-xs text-text-500">
+                        {item.status === 'uploaded'
+                          ? t('Bereit')
+                          : `${Math.round(item.progress)}% ${t('hochgeladen')}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {item.status === 'uploaded' && isAssignedMedia(item.media) && (
+                    <button
+                      type="button"
+                      className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
+                      onClick={() => handleEditMedia(item)}
+                      disabled={disabled}
+                    >
+                      {t('Bearbeiten')}
+                    </button>
                   )}
+                  <button
+                    type="button"
+                    className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
+                    onClick={() => moveItem(item.id, 'up')}
+                    disabled={disabled || item.status === 'uploading' || items[0]?.id === item.id}
+                    title={t('Nach oben')}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
+                    onClick={() => moveItem(item.id, 'down')}
+                    disabled={disabled || item.status === 'uploading' || items[items.length - 1]?.id === item.id}
+                    title={t('Nach unten')}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs text-tertiary hover:text-tertiary/80 disabled:opacity-50"
+                    onClick={() => removeItem(item.id)}
+                    disabled={disabled || item.status === 'uploading'}
+                  >
+                    {t('Entfernen')}
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
-                  onClick={() => moveItem(item.id, 'up')}
-                  disabled={disabled || item.status === 'uploading' || items[0]?.id === item.id}
-                  title={t('Nach oben')}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
-                  onClick={() => moveItem(item.id, 'down')}
-                  disabled={disabled || item.status === 'uploading' || items[items.length - 1]?.id === item.id}
-                  title={t('Nach unten')}
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-tertiary hover:text-tertiary/80 disabled:opacity-50"
-                  onClick={() => removeItem(item.id)}
-                  disabled={disabled || item.status === 'uploading'}
-                >
-                  {t('Entfernen')}
-                </button>
-              </div>
+
             </li>
           ))}
         </ul>
@@ -900,7 +934,7 @@ function createUploadedItem(media: Record<string, any>): MultiUploadItem {
   const mediaPreview = resolvePreviewFromMedia(media);
   return {
     id: uuidv4(),
-    fileName: media?.name || media?.filename || 'Datei',
+    fileName: media?.name || basename(media?.filename) || 'Datei',
     preview: mediaPreview?.preview ?? null,
     previewType: mediaPreview?.previewType ?? 'file',
     mimeType: mediaPreview?.mimeType ?? DEFAULT_MIME_TYPE,
