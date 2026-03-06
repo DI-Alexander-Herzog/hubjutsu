@@ -57,7 +57,7 @@ function CardInner({
                     ? (imageWidthClassName || 'w-full md:w-72 shrink-0')
                     : 'w-full',
                 imagePosition === 'left'
-                    ? (imageHeightClassName || 'h-52 md:h-auto')
+                    ? (imageHeightClassName || 'relative overflow-hidden h-52 md:h-auto')
                     : (imageHeightClassName || 'h-44')
             )}
         >
@@ -66,7 +66,9 @@ function CardInner({
                     src={imageUrl}
                     alt={imageAlt || ''}
                     className={classNames(
-                        'h-full w-full object-cover transition-transform duration-300 ease-out',
+                        imagePosition === 'left'
+                            ? 'absolute inset-0 h-full w-full object-cover transition-transform duration-300 ease-out'
+                            : 'h-full w-full object-cover transition-transform duration-300 ease-out',
                         interactive && 'group-hover:scale-[1.02]'
                     )}
                 />
@@ -117,7 +119,7 @@ function CardInner({
     if (imagePosition === 'left') {
         return (
             <div>
-                <div className="md:flex">
+                <div className="md:flex md:items-stretch">
                     {imageNode}
                     {horizontalProgressNode && <div className="md:hidden">{horizontalProgressNode}</div>}
                     {verticalProgressNode}

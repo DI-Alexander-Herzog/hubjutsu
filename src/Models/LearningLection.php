@@ -58,6 +58,7 @@ class LearningLection extends Base
 
     protected $fillableMediaList = [
         'attachments',
+        'contentImages',
     ];
 
     protected $with = [
@@ -65,6 +66,7 @@ class LearningLection extends Base
         'image',
         'video',
         'attachments',
+        'contentImages',
     ];
 
     public function section(): BelongsTo
@@ -89,6 +91,13 @@ class LearningLection extends Base
             ->orderBy('mediable_sort');
     }
 
+    public function contentImages(): MorphMany
+    {
+        return $this->medias()
+            ->where('category', 'lection_content_image')
+            ->orderBy('mediable_sort');
+    }
+
     public function userProgress(): HasMany
     {
         return $this->hasMany(LearningLectionUserProgress::class, 'learning_lection_id');
@@ -96,16 +105,21 @@ class LearningLection extends Base
 
     public function setImage(Media $media): void
     {
-        $this->setMedia($media, 'lection_image', 1);
+        $this->setMedia($media, 'lection_image', 1, true);
     }
 
     public function setVideo(Media $media): void
     {
-        $this->setMedia($media, 'lection_video', 1);
+        $this->setMedia($media, 'lection_video', 1, true);
     }
 
     public function setAttachments(array $medias): void
     {
-        $this->setMediaList($medias, 'lection_attachment', 1);
+        $this->setMediaList($medias, 'lection_attachment', 1, true);
+    }
+
+    public function setContentImages(array $medias): void
+    {
+        $this->setMediaList($medias, 'lection_content_image', 1, true);
     }
 }

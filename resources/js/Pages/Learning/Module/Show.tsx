@@ -166,10 +166,10 @@ export default function LearningModuleFrontendShow({
                         <div className="space-y-3">
                             <Card>
                                 <h3 className="truncate text-2xl font-semibold text-text-900 dark:text-gray-100">
-                                    Module
+                                    {course.name}
                                 </h3>
                                 <p className="truncate text-base font-medium text-text-700 dark:text-gray-300">
-                                    {course.name}
+                                    Module
                                 </p>
                                 <p className="text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">
                                     {courseModules.length} Module

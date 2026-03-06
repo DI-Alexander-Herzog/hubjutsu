@@ -3,11 +3,13 @@ import Container from '@/Components/Layout/Container';
 import SideCard from '@/Components/Layout/SideCard';
 import Checkbox from '@/Components/Checkbox';
 import IconLibrary from '@/Components/IconLibrary';
+import HtmlEditorOutput from '@/Components/HtmlEditorOutput';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import classNames from 'classnames';
 import { PageProps } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import PrimaryButton from '@/Components/PrimaryButton';
+import { useState } from 'react';
 
 type LearningCourse = {
     id: number;
@@ -67,6 +69,7 @@ export default function LearningLectionFrontendShow({
     module: LearningModule;
     lection: LearningLection;
 }) {
+    const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
     const { props } = usePage<PageProps>();
     const hubLogoUrl = props.hub?.logo?.thumbnail || null;
     const courseCoverUrl = course.cover?.thumbnail || course.cover?.url || hubLogoUrl;
@@ -112,6 +115,7 @@ export default function LearningLectionFrontendShow({
         <AuthenticatedLayout
             title={lection.name}
             breadcrumbs={[
+                { label: 'Learning', url: route('learning.courses.index') },
                 { label: course.name, url: route('learning.courses.show', { learningcourse: course.slug }) },
                 { label: module.name, url: route('learning.modules.show', { learningcourse: course.slug, learningmoduleslug: module.slug }) },
                 ...(currentSection ? [{
@@ -167,16 +171,10 @@ export default function LearningLectionFrontendShow({
                             )}
 
                             {lection.content && (
-                                /<\w+[^>]*>/.test(lection.content) ? (
-                                    <div
-                                        className="max-w-none text-base text-text-700 dark:text-gray-300 [&_p]:my-2 [&_strong]:font-bold [&_em]:italic [&_a]:text-primary-600 [&_a]:underline [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1 [&_h1]:my-3 [&_h1]:text-4xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-3xl [&_h2]:font-semibold [&_h3]:my-2 [&_h3]:text-2xl [&_h3]:font-semibold [&_h4]:my-2 [&_h4]:text-xl [&_h4]:font-semibold"
-                                        dangerouslySetInnerHTML={{ __html: lection.content }}
-                                    />
-                                ) : (
-                                    <p className="whitespace-pre-wrap text-base text-text-700 dark:text-gray-300">
-                                        {lection.content}
-                                    </p>
-                                )
+                                <HtmlEditorOutput
+                                    html={lection.content}
+                                    onImageClick={(src: string) => setLightboxSrc(src)}
+                                />
                             )}
 
                             {attachments.length > 0 && (
@@ -309,6 +307,20 @@ export default function LearningLectionFrontendShow({
                     </div>
                 </div>
             </Container>
+
+            {lightboxSrc ? (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                    onClick={() => setLightboxSrc(null)}
+                >
+                    <img
+                        src={lightboxSrc}
+                        alt="content-image-preview"
+                        className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+                        onClick={(event) => event.stopPropagation()}
+                    />
+                </div>
+            ) : null}
         </AuthenticatedLayout>
     );
 }

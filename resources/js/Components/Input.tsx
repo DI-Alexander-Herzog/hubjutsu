@@ -4,7 +4,7 @@ import InputError from "@/Components/InputError";
 import { UseForm } from "@/types";
 import { useFormContext, useOptionalFormContext } from "@/Components/FormContext";
 import InputTextarea from "@/Components/InputTextarea";
-import HtmlEditor from "@/Components/HtmlEditor";
+import HtmlEditor, { HtmlEditorMediaItem } from "@/Components/HtmlEditor";
 import MediaUpload from "./MediaUpload";
 import ColorInput from "./ColorInput";
 import ModelSelect from "./ModelSelect";
@@ -134,12 +134,14 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                 }))}
             />;
         } else if (type == "html" || type == "htmleditor") {
+            const mediaItems: HtmlEditorMediaItem[] = Array.isArray(props.mediaItems) ? props.mediaItems : [];
             return <HtmlEditor
                 id={id}
                 name={inputName}
                 value={_useForm.data && _useForm.data[inputName] ? _useForm.data[inputName] : ''}
                 className={`mt-1 block w-full ${className}`}
                 withHiddenInput={false}
+                mediaItems={mediaItems}
                 {...props}
                 onChange={(html) => _useForm.setData((data: { [key: string]: any }) => ({
                     ...data,

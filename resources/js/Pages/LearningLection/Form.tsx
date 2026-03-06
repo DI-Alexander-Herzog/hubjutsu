@@ -24,12 +24,23 @@ export default function LearningLectionForm({
 function LearningLectionFormBody({ learning_lection }: { learning_lection: any }) {
     const { form, readonly } = useFormContext();
     const [showRecorder, setShowRecorder] = useState(false);
+    const editorMediaItems = form.data?.content_images || form.data?.contentImages || [];
 
     return (
         <>
             <FormContainer>
-                <FormSection title="Media" subtitle="Bild und Video">
+                <FormSection title="Preview & Allgemein" subtitle="Vorschaubild und grundlegende Lektionsdaten">
                     <Input inputName="image" type="media" accept="image/*" label="Bild" />
+                    <Input inputName="name" type="text" label="Name" />
+                    <Input inputName="description" type="textarea" label="Description" rows={4} />
+                    <Input inputName="duration_minutes" type="number" min={0} label="Duration (min)" />
+                    <Input inputName="sort" type="number" min={0} label="Sort" />
+                    <Input inputName="active" type="boolean" label="Active" />
+                </FormSection>
+            </FormContainer>
+
+            <FormContainer>
+                <FormSection title="Video" subtitle="Video für die Lektion">
                     <div className="space-y-2">
                         <Input inputName="video" type="media" accept="video/*" label="Video" />
                         {!readonly && (
@@ -44,22 +55,31 @@ function LearningLectionFormBody({ learning_lection }: { learning_lection: any }
                         )}
                     </div>
                 </FormSection>
+            </FormContainer>
 
-                <FormSection title="Allgemein" subtitle="Lektionsdaten bearbeiten">
-                    <Input inputName="name" type="text" label="Name" />
-                    <Input inputName="description" type="textarea" label="Description" rows={4} />
+            <FormContainer>
+                <FormSection title="Content" subtitle="HTML-Inhalt und eingebundene Bilder">
                     <Input
                         inputName="content"
                         type="html"
                         label="Content"
                         placeholder="Inhalt der Lektion..."
-                        helperText="Unterstuetzt Fett, Kursiv, Links, Listen und Undo/Redo."
+                        helperText="Unterstuetzt H1-H4, Fett, Kursiv, Links, Listen, Code und Undo/Redo."
+                        mediaItems={editorMediaItems}
                     />
-                    <Input inputName="duration_minutes" type="number" min={0} label="Duration (min)" />
-                    <Input inputName="sort" type="number" min={0} label="Sort" />
-                    <Input inputName="active" type="boolean" label="Active" />
+                    <Input
+                        inputName="content_images"
+                        type="media"
+                        accept="image/*"
+                        multiple
+                        maxFiles={50}
+                        label="Content Images"
+                        helperText="Diese Bildliste ist für den Editor-Content (private Medien)."
+                    />
                 </FormSection>
+            </FormContainer>
 
+            <FormContainer>
                 <FormSection title="Anhänge" subtitle="Zusätzliche Dateien">
                     <Input inputName="attachments" type="media" multiple maxFiles={20} label="Anhänge" />
                 </FormSection>

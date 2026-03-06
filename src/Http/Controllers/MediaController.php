@@ -20,6 +20,10 @@ class MediaController extends Controller
 {
     protected function canEditMedia(Media $media): bool
     {
+        if ($this->canAccessMediable($media, 'update')) {
+            return true;
+        }
+
         if (!$media->created_by) {
             return true;
         }
@@ -37,7 +41,26 @@ class MediaController extends Controller
             return false;
         }
 
+        if ($this->canAccessMediable($media, 'view') || $this->canAccessMediable($media, 'update')) {
+            return true;
+        }
+
         return $this->canEditMedia($media);
+    }
+
+    protected function canAccessMediable(Media $media, string $ability): bool
+    {
+        if (!Auth::check()) {
+            return false;
+        }
+
+        $media->loadMissing('mediable');
+        $mediable = $media->mediable;
+        if (!$mediable) {
+            return false;
+        }
+
+        return Auth::user()?->can($ability, $mediable) === true;
     }
 
     public function edit(Media $media): Response

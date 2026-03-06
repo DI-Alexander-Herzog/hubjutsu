@@ -481,6 +481,7 @@ class HubjutsuSetupCommand extends Command
             '@vitejs/plugin-react',
             '@tiptap/react',
             '@tiptap/starter-kit',
+            '@tiptap/extension-image',
             '@tiptap/extension-link',
             '@tiptap/extension-placeholder',
             'autoprefixer',

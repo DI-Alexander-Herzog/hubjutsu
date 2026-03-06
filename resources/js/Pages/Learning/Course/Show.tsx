@@ -94,7 +94,6 @@ export default function LearningCourseFrontendShow({ course }: { course: Learnin
                     imageUrl={courseCoverUrl}
                     imageAlt={course.name}
                     imagePosition="left"
-                    imageWidthClassName="w-full md:w-80"
                     title={course.name}
                     subtitle={course.description || 'Keine Beschreibung vorhanden.'}
                     progressPercent={courseStarted ? (progress?.progress_percent || 0) : null}
