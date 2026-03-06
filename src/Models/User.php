@@ -13,6 +13,8 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use App\Models\Hub;
+use App\Models\Role;
 
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Auth\Passwords\CanResetPassword;
@@ -81,6 +83,21 @@ class User extends Base implements
             if (!$user->password) {
                 $user->password = env('ADMIN_PASSWORD', base64_encode(random_bytes(16)));
             }
+        });
+
+        static::created(function (User $user) {
+            Hub::query()
+                ->whereNotNull('role_id')
+                ->with('defaultRole')
+                ->get()
+                ->each(function (Hub $hub) use ($user) {
+                    $role = $hub->defaultRole;
+                    if (!$role instanceof Role) {
+                        return;
+                    }
+
+                    $hub->assignRole($user, $role);
+                });
         });
     }
     

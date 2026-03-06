@@ -3,6 +3,7 @@
 namespace AHerzog\Hubjutsu\Http\Controllers;
 
 use App\Models\Hub;
+use App\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
@@ -11,6 +12,16 @@ use Illuminate\Http\Request;
 
 class HubController extends Controller
 {
+    protected function roleOptions(): array
+    {
+        return Role::query()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Role $role) => [(string) $role->id, $role->name])
+            ->values()
+            ->all();
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -26,6 +37,8 @@ class HubController extends Controller
     public function create()
     {
         return Inertia::render('Hub/Create', [
+            'hubEntry' => new Hub(),
+            'roleOptions' => $this->roleOptions(),
         ]);
     }
 
@@ -53,7 +66,8 @@ class HubController extends Controller
     public function show(Hub $hub)
     {
         return Inertia::render('Hub/View', [
-            'hubEntry' => $hub
+            'hubEntry' => $hub,
+            'roleOptions' => $this->roleOptions(),
         ]);
     }
 
@@ -63,7 +77,8 @@ class HubController extends Controller
     public function edit(Hub $hub)
     {
         return Inertia::render('Hub/Edit', [
-            'hubEntry' => $hub
+            'hubEntry' => $hub,
+            'roleOptions' => $this->roleOptions(),
         ]);
     }
 

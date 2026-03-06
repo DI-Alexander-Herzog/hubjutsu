@@ -13,6 +13,8 @@ type SettingEntry = {
     description?: string;
     icon?: string;
     href: string;
+    external?: boolean;
+    target?: string;
     color: string;
     initials: string;
     subtitle?: string;    
@@ -70,21 +72,44 @@ export default function Settings({ settings, extraIcons, extraColors }: { settin
                                                         })()}
                                                     </div>
                                                     <div className="min-w-0 flex-1 truncate">
-                                                        <Link href={setting.href} className="font-medium text-text-900 hover:text-text-600 dark:text-gray-100 dark:hover:text-gray-300">
-                                                            {setting.label}
-                                                        </Link>
+                                                        {setting.external ? (
+                                                            <a
+                                                                href={setting.href}
+                                                                target={setting.target || '_self'}
+                                                                rel={setting.target === '_blank' ? 'noopener noreferrer' : undefined}
+                                                                className="font-medium text-text-900 hover:text-text-600 dark:text-gray-100 dark:hover:text-gray-300"
+                                                            >
+                                                                {setting.label}
+                                                            </a>
+                                                        ) : (
+                                                            <Link href={setting.href} className="font-medium text-text-900 hover:text-text-600 dark:text-gray-100 dark:hover:text-gray-300">
+                                                                {setting.label}
+                                                            </Link>
+                                                        )}
                                                         <p className="text-sm text-text-500 dark:text-gray-400">{setting.subtitle}</p>
                                                     </div>
                                                 </div>
                                                 <div className="shrink-0">
-                                                    <Link
-                                                        href={setting.href} 
-                                                        type="button"
-                                                        className="inline-flex size-8 items-center justify-center rounded-full bg-transparent text-text-400 hover:text-text-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-200 dark:focus:ring-offset-gray-900"
-                                                    >
-                                                        <span className="sr-only">Open options</span>
-                                                        <ArrowRightIcon aria-hidden="true" className="size-5" />
-                                                    </Link>
+                                                    {setting.external ? (
+                                                        <a
+                                                            href={setting.href}
+                                                            target={setting.target || '_self'}
+                                                            rel={setting.target === '_blank' ? 'noopener noreferrer' : undefined}
+                                                            className="inline-flex size-8 items-center justify-center rounded-full bg-transparent text-text-400 hover:text-text-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-200 dark:focus:ring-offset-gray-900"
+                                                        >
+                                                            <span className="sr-only">Open options</span>
+                                                            <ArrowRightIcon aria-hidden="true" className="size-5" />
+                                                        </a>
+                                                    ) : (
+                                                        <Link
+                                                            href={setting.href} 
+                                                            type="button"
+                                                            className="inline-flex size-8 items-center justify-center rounded-full bg-transparent text-text-400 hover:text-text-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-200 dark:focus:ring-offset-gray-900"
+                                                        >
+                                                            <span className="sr-only">Open options</span>
+                                                            <ArrowRightIcon aria-hidden="true" className="size-5" />
+                                                        </Link>
+                                                    )}
                                                 </div>
                                             </div>
                                         </Card>

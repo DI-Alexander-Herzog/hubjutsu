@@ -28,5 +28,21 @@
     "media.select_or_drag_file": "Select file or drag it here",
     "media.drop_file": "Drop file here",
     "media.remove_file": "Remove file",
-    "media.file_will_be_removed": "The file will be removed when saving."
+    "media.file_will_be_removed": "The file will be removed when saving.",
+    "permission.action.viewAny": "View Any",
+    "permission.action.view": "View",
+    "permission.action.create": "Create",
+    "permission.action.edit": "Edit",
+    "permission.action.editOwn": "Edit Own",
+    "permission.action.delete": "Delete",
+    "permission.action.restore": "Restore",
+    "permission.action.forceDelete": "Force Delete",
+    "permission.action.viewAny_model": "View any :model",
+    "permission.action.view_model": "View :model",
+    "permission.action.create_model": "Create :model",
+    "permission.action.edit_model": "Edit :model",
+    "permission.action.editOwn_model": "Edit own :model",
+    "permission.action.delete_model": "Delete :model",
+    "permission.action.restore_model": "Restore :model",
+    "permission.action.forceDelete_model": "Force delete :model"
 }

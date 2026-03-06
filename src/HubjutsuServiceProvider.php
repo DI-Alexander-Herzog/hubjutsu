@@ -15,6 +15,7 @@ use AHerzog\Hubjutsu\Console\HubjutsuSetupCommand;
 use Auth;
 use Gate;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 use LogViewer;
 use Request;
@@ -44,16 +45,35 @@ class HubjutsuServiceProvider extends ServiceProvider
         Permission::addModel(\App\Models\Role::class, __('Role'));
         Permission::addModel(\App\Models\Credential::class, __('Credential'));
         Permission::addModel(\App\Models\LearningBundle::class, __('Learning Bundle'));
-        Permission::addModel(\App\Models\LearningBundleRole::class, __('Learning Bundle Role'));
+        Permission::addModel(\App\Models\LearningBundleRole::class, __('Learning Bundle Role'), [
+            'group' => \App\Models\LearningBundle::class,
+            'hidden' => true,
+        ]);
         Permission::addModel(\App\Models\LearningCourse::class, __('Learning Course'));
-        Permission::addModel(\App\Models\LearningModule::class, __('Learning Module'));
-        Permission::addModel(\App\Models\LearningSection::class, __('Learning Section'));
-        Permission::addModel(\App\Models\LearningLection::class, __('Learning Lection'));
+        Permission::addModel(\App\Models\LearningModule::class, __('Learning Module'), [
+            'group' => \App\Models\LearningCourse::class,
+            'hidden' => true,
+        ]);
+        Permission::addModel(\App\Models\LearningSection::class, __('Learning Section'), [
+            'group' => \App\Models\LearningCourse::class,
+            'hidden' => true,
+        ]);
+        Permission::addModel(\App\Models\LearningLection::class, __('Learning Lection'), [
+            'group' => \App\Models\LearningCourse::class,
+            'hidden' => true,
+        ]);
         
-        
-        // Default allow everything for now
-        Gate::after(function ($user, $ability, $arguments) {
-            return $user ? true : false;
+        Gate::guessPolicyNamesUsing(function (string $modelClass) {
+            $policyClass = 'App\\Policies\\'.class_basename($modelClass).'Policy';
+            if (class_exists($policyClass)) {
+                return $policyClass;
+            }
+
+            if (is_a($modelClass, Model::class, true) && is_a($modelClass, \App\Models\Base::class, true)) {
+                return \AHerzog\Hubjutsu\Policies\PermissionPolicy::class;
+            }
+
+            return null;
         });
 
         Gate::before(function ($user, $ability) {

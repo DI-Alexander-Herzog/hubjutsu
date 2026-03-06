@@ -4,7 +4,7 @@ import { CogIcon, FolderIcon } from '@heroicons/react/20/solid';
 import RoleAssignmentSection from '@/Components/RoleAssignmentModal';
 import IntegrationServiceSection from '@/Components/IntegrationServiceSection';
 
-export default function HubEdit({ hubEntry }: { hubEntry?: any }) {
+export default function HubEdit({ hubEntry, roleOptions }: { hubEntry?: any; roleOptions?: [string, string][] }) {
     return (
         <AuthenticatedLayout
             title="Hub"
@@ -15,7 +15,7 @@ export default function HubEdit({ hubEntry }: { hubEntry?: any }) {
 		    ]}
         >
 
-            <HubForm hub={hubEntry} />
+            <HubForm hub={hubEntry} roleOptions={roleOptions} />
 
             {hubEntry?.id && (
                 <RoleAssignmentSection

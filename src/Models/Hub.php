@@ -10,8 +10,12 @@ use AHerzog\Hubjutsu\Models\Traits\CredentialTrait;
 use AHerzog\Hubjutsu\Models\Traits\HasRoleAssignments;
 use AHerzog\Hubjutsu\Models\Traits\MediaTrait;
 use App\Models\Credential;
+use App\Models\Role;
+use App\Models\RolePermission;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Base;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Hub extends Base
@@ -59,6 +63,7 @@ class Hub extends Base
         'slug',
         'url',
         'primary',
+        'role_id',
         'app_id',
         'color_primary',
         'color_primary_text',
@@ -111,6 +116,9 @@ class Hub extends Base
     protected static function boot()
     {
         parent::boot();
+        static::created(function (Hub $model) {
+            $model->ensureDefaultRole();
+        });
         static::saved(function ($model) {
             if ($model->primary) {
                 // Set all other hubs to non-primary
@@ -122,6 +130,34 @@ class Hub extends Base
             if (empty($model->slug) && !empty($model->name)) {
                 $model->slug = \Str::slug($model->name);
             }
+        });
+    }
+
+    public function defaultRole(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    public function ensureDefaultRole(): void
+    {
+        $role = $this->defaultRole;
+
+        if (!$role instanceof Role) {
+            $role = Role::create([
+                'name' => "Hub {$this->id} Default Admin",
+            ]);
+
+            $this->role_id = $role->id;
+            $this->saveQuietly();
+        }
+
+        RolePermission::firstOrCreate([
+            'role_id' => $role->id,
+            'permission' => 'admin::admin',
+        ]);
+
+        User::query()->get()->each(function (User $user) use ($role) {
+            $this->assignRole($user, $role);
         });
     }
 

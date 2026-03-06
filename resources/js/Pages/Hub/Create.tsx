@@ -1,17 +1,18 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import FormContainer from '@/Components/FormContainer';
-import Card from '@/Components/Layout/Card';
+import HubForm from './Form';
+import { CogIcon, FolderIcon } from '@heroicons/react/20/solid';
 
-export default function HubCreate() {
+export default function HubCreate({ hubEntry, roleOptions }: { hubEntry?: any; roleOptions?: [string, string][] }) {
     return (
         <AuthenticatedLayout
             title="Create Hub"
+            breadcrumbs={[
+                { label: 'Settings', url: route('settings.index'), icon:<CogIcon /> },
+                { label: 'Hubs', url: route('admin.hubs.index'), icon: <FolderIcon /> },
+                { label: 'New Hub' }
+            ]}
         >
-            <FormContainer className="py-4">
-                <Card>
-                    <p className="text-text-900 dark:text-gray-100">IRGENDWELCHE SETTINGS!</p>
-                </Card>
-            </FormContainer>
+            <HubForm hub={hubEntry} roleOptions={roleOptions} />
         </AuthenticatedLayout>
     );
 }

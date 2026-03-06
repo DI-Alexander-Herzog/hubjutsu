@@ -63,6 +63,8 @@ class HubjutsuSeeder extends Seeder
             $this->defaultHubsettings()
         ));
 
+        $hub->ensureDefaultRole();
+
         $logo = $this->defaultLogo();
         if ($logo instanceof Media) {
             $hub->setLogo($logo);

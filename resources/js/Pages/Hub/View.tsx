@@ -4,12 +4,12 @@ import HubForm from './Form';
 import RoleAssignmentSection from '@/Components/RoleAssignmentModal';
 import IntegrationServiceSection from '@/Components/IntegrationServiceSection';
 
-export default function HubView({ hubEntry }: { hubEntry: Models.Hub }) {
+export default function HubView({ hubEntry, roleOptions }: { hubEntry: Models.Hub; roleOptions?: [string, string][] }) {
     return (
         <AuthenticatedLayout
             title="Hub"
         >
-            <HubForm disabled={true} hub={hubEntry} />
+            <HubForm disabled={true} hub={hubEntry} roleOptions={roleOptions} />
 
             {hubEntry?.id && (
                 <RoleAssignmentSection

@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Log;
 use Str;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -121,7 +122,7 @@ class HubjutsuApiController
      * @throws Exception 
      * @throws BindingResolutionException 
      */
-    protected function getModelIfAllowed(string $model, $id, string $gate)
+    protected function getModelIfAllowed(string $model, $id, string $gate, bool $withTrashed = false)
     {
         
         $class = 'App\\Models\\' . Str::studly($model);
@@ -134,7 +135,12 @@ class HubjutsuApiController
             throw new BadRequestHttpException("Model not api compatible: {$class}");
         }
         if ($id) {
-            $obj = $obj->findOrFail($id);
+            $query = $obj->newQuery();
+            if ($withTrashed && in_array(SoftDeletes::class, class_uses_recursive($class), true)) {
+                $query = $query->withTrashed();
+            }
+
+            $obj = $query->findOrFail($id);
         }
         if (!Gate::allows($gate, ($id ? $obj : $obj::class)) ) {
             throw new AuthorizationException("Not allowed: {$gate} on {$class}");
@@ -379,15 +385,43 @@ class HubjutsuApiController
 
     public function restore(Request $request, string $model, $id)
     {
-        return response()->json([
-            'message' => 'Hello World!',
+        return $this->runApi($request, function () use ($request, $model, $id) {
+            $modelObj = $this->getModelIfAllowed($model, $id, 'restore', true);
+            if (!in_array(SoftDeletes::class, class_uses_recursive($modelObj::class), true)) {
+                throw new BadRequestHttpException('Model does not support restore.');
+            }
+
+            if (!$modelObj->trashed()) {
+                return response()->json($modelObj->prepareForApi($request)->toArray());
+            }
+
+            $modelObj->restore();
+            $modelObj->refresh();
+
+            return response()->json($modelObj->prepareForApi($request)->toArray());
+        }, [
+            'action' => 'restore',
+            'model' => $model,
+            'id' => $id,
         ]);
     }
 
     public function forceDelete(Request $request, string $model, $id)
     {
-        return response()->json([
-            'message' => 'Hello World!',
+        return $this->runApi($request, function () use ($request, $model, $id) {
+            $modelObj = $this->getModelIfAllowed($model, $id, 'forceDelete', true);
+            if (!in_array(SoftDeletes::class, class_uses_recursive($modelObj::class), true)) {
+                throw new BadRequestHttpException('Model does not support force delete.');
+            }
+
+            $return = $modelObj->prepareForApi($request)->toArray();
+            $modelObj->forceDelete();
+
+            return response()->json($return);
+        }, [
+            'action' => 'forceDelete',
+            'model' => $model,
+            'id' => $id,
         ]);
     }
 

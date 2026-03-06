@@ -5,7 +5,7 @@ import FormSection from '@/Components/FormSection';
 import { Models } from '@/types/models';
 import Separator from '@/Components/Separator';
 
-export default function HubForm({ disabled=false, hub }: { disabled?: boolean; hub: Models.Hub }) {
+export default function HubForm({ disabled=false, hub, roleOptions = [] }: { disabled?: boolean; hub: Models.Hub; roleOptions?: [string, string][] }) {
 
     return (
         <FormContext data={hub} model={'hub'} readonly={disabled}>
@@ -15,6 +15,7 @@ export default function HubForm({ disabled=false, hub }: { disabled?: boolean; h
                     <Input inputName="slug" />
                     <Input inputName="url" type="url" />
                     <Input inputName="app_id" />
+                    <Input inputName="role_id" type="select" options={roleOptions} label="Standardrolle" />
                 </FormSection>
 
                 <Separator />
