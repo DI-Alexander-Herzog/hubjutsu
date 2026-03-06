@@ -44,6 +44,7 @@ class HubjutsuServiceProvider extends ServiceProvider
         Permission::addModel(\App\Models\Role::class, __('Role'));
         Permission::addModel(\App\Models\Credential::class, __('Credential'));
         Permission::addModel(\App\Models\LearningBundle::class, __('Learning Bundle'));
+        Permission::addModel(\App\Models\LearningBundleRole::class, __('Learning Bundle Role'));
         Permission::addModel(\App\Models\LearningCourse::class, __('Learning Course'));
         Permission::addModel(\App\Models\LearningModule::class, __('Learning Module'));
         Permission::addModel(\App\Models\LearningSection::class, __('Learning Section'));

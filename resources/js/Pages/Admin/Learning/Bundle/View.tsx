@@ -1,6 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import LearningBundleForm from './Form';
-import RoleAssignmentSection from '@/Components/RoleAssignmentModal';
+import DataTable from '@/Components/DataTable';
+import DataTableLink from '@/Components/DataTableLink';
+import FormContainer from '@/Components/FormContainer';
+import FormSection from '@/Components/FormSection';
 
 export default function LearningBundleView({
     learning_bundle,
@@ -22,14 +25,44 @@ export default function LearningBundleView({
             />
 
             {learning_bundle?.id && (
-                <RoleAssignmentSection
-                    scope={{
-                        type: learning_bundle?.morph_class ?? 'App\\Models\\LearningBundle',
-                        id: learning_bundle.id,
-                        label: learning_bundle.name,
-                    }}
-                    disabled
-                />
+                <FormContainer>
+                    <FormSection title="Rollen" subtitle="Rollen mit Zugriff auf dieses Bundle">
+                        <DataTable
+                            routemodel="learning_bundle_role"
+                            with={['role']}
+                            filters={{ learning_bundle_id: learning_bundle.id }}
+                            height="320px"
+                            perPage={20}
+                            defaultSortField={[["role_id", 1], ["id", 1]]}
+                            newRecord={false}
+                            disableDelete
+                            columns={[
+                                {
+                                    field: 'role_id',
+                                    label: 'Rolle',
+                                    sortable: true,
+                                    filter: true,
+                                    frozen: true,
+                                    width: '380px',
+                                    formatter: (row: any) => {
+                                        const roleId = Number(row.role_id || row.role?.id || 0);
+                                        const roleLabel = row.role?.name || (roleId > 0 ? `#${roleId}` : '-');
+
+                                        if (roleId <= 0) {
+                                            return roleLabel;
+                                        }
+
+                                        return (
+                                            <DataTableLink href={route('admin.roles.edit', { role: roleId })}>
+                                                {roleLabel}
+                                            </DataTableLink>
+                                        );
+                                    },
+                                },
+                            ]}
+                        />
+                    </FormSection>
+                </FormContainer>
             )}
         </AuthenticatedLayout>
     );

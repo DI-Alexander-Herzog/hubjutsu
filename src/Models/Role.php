@@ -5,6 +5,7 @@ namespace AHerzog\Hubjutsu\Models;
 use AHerzog\Hubjutsu\Models\Traits\UserTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Base;
+use App\Models\LearningBundle;
 use App\Models\RolePermission;
 
 class Role extends Base
@@ -29,6 +30,16 @@ class Role extends Base
     public function roleAssignments()
     {
         return $this->hasMany(\App\Models\RoleAssignment::class, 'role_id', 'id');
+    }
+
+    public function learningBundles()
+    {
+        return $this->belongsToMany(
+            LearningBundle::class,
+            'learning_bundle_role',
+            'role_id',
+            'learning_bundle_id'
+        )->withTimestamps();
     }
 
 }

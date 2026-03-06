@@ -4,12 +4,19 @@ namespace AHerzog\Hubjutsu\Http\Controllers\Api;
 
 use AHerzog\Hubjutsu\Models\Base;
 use Exception;
+use Illuminate\Auth\Access\AuthorizationException;
 use Gate;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Log;
 use Str;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
 class HubjutsuApiController
@@ -35,6 +42,76 @@ class HubjutsuApiController
         return [];
     }
 
+    protected function runApi(Request $request, callable $callback, array $context = []): mixed
+    {
+        try {
+            return $callback();
+        } catch (Throwable $e) {
+            return $this->renderApiException($e, $request, $context);
+        }
+    }
+
+    protected function renderApiException(Throwable $e, Request $request, array $context = []): JsonResponse
+    {
+        $status = $this->resolveStatusCode($e);
+        $errorId = (string) Str::uuid();
+        $message = $this->normalizeExceptionMessage($e);
+
+        Log::error('Hubjutsu API exception', [
+            'error_id' => $errorId,
+            'status' => $status,
+            'message' => $message,
+            'exception' => get_class($e),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'context' => $context,
+        ]);
+
+        $payload = [
+            'message' => $message,
+        ];
+
+        if ($e instanceof ValidationException) {
+            $payload['errors'] = $e->errors();
+        }
+
+        return response()->json($payload, $status);
+    }
+
+    protected function resolveStatusCode(Throwable $e): int
+    {
+        if ($e instanceof HttpExceptionInterface) {
+            return $e->getStatusCode();
+        }
+
+        if ($e instanceof ValidationException) {
+            return 422;
+        }
+
+        if ($e instanceof ModelNotFoundException) {
+            return 404;
+        }
+
+        if ($e instanceof AuthorizationException) {
+            return 403;
+        }
+
+        return 500;
+    }
+
+    protected function normalizeExceptionMessage(Throwable $e): string
+    {
+        $message = trim($e->getMessage() ?: class_basename($e));
+
+        // Trim noisy SQL connection suffixes:
+        // "... (Connection: mysql, SQL: ...)".
+        $message = preg_replace('/\s*\(Connection:.*$/', '', $message) ?? $message;
+
+        return trim($message) !== '' ? trim($message) : class_basename($e);
+    }
+
     /**
      * 
      * @param string $model 
@@ -49,81 +126,86 @@ class HubjutsuApiController
         
         $class = 'App\\Models\\' . Str::studly($model);
         if (!class_exists($class)) {
-            throw new \Exception('Model not found');
+            throw new NotFoundHttpException("Model not found: {$class}");
         }
 
         $obj = new $class();
         if (!($obj instanceof Base)) {
-            throw new \Exception('Model not api compatible');
+            throw new BadRequestHttpException("Model not api compatible: {$class}");
         }
         if ($id) {
             $obj = $obj->findOrFail($id);
         }
         if (!Gate::allows($gate, ($id ? $obj : $obj::class)) ) {
-            throw new \Exception('Not allowed');
+            throw new AuthorizationException("Not allowed: {$gate} on {$class}");
         }
         return $obj;
     }
 
     public function search(Request $request, string $model)
     {
-        $modelObj = $this->getModelIfAllowed($model, null, 'viewAny');
-        
-        $search = $request->get('search');
+        return $this->runApi($request, function () use ($request, $model) {
+            $modelObj = $this->getModelIfAllowed($model, null, 'viewAny');
+            
+            $search = $request->get('search');
 
-        $paginatePerPage = intval($request->get('rows'));
-        $offset = intval($request->get('first'));
-        $page =  floor($offset / $paginatePerPage) + 1;
+            $paginatePerPage = intval($request->get('rows'));
+            $offset = intval($request->get('first'));
+            $page =  floor($offset / $paginatePerPage) + 1;
 
-        $init = trim((string) $request->get('init', ''));
-        $initQueryMethod = 'initQuery';
-        if ($init !== '') {
-            $customInitQueryMethod = 'initQuery' . Str::studly($init);
-            if (method_exists($modelObj, $customInitQueryMethod)) {
-                $initQueryMethod = $customInitQueryMethod;
+            $init = trim((string) $request->get('init', ''));
+            $initQueryMethod = 'initQuery';
+            if ($init !== '') {
+                $customInitQueryMethod = 'initQuery' . Str::studly($init);
+                if (method_exists($modelObj, $customInitQueryMethod)) {
+                    $initQueryMethod = $customInitQueryMethod;
+                }
             }
-        }
 
-        $queryBuilder = $modelObj->{$initQueryMethod}();
-        if (!($queryBuilder instanceof Builder)) {
-            throw new \Exception('Invalid init query builder');
-        }
+            $queryBuilder = $modelObj->{$initQueryMethod}();
+            if (!($queryBuilder instanceof Builder)) {
+                throw new \Exception('Invalid init query builder');
+            }
 
-        foreach($request->get('multiSortMeta', []) as $sort) {
-            $queryBuilder->orderBy($sort[0], $sort[1] > 0 ? 'asc' : 'desc');
-        };
-        
-        
-        $queryBuilder->where(function($q) use ($request, $modelObj) {
-            foreach($request->get('filters', []) as $filter) {
-                if (!isset($filter['value'])) continue;
-                
-                $modelObj->searchInApi($q, $filter['field'], $filter['value'], $filter['matchMode'] ?? null);
+            foreach($request->get('multiSortMeta', []) as $sort) {
+                $queryBuilder->orderBy($sort[0], $sort[1] > 0 ? 'asc' : 'desc');
             };
-        });
-        
+            
+            
+            $queryBuilder->where(function($q) use ($request, $modelObj) {
+                foreach($request->get('filters', []) as $filter) {
+                    if (!isset($filter['value'])) continue;
+                    
+                    $modelObj->searchInApi($q, $filter['field'], $filter['value'], $filter['matchMode'] ?? null);
+                };
+            });
+            
 
-        foreach($request->get('with', []) as $with) {
-            $queryBuilder->with($with);
-        };
+            foreach($request->get('with', []) as $with) {
+                $queryBuilder->with($with);
+            };
 
-        if(($includeIds = $request->get('include', []) )) {
-            $queryBuilder->orWhere($modelObj->getKeyName(), 'in', $includeIds);
-        };
+            if(($includeIds = $request->get('include', []) )) {
+                $queryBuilder->orWhere($modelObj->getKeyName(), 'in', $includeIds);
+            };
 
 
-        if ($search) {
-            $queryBuilder->search($search);
-        }
-        
-        $result = $queryBuilder->paginate($paginatePerPage, ['*'], 'page', $page);
-        foreach($result->items() as $item) {
-            if ($item instanceof Base) {
-                $item->prepareForApi($request);
+            if ($search) {
+                $queryBuilder->search($search);
             }
-        }
+            
+            $result = $queryBuilder->paginate($paginatePerPage, ['*'], 'page', $page);
+            foreach($result->items() as $item) {
+                if ($item instanceof Base) {
+                    $item->prepareForApi($request);
+                }
+            }
 
-        return response()->json($result);
+            return response()->json($result);
+        }, [
+            'action' => 'search',
+            'model' => $model,
+        ]);
     }
 
     public function globalSearch(Request $request)
@@ -215,61 +297,84 @@ class HubjutsuApiController
 
     public function get(Request $request, string $model, $id)
     {
-        $modelObj = $this->getModelIfAllowed($model, $id, 'view');
-        if ($modelObj instanceof Base) {        
-            return response()->json($modelObj->prepareForApi($request));
-        }
-        return response()->json($modelObj->toArray());
+        return $this->runApi($request, function () use ($request, $model, $id) {
+            $modelObj = $this->getModelIfAllowed($model, $id, 'view');
+            if ($modelObj instanceof Base) {        
+                return response()->json($modelObj->prepareForApi($request));
+            }
+            return response()->json($modelObj->toArray());
+        }, [
+            'action' => 'get',
+            'model' => $model,
+            'id' => $id,
+        ]);
     }
 
     public function create(Request $request, string $model)
     {
-        $modelObj = $this->getModelIfAllowed($model, null, 'create');
-        $rules = method_exists($modelObj, 'getRules') ? $modelObj::getRules() : [];
-        $payload = $rules ? $request->validate($rules) : $request->only($modelObj->getFillable());
-        if ($rules) {
-            $payload = array_intersect_key($payload, array_flip($modelObj->getFillable()));
-        }
-        $modelObj->fill($payload);
-        $modelObj->save();
-        if (method_exists($modelObj, 'fillMedia')) {
-            $modelObj->fillMedia($request->all());
-        }
-        if (method_exists($modelObj, 'postApiSave')) {
-            $modelObj->postApiSave($request);
-        }
-        $modelObj->refresh();
-        return response()->json($modelObj->prepareForApi($request)->toArray());
+        return $this->runApi($request, function () use ($request, $model) {
+            $modelObj = $this->getModelIfAllowed($model, null, 'create');
+            $rules = method_exists($modelObj, 'getRules') ? $modelObj::getRules() : [];
+            $payload = $rules ? $request->validate($rules) : $request->only($modelObj->getFillable());
+            if ($rules) {
+                $payload = array_intersect_key($payload, array_flip($modelObj->getFillable()));
+            }
+            $modelObj->fill($payload);
+            $modelObj->save();
+            if (method_exists($modelObj, 'fillMedia')) {
+                $modelObj->fillMedia($request->all());
+            }
+            if (method_exists($modelObj, 'postApiSave')) {
+                $modelObj->postApiSave($request);
+            }
+            $modelObj->refresh();
+            return response()->json($modelObj->prepareForApi($request)->toArray());
+        }, [
+            'action' => 'create',
+            'model' => $model,
+        ]);
     }
 
     public function update(Request $request, string $model, $id)
     {
-        $modelObj = $this->getModelIfAllowed($model, $id, 'update');
-        $rules = method_exists($modelObj, 'getRules') ? $modelObj::getRules() : [];
-        $payload = $rules ? $request->validate($rules) : $request->only($modelObj->getFillable());
-        if ($rules) {
-            $payload = array_intersect_key($payload, array_flip($modelObj->getFillable()));
-        }
-        $modelObj->fill($payload);
-        
-        if (method_exists($modelObj, 'fillMedia')) {
-            $modelObj->fillMedia($request->all());
-        }
-        $modelObj->save();
-        if (method_exists($modelObj, 'postApiSave')) {
-            $modelObj->postApiSave($request);
-        }
-        $modelObj->refresh();
-        return response()->json($modelObj->prepareForApi($request)->toArray());
+        return $this->runApi($request, function () use ($request, $model, $id) {
+            $modelObj = $this->getModelIfAllowed($model, $id, 'update');
+            $rules = method_exists($modelObj, 'getRules') ? $modelObj::getRules() : [];
+            $payload = $rules ? $request->validate($rules) : $request->only($modelObj->getFillable());
+            if ($rules) {
+                $payload = array_intersect_key($payload, array_flip($modelObj->getFillable()));
+            }
+            $modelObj->fill($payload);
+            
+            if (method_exists($modelObj, 'fillMedia')) {
+                $modelObj->fillMedia($request->all());
+            }
+            $modelObj->save();
+            if (method_exists($modelObj, 'postApiSave')) {
+                $modelObj->postApiSave($request);
+            }
+            $modelObj->refresh();
+            return response()->json($modelObj->prepareForApi($request)->toArray());
+        }, [
+            'action' => 'update',
+            'model' => $model,
+            'id' => $id,
+        ]);
     }
 
 
     public function delete(Request $request, string $model, $id)
     {
-        $modelObj = $this->getModelIfAllowed($model, $id, 'delete');
-        $return = $modelObj->prepareForApi($request)->toArray();
-        $modelObj->delete();
-        return response()->json($return);
+        return $this->runApi($request, function () use ($request, $model, $id) {
+            $modelObj = $this->getModelIfAllowed($model, $id, 'delete');
+            $return = $modelObj->prepareForApi($request)->toArray();
+            $modelObj->delete();
+            return response()->json($return);
+        }, [
+            'action' => 'delete',
+            'model' => $model,
+            'id' => $id,
+        ]);
     }
 
     public function restore(Request $request, string $model, $id)

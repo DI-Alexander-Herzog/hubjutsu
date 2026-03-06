@@ -8,6 +8,8 @@ use App\Models\LearningCourseUserProgress;
 use App\Models\LearningLection;
 use App\Models\LearningLectionUserProgress;
 use App\Models\LearningModule;
+use App\Models\RoleAssignment;
+use App\Services\HubManager;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,10 +18,24 @@ class LearningCourseFrontendController extends Controller
 {
     protected function accessibleBundleIds($user): array
     {
-        $bundleViewPermission = LearningBundle::class . '::view';
+        $hub = app(HubManager::class)->current();
+        $roleIds = RoleAssignment::query()
+            ->where('user_id', $user->id)
+            ->where('scope_type', $hub->getMorphClass())
+            ->where('scope_id', $hub->getKey())
+            ->pluck('role_id')
+            ->map(fn ($id) => intval($id))
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($roleIds)) {
+            return [];
+        }
 
         return LearningBundle::query()
-            ->accessible($user, $bundleViewPermission)
+            ->where('active', true)
+            ->whereHas('roles', fn ($query) => $query->whereIn('roles.id', $roleIds))
             ->pluck('id')
             ->map(fn ($id) => intval($id))
             ->all();
@@ -28,26 +44,31 @@ class LearningCourseFrontendController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $bundleViewPermission = LearningBundle::class . '::view';
         $accessibleBundleIds = $this->accessibleBundleIds($user);
 
-        $courses = LearningCourse::query()
-            ->where('active', true)
-            ->accessible($user, $bundleViewPermission)
-            ->withCount('modules')
-            ->orderBy('name')
-            ->get()
-            ->map(function (LearningCourse $course) use ($accessibleBundleIds) {
-                $course->setRelation(
-                    'bundles',
-                    $course->bundles
-                        ->whereIn('id', $accessibleBundleIds)
-                        ->values()
-                );
+        $courses = collect();
+        if (!empty($accessibleBundleIds)) {
+            $courses = LearningCourse::query()
+                ->where('active', true)
+                ->whereHas('bundles', fn ($query) => $query
+                    ->whereIn('learning_bundles.id', $accessibleBundleIds)
+                    ->where('learning_bundles.active', true)
+                )
+                ->withCount('modules')
+                ->orderBy('name')
+                ->get()
+                ->map(function (LearningCourse $course) use ($accessibleBundleIds) {
+                    $course->setRelation(
+                        'bundles',
+                        $course->bundles
+                            ->whereIn('id', $accessibleBundleIds)
+                            ->values()
+                    );
 
-                return $course;
-            })
-            ->values();
+                    return $course;
+                })
+                ->values();
+        }
 
         $progressByCourseId = LearningCourseUserProgress::query()
             ->where('user_id', $user->id)
@@ -70,13 +91,19 @@ class LearningCourseFrontendController extends Controller
     public function show(Request $request, LearningCourse $learningcourse)
     {
         $user = $request->user();
-        $bundleViewPermission = LearningBundle::class . '::view';
         $accessibleBundleIds = $this->accessibleBundleIds($user);
+
+        if (empty($accessibleBundleIds)) {
+            abort(404);
+        }
 
         $course = LearningCourse::query()
             ->whereKey($learningcourse->getKey())
             ->where('active', true)
-            ->accessible($user, $bundleViewPermission)
+            ->whereHas('bundles', fn ($query) => $query
+                ->whereIn('learning_bundles.id', $accessibleBundleIds)
+                ->where('learning_bundles.active', true)
+            )
             ->with([
                 'bundles',
                 'cover',
@@ -113,12 +140,19 @@ class LearningCourseFrontendController extends Controller
     public function module(Request $request, LearningCourse $learningcourse, string $learningmoduleslug)
     {
         $user = $request->user();
-        $bundleViewPermission = LearningBundle::class . '::view';
+        $accessibleBundleIds = $this->accessibleBundleIds($user);
+
+        if (empty($accessibleBundleIds)) {
+            abort(404);
+        }
 
         $course = LearningCourse::query()
             ->whereKey($learningcourse->getKey())
             ->where('active', true)
-            ->accessible($user, $bundleViewPermission)
+            ->whereHas('bundles', fn ($query) => $query
+                ->whereIn('learning_bundles.id', $accessibleBundleIds)
+                ->where('learning_bundles.active', true)
+            )
             ->firstOrFail();
 
         $module = LearningModule::query()
@@ -144,12 +178,19 @@ class LearningCourseFrontendController extends Controller
     public function lection(Request $request, LearningCourse $learningcourse, string $learningmoduleslug, LearningLection $learninglection)
     {
         $user = $request->user();
-        $bundleViewPermission = LearningBundle::class . '::view';
+        $accessibleBundleIds = $this->accessibleBundleIds($user);
+
+        if (empty($accessibleBundleIds)) {
+            abort(404);
+        }
 
         $course = LearningCourse::query()
             ->whereKey($learningcourse->getKey())
             ->where('active', true)
-            ->accessible($user, $bundleViewPermission)
+            ->whereHas('bundles', fn ($query) => $query
+                ->whereIn('learning_bundles.id', $accessibleBundleIds)
+                ->where('learning_bundles.active', true)
+            )
             ->firstOrFail();
 
         $module = LearningModule::query()
@@ -194,12 +235,19 @@ class LearningCourseFrontendController extends Controller
     public function start(Request $request, LearningCourse $learningcourse)
     {
         $user = $request->user();
-        $bundleViewPermission = LearningBundle::class . '::view';
+        $accessibleBundleIds = $this->accessibleBundleIds($user);
+
+        if (empty($accessibleBundleIds)) {
+            abort(404);
+        }
 
         $course = LearningCourse::query()
             ->whereKey($learningcourse->getKey())
             ->where('active', true)
-            ->accessible($user, $bundleViewPermission)
+            ->whereHas('bundles', fn ($query) => $query
+                ->whereIn('learning_bundles.id', $accessibleBundleIds)
+                ->where('learning_bundles.active', true)
+            )
             ->firstOrFail();
 
         $progress = LearningCourseUserProgress::query()->firstOrNew([
@@ -231,12 +279,19 @@ class LearningCourseFrontendController extends Controller
     public function reset(Request $request, LearningCourse $learningcourse)
     {
         $user = $request->user();
-        $bundleViewPermission = LearningBundle::class . '::view';
+        $accessibleBundleIds = $this->accessibleBundleIds($user);
+
+        if (empty($accessibleBundleIds)) {
+            abort(404);
+        }
 
         $course = LearningCourse::query()
             ->whereKey($learningcourse->getKey())
             ->where('active', true)
-            ->accessible($user, $bundleViewPermission)
+            ->whereHas('bundles', fn ($query) => $query
+                ->whereIn('learning_bundles.id', $accessibleBundleIds)
+                ->where('learning_bundles.active', true)
+            )
             ->firstOrFail();
 
         LearningCourseUserProgress::query()

@@ -2,15 +2,15 @@
 
 namespace AHerzog\Hubjutsu\Models;
 
-use AHerzog\Hubjutsu\Models\Traits\HasRoleAssignments;
 use App\Models\Base;
 use App\Models\LearningCourse;
+use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class LearningBundle extends Base
 {
-    use HasFactory, HasRoleAssignments;
+    use HasFactory;
 
     protected $fillable = [
         'created_at',
@@ -71,6 +71,16 @@ class LearningBundle extends Base
             'learning_bundle_id',
             'learning_course_id'
         )->withPivot('sort')->withTimestamps()->orderByPivot('sort');
+    }
+
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Role::class,
+            'learning_bundle_role',
+            'learning_bundle_id',
+            'role_id'
+        )->withTimestamps()->orderBy('name');
     }
 
     public static function getRules(): array

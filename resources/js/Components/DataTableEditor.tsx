@@ -585,12 +585,33 @@ export const ModelEditor: EditorRenderer = ({
     useEffect(() => {
         if (!open || !triggerRef.current) return;
 
-        const r = triggerRef.current.getBoundingClientRect();
-        setPos({
-            top: r.top + window.scrollY - 2,
-            left: r.left + window.scrollX,
-            width: r.width,
-        });
+        const updatePosition = () => {
+            if (!triggerRef.current) return;
+
+            const r = triggerRef.current.getBoundingClientRect();
+            const viewportPadding = 8;
+            const minWidth = 360;
+            const maxWidth = Math.max(minWidth, Math.min(720, window.innerWidth - viewportPadding * 2));
+            const width = Math.min(Math.max(r.width, minWidth), maxWidth);
+
+            const minLeft = window.scrollX + viewportPadding;
+            const maxLeft = window.scrollX + window.innerWidth - viewportPadding - width;
+            const left = Math.min(Math.max(r.left + window.scrollX, minLeft), Math.max(minLeft, maxLeft));
+
+            setPos({
+                top: r.top + window.scrollY - 2,
+                left,
+                width,
+            });
+        };
+
+        updatePosition();
+        window.addEventListener("resize", updatePosition);
+        window.addEventListener("scroll", updatePosition, true);
+        return () => {
+            window.removeEventListener("resize", updatePosition);
+            window.removeEventListener("scroll", updatePosition, true);
+        };
     }, [open]);
 
     // Close on outside click
@@ -614,8 +635,10 @@ export const ModelEditor: EditorRenderer = ({
 
     // Selected label (fallback falls Liste noch nicht geladen)
     const selectedValue = row[column.field];
+    const hasSelectedValue = selectedValue !== null && selectedValue !== undefined && selectedValue !== "";
     const selectedLabel =
-        data.find((r) => r[valueField] === selectedValue)?.[labelField] ?? (column.formatter ? column.formatter(row, column.field) : selectedValue);
+        data.find((r) => r[valueField] === selectedValue)?.[labelField]
+        ?? (hasSelectedValue && column.formatter ? column.formatter(row, column.field) : selectedValue);
 
     const cols =
         cfg.columns ??
@@ -630,7 +653,7 @@ export const ModelEditor: EditorRenderer = ({
                     position: "absolute",
                     top: pos.top,
                     left: pos.left,
-                    width: Math.max(pos.width * 2, 600),
+                    width: pos.width,
                     transform: "translateY(-100%)",
                 }}
 				ref={panelRef}

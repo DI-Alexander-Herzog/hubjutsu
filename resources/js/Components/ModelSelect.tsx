@@ -64,6 +64,7 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 	const [data, setData] = useState<any[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [highlightIndex, setHighlightIndex] = useState(-1);
+	const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
 	const debounced = useDebounce(query, debounce);
 
 	const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -109,6 +110,37 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 		};
 		window.addEventListener("mousedown", handler);
 		return () => window.removeEventListener("mousedown", handler);
+	}, [open]);
+
+	useEffect(() => {
+		if (!open || !containerRef.current) return;
+
+		const updatePanelStyle = () => {
+			if (!containerRef.current) return;
+			const rect = containerRef.current.getBoundingClientRect();
+			const viewportPadding = 8;
+			const availableWidth = Math.max(280, window.innerWidth - viewportPadding * 2);
+			const maxWidth = Math.min(760, availableWidth);
+			const preferredWidth = Math.max(rect.width, 420);
+			const width = Math.min(preferredWidth, maxWidth);
+
+			let left = 0;
+			if (rect.left + width > window.innerWidth - viewportPadding) {
+				left = window.innerWidth - viewportPadding - rect.left - width;
+			}
+			if (rect.left + left < viewportPadding) {
+				left = viewportPadding - rect.left;
+			}
+
+			setPanelStyle({
+				width: `${Math.round(width)}px`,
+				left: `${Math.round(left)}px`,
+			});
+		};
+
+		updatePanelStyle();
+		window.addEventListener("resize", updatePanelStyle);
+		return () => window.removeEventListener("resize", updatePanelStyle);
 	}, [open]);
 
 	useEffect(() => {
@@ -246,7 +278,8 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
 		open && (
 			<div
 				ref={panelRef}
-				className="absolute z-40 mt-1 w-full bg-background dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-xl text-sm overflow-hidden"
+				style={panelStyle}
+				className="absolute z-40 mt-1 min-w-full bg-background dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-xl text-sm overflow-hidden"
 			>
 				<div className="sticky top-0 z-10 p-1 bg-background dark:bg-gray-800 border-b dark:border-gray-700">
 					<input
