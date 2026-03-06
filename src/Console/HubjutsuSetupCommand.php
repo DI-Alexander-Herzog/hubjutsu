@@ -244,18 +244,6 @@ class HubjutsuSetupCommand extends Command
                 return 1;
             }
 
-            $this->components->info('Installing NPM - might take a while...');
-            $this->runCommands([
-                'npm install '.
-                '@headlessui/react @inertiajs/react @tailwindcss/forms @vitejs/plugin-react autoprefixer postcss tailwindcss@3 ' .
-                'react@18 react-dom@18 @types/react@18 @types/react-dom@18 ' .
-                '@types/node @types/ziggy-js typescript laravel-react-i18n ' .
-                '@heroicons/react classnames react-dropzone uuid luxon'
-            ]);
-
-            $this->components->info('Installing npm types - might take a while as well...');
-            $this->runCommands(['npm install -D sass @types/qs @types/luxon']);
-
             $this->components->info('Running artisan commands...');
             $this->runCommands(['php artisan lang:publish']);
             $this->mergeJsonTranslations(__DIR__.'/../../resources/lang', base_path('lang'));
@@ -367,6 +355,9 @@ class HubjutsuSetupCommand extends Command
                 unlink(resource_path('js/app.js'));
             }
 
+            $this->components->info('Checking required NPM packages...');
+            $this->ensureRequiredNpmPackagesInstalled();
+
             foreach(['.env', '.env.example'] as $file) {
                 $contents = file_get_contents(base_path($file));
                 if (strpos($contents, 'VITE_SERVER_HOST') === false) {
@@ -411,6 +402,9 @@ class HubjutsuSetupCommand extends Command
             
             $this->runCommands(['php artisan db:seed HubjutsuSeeder --force']);
         } else {
+            $this->components->info('Checking required NPM packages...');
+            $this->ensureRequiredNpmPackagesInstalled();
+
             $this->runCommands([
                 'php artisan migrate --force',
                 'php artisan hubjutsu:generate:types',
@@ -465,6 +459,102 @@ class HubjutsuSetupCommand extends Command
         $content = json_decode(file_get_contents(base_path('package.json')));
         $content->name = Str::slug(strtolower(config('app.name')));
         file_put_contents(base_path('package.json'), json_encode($content, JSON_PRETTY_PRINT));
+    }
+
+    protected function ensureRequiredNpmPackagesInstalled(): void
+    {
+        $this->installMissingNpmPackages($this->requiredNpmDependencies(), false);
+        $this->installMissingNpmPackages($this->requiredNpmDevDependencies(), true);
+    }
+
+    protected function requiredNpmDependencies(): array
+    {
+        return [
+            '@headlessui/react',
+            '@heroicons/react',
+            '@inertiajs/react',
+            '@tailwindcss/forms',
+            '@types/node',
+            '@types/react@18',
+            '@types/react-dom@18',
+            '@types/ziggy-js',
+            '@vitejs/plugin-react',
+            '@tiptap/react',
+            '@tiptap/starter-kit',
+            '@tiptap/extension-link',
+            '@tiptap/extension-placeholder',
+            'autoprefixer',
+            'classnames',
+            'laravel-react-i18n',
+            'luxon',
+            'postcss',
+            'react@18',
+            'react-dom@18',
+            'react-dropzone',
+            'tailwindcss@3',
+            'typescript',
+            'uuid',
+        ];
+    }
+
+    protected function requiredNpmDevDependencies(): array
+    {
+        return [
+            'sass',
+            '@types/luxon',
+            '@types/qs',
+        ];
+    }
+
+    protected function installMissingNpmPackages(array $requiredPackages, bool $asDev = false): void
+    {
+        $packageJsonPath = base_path('package.json');
+        if (! file_exists($packageJsonPath)) {
+            $this->components->warn('package.json not found. Skipping NPM dependency check.');
+            return;
+        }
+
+        $content = json_decode((string) file_get_contents($packageJsonPath), true);
+        if (! is_array($content)) {
+            $this->components->warn('package.json is invalid JSON. Skipping NPM dependency check.');
+            return;
+        }
+
+        $section = $asDev ? 'devDependencies' : 'dependencies';
+        $installed = array_keys(($content[$section] ?? []));
+
+        $missing = collect($requiredPackages)
+            ->filter(function (string $packageSpec) use ($installed) {
+                $packageName = $this->npmPackageNameFromSpec($packageSpec);
+                return ! in_array($packageName, $installed, true);
+            })
+            ->values()
+            ->all();
+
+        if (empty($missing)) {
+            $this->line('  - '.($asDev ? 'devDependencies' : 'dependencies').': all required packages are installed.');
+            return;
+        }
+
+        $this->components->info(
+            'Installing missing '.($asDev ? 'devDependencies' : 'dependencies').': '.implode(', ', $missing)
+        );
+
+        $this->runCommands([
+            'npm install'.($asDev ? ' -D' : '').' '.implode(' ', $missing),
+        ]);
+    }
+
+    protected function npmPackageNameFromSpec(string $packageSpec): string
+    {
+        if (Str::startsWith($packageSpec, '@')) {
+            if (preg_match('/^(@[^\/]+\/[^@]+)/', $packageSpec, $matches) === 1) {
+                return $matches[1];
+            }
+            return $packageSpec;
+        }
+
+        return Str::before($packageSpec, '@');
     }
 
      /**
