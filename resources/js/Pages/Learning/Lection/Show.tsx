@@ -150,12 +150,12 @@ export default function LearningLectionFrontendShow({
                                         src={route('media.file', { media: lection.video.id })}
                                     />
                                 </div>
-                            ) : (lection.image?.thumbnail || lection.image?.url || moduleCoverUrl || courseCoverUrl || hubLogoUrl) ? (
+                            ) : (lection.image?.thumbnail || lection.image?.url ) ? (
                                 <div className="overflow-hidden rounded-xl">
                                     <img
-                                        src={lection.image?.thumbnail || lection.image?.url || moduleCoverUrl || courseCoverUrl || hubLogoUrl || ''}
+                                        src={lection.image?.thumbnail || lection.image?.url || ''}
                                         alt={lection.name}
-                                        className="h-auto w-full object-cover"
+                                        className="max-h-[60vh] w-full object-contain"
                                     />
                                 </div>
                             ) : null}
@@ -169,7 +169,7 @@ export default function LearningLectionFrontendShow({
                             {lection.content && (
                                 /<\w+[^>]*>/.test(lection.content) ? (
                                     <div
-                                        className="prose max-w-none dark:prose-invert"
+                                        className="max-w-none text-base text-text-700 dark:text-gray-300 [&_p]:my-2 [&_strong]:font-bold [&_em]:italic [&_a]:text-primary-600 [&_a]:underline [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1 [&_h1]:my-3 [&_h1]:text-4xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-3xl [&_h2]:font-semibold [&_h3]:my-2 [&_h3]:text-2xl [&_h3]:font-semibold [&_h4]:my-2 [&_h4]:text-xl [&_h4]:font-semibold"
                                         dangerouslySetInnerHTML={{ __html: lection.content }}
                                     />
                                 ) : (
@@ -274,7 +274,7 @@ export default function LearningLectionFrontendShow({
                                                     ? 'bg-background-600 dark:bg-gray-700/60'
                                                     : undefined
                                             )}
-                                            imageContainerClassName="w-1/5 min-w-[86px] sm:min-w-[86px] sm:w-1/5"
+                                            imageContainerClassName="w-[15%] min-w-[86px]"
                                             imageUrl={entry.image?.thumbnail || entry.image?.url || moduleCoverUrl}
                                             fallbackImageUrl={moduleCoverUrl || courseCoverUrl || hubLogoUrl}
                                             imageAlt={entry.name}

@@ -48,7 +48,13 @@ function LearningLectionFormBody({ learning_lection }: { learning_lection: any }
                 <FormSection title="Allgemein" subtitle="Lektionsdaten bearbeiten">
                     <Input inputName="name" type="text" label="Name" />
                     <Input inputName="description" type="textarea" label="Description" rows={4} />
-                    <Input inputName="content" type="textarea" label="Content" rows={10} />
+                    <Input
+                        inputName="content"
+                        type="html"
+                        label="Content"
+                        placeholder="Inhalt der Lektion..."
+                        helperText="Unterstuetzt Fett, Kursiv, Links, Listen und Undo/Redo."
+                    />
                     <Input inputName="duration_minutes" type="number" min={0} label="Duration (min)" />
                     <Input inputName="sort" type="number" min={0} label="Sort" />
                     <Input inputName="active" type="boolean" label="Active" />

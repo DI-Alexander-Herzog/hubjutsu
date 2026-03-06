@@ -11,7 +11,13 @@ export default function LearningCourseForm({ learning_course, disabled = true }:
                     <Input inputName="name" type="text" label="Name" />
                     <Input inputName="slug" type="text" label="Slug" />
                     <Input inputName="description" type="textarea" label="Description" rows={5} />
-                    <Input inputName="body" type="textarea" label="Body" rows={10} />
+                    <Input
+                        inputName="body"
+                        type="html"
+                        label="Body"
+                        placeholder="Schreibe den Kursinhalt..."
+                        helperText="Unterstuetzt Fett, Kursiv, Links, Listen und Undo/Redo."
+                    />
                     <Input inputName="active" type="boolean" label="Active" />
                 </FormSection>
 

@@ -40,7 +40,7 @@ function Inner({
                     src={resolvedImageUrl}
                     alt={imageAlt || ''}
                     className={classNames(
-                        'h-full w-full object-cover transition-transform duration-300 ease-out',
+                        'absolute inset-0 h-full w-full object-cover transition-transform duration-300 ease-out',
                         interactive && 'group-hover:scale-[1.02]'
                     )}
                 />
@@ -71,8 +71,8 @@ function Inner({
     );
 
     return (
-        <div className="md:flex md:items-stretch">
-            <div className={classNames('w-28 shrink-0 self-stretch overflow-hidden bg-background-600 dark:bg-gray-700 sm:w-36', imageContainerClassName)}>
+        <div className="flex items-stretch">
+            <div className={classNames('relative w-[15%] min-w-[86px] shrink-0 self-stretch overflow-hidden bg-background-600 dark:bg-gray-700', imageContainerClassName)}>
                 {imageHref ? (
                     <a href={imageHref} className="block h-full w-full">
                         {imageContent}

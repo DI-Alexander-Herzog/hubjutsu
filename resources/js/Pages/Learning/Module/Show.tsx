@@ -138,7 +138,7 @@ export default function LearningModuleFrontendShow({
                                                             learningmoduleslug: module.slug,
                                                             learninglection: lection.id,
                                                         })}
-                                                        imageContainerClassName="w-1/5 min-w-[86px] sm:min-w-[86px] sm:w-1/5"
+                                                        imageContainerClassName="w-[15%] min-w-[86px]"
                                                         imageUrl={lection.image?.thumbnail || lection.image?.url || cover || courseCoverUrl || hubLogoUrl}
                                                         fallbackImageUrl={courseCoverUrl || hubLogoUrl}
                                                         imageAlt={lection.name}
@@ -194,7 +194,7 @@ export default function LearningModuleFrontendShow({
                                                     ? 'bg-background-600 dark:bg-gray-700/60'
                                                     : undefined
                                             )}
-                                            imageContainerClassName="w-1/5 min-w-[86px] sm:min-w-[86px] sm:w-1/5"
+                                            imageContainerClassName="w-[15%] min-w-[86px]"
                                             imageUrl={entryCover}
                                             fallbackImageUrl={courseCoverUrl || hubLogoUrl}
                                             imageAlt={entry.name}
