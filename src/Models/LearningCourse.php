@@ -12,6 +12,7 @@ use App\Models\LearningCourseUserProgress;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class LearningCourse extends Base
@@ -41,10 +42,15 @@ class LearningCourse extends Base
     protected $with = [
         'bundles',
         'cover',
+        'bodyImages',
     ];
 
     protected $fillableMedia = [
         'cover',
+    ];
+
+    protected $fillableMediaList = [
+        'bodyImages',
     ];
 
     protected static function booted(): void
@@ -95,6 +101,13 @@ class LearningCourse extends Base
         return $this->media('cover');
     }
 
+    public function bodyImages(): MorphMany
+    {
+        return $this->medias()
+            ->where('category', 'learning_course_body_image')
+            ->orderBy('mediable_sort');
+    }
+
     public function userProgress(): HasMany
     {
         return $this->hasMany(LearningCourseUserProgress::class, 'learning_course_id');
@@ -103,5 +116,10 @@ class LearningCourse extends Base
     public function setCover(Media $media): void
     {
         $this->setMedia($media, 'cover', 1);
+    }
+
+    public function setBodyImages(array $medias): void
+    {
+        $this->setMediaList($medias, 'learning_course_body_image', 1, true);
     }
 }

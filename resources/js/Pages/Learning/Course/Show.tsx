@@ -4,6 +4,7 @@ import SideCard from '@/Components/Layout/SideCard';
 import CourseProgressBadge from '@/Components/Learning/CourseProgressBadge';
 import NeutralButton from '@/Components/NeutralButton';
 import PrimaryButton from '@/Components/PrimaryButton';
+import HtmlEditorOutput from '@/Components/HtmlEditorOutput';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
 import { Models } from '@/types/models';
@@ -110,6 +111,12 @@ export default function LearningCourseFrontendShow({ course }: { course: Learnin
                         </div>
                     )}
                 </Card>
+
+                {course.body?.trim() && (
+                    <Card>
+                        <HtmlEditorOutput html={course.body} />
+                    </Card>
+                )}
 
                 {modules.length === 0 ? (
                     <Card>

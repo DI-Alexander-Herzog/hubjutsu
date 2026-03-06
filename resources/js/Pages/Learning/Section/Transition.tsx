@@ -52,15 +52,16 @@ export default function LearningSectionTransition({
             : route('learning.courses.show', { learningcourse: course.slug });
 
     const nextTargetLabel = nextSection
-        ? 'Mit naechster Sektion fortfahren'
+        ? 'Mit nächster Sektion fortfahren'
         : nextModule
-            ? 'Mit naechstem Modul fortfahren'
+            ? 'Mit nächstem Modul fortfahren'
             : 'Zur Kursansicht';
 
     const nextTitle = nextSection?.name || nextModule?.name || course.name;
     const nextDescription = nextSection?.description || (nextModule
-        ? 'Die naechste Sektion ist abgeschlossen. Weiter mit dem naechsten Modul.'
+        ? 'Die nächste Sektion ist abgeschlossen. Weiter mit dem nächsten Modul.'
         : 'Alle Sektionen im aktuellen Modul sind abgeschlossen.');
+    const sectionEndTitle = `Ende von ${section.name}`;
 
     const nextImage = nextSectionFirstLection?.image?.thumbnail
         || nextSectionFirstLection?.image?.url
@@ -74,12 +75,19 @@ export default function LearningSectionTransition({
 
     return (
         <AuthenticatedLayout
-            title="Ende der Sektion"
+            title={sectionEndTitle}
             breadcrumbs={[
+                { label: 'Learning', url: route('learning.courses.index') },
                 { label: course.name, url: route('learning.courses.show', { learningcourse: course.slug }) },
                 { label: module.name, url: route('learning.modules.show', { learningcourse: course.slug, learningmoduleslug: module.slug }) },
-                { label: section.name },
-                { label: 'Ende der Sektion' },
+                {
+                    label: section.name,
+                    url: `${route('learning.modules.show', {
+                        learningcourse: course.slug,
+                        learningmoduleslug: module.slug,
+                    })}#section-${section.id}`,
+                },
+                { label: sectionEndTitle },
             ]}
         >
             <Container size="medium" className="py-6" stack gap="md">
@@ -94,11 +102,11 @@ export default function LearningSectionTransition({
                                 {module.name}
                             </p>
                             <h1 className="text-4xl font-semibold text-text-900 dark:text-gray-100">
-                                Ende der Sektion
+                                {sectionEndTitle}
                             </h1>
                         </div>
 
-                        <div className="mx-auto w-full max-w-3xl">
+                        <div className="mx-auto w-full max-w-3xl text-left">
                             <SideCard
                                 imageUrl={nextImage || undefined}
                                 imageAlt={nextTitle}
@@ -106,7 +114,7 @@ export default function LearningSectionTransition({
                                 subtitle={nextDescription || ''}
                                 right={(
                                     <span className="rounded-full bg-background-600 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-text-600 dark:bg-gray-700 dark:text-gray-200">
-                                        {nextSection ? 'Naechste Sektion' : (nextModule ? 'Naechstes Modul' : 'Weiter')}
+                                        {nextSection ? 'Nächste Sektion' : (nextModule ? 'Nächstes Modul' : 'Weiter')}
                                     </span>
                                 )}
                             />
