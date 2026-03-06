@@ -10,47 +10,22 @@ import { PageProps } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { useState } from 'react';
+import { Models } from '@/types/models';
 
-type LearningCourse = {
-    id: number;
-    slug: string;
-    name: string;
-    cover?: { thumbnail?: string | null; url?: string | null } | null;
-};
+type LearningCourse = Models.LearningCourse;
 
-type LearningLection = {
-    id: number;
-    name: string;
-    description?: string | null;
-    content?: string | null;
-    duration_minutes?: number | null;
-    image?: { thumbnail?: string | null; url?: string | null } | null;
-    video?: { id: number; thumbnail?: string | null; url?: string | null } | null;
-    attachments?: Array<{
-        id: number;
-        name?: string | null;
-        description?: string | null;
-        filename?: string | null;
-        url?: string | null;
-        thumbnail?: string | null;
-        mimetype?: string | null;
-    }> | null;
+type LearningLection = Omit<Models.LearningLection, 'attachments'> & {
+    attachments?: Models.Media[] | null;
     progress?: {
         completed?: boolean;
     };
 };
 
-type LearningSection = {
-    id: number;
-    name: string;
+type LearningSection = Omit<Models.LearningSection, 'lections'> & {
     lections?: LearningLection[];
 };
 
-type LearningModule = {
-    id: number;
-    slug: string;
-    name: string;
-    cover?: { thumbnail?: string | null; url?: string | null } | null;
+type LearningModule = Omit<Models.LearningModule, 'sections'> & {
     sections?: LearningSection[];
     progress?: {
         percent?: number;
@@ -245,10 +220,10 @@ export default function LearningLectionFrontendShow({
                         <div className="space-y-3">
                             <Card key={`lection-sidebar-section-${lection.id}`}>
                                 <h3 className="truncate text-2xl font-semibold text-text-900 dark:text-gray-100">
-                                    Sektion
+                                   {currentSection?.name || '-'}
                                 </h3>
                                 <p className="truncate text-base font-medium text-text-700 dark:text-gray-300">
-                                    {currentSection?.name || '-'}
+                                    {currentSection?.description || '-'}
                                 </p>
                                 <p className="text-xs font-semibold uppercase tracking-wide text-text-500 dark:text-gray-400">
                                     {sectionLections.length} Lektionen

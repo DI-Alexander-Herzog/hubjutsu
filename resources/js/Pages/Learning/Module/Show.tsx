@@ -5,41 +5,24 @@ import Checkbox from '@/Components/Checkbox';
 import IconLibrary from '@/Components/IconLibrary';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
+import { Models } from '@/types/models';
 import classNames from 'classnames';
 import { usePage } from '@inertiajs/react';
 
-type LearningCourse = {
-    id: number;
-    slug: string;
-    name: string;
-    cover?: { thumbnail?: string | null; url?: string | null } | null;
-};
+type LearningCourse = Models.LearningCourse;
 
-type LearningLection = {
-    id: number;
-    name: string;
-    description?: string | null;
-    duration_minutes?: number | null;
-    image?: { thumbnail?: string | null; url?: string | null } | null;
+type LearningLection = Models.LearningLection & {
     progress?: {
         started?: boolean;
         completed?: boolean;
     };
 };
 
-type LearningSection = {
-    id: number;
-    name: string;
-    description?: string | null;
+type LearningSection = Omit<Models.LearningSection, 'lections'> & {
     lections?: LearningLection[];
 };
 
-type LearningModule = {
-    id: number;
-    slug: string;
-    name: string;
-    description?: string | null;
-    cover?: { thumbnail?: string | null; url?: string | null } | null;
+type LearningModule = Omit<Models.LearningModule, 'sections'> & {
     sections?: LearningSection[];
     progress?: {
         percent?: number;

@@ -6,26 +6,16 @@ import NeutralButton from '@/Components/NeutralButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
+import { Models } from '@/types/models';
 import { router, usePage } from '@inertiajs/react';
 
-type LearningLection = {
-    id: number;
-    name: string;
-    duration_minutes?: number | null;
-};
+type LearningLection = Models.LearningLection;
 
-type LearningSection = {
-    id: number;
-    name: string;
+type LearningSection = Omit<Models.LearningSection, 'lections'> & {
     lections?: LearningLection[];
 };
 
-type LearningModule = {
-    id: number;
-    slug: string;
-    name: string;
-    description?: string | null;
-    cover?: { thumbnail?: string | null; url?: string | null } | null;
+type LearningModule = Omit<Models.LearningModule, 'sections'> & {
     sections?: LearningSection[];
     progress?: {
         percent?: number;
@@ -37,17 +27,9 @@ type LearningModule = {
     };
 };
 
-type LearningBundle = {
-    id: number;
-    name: string;
-};
+type LearningBundle = Models.LearningBundle;
 
-type LearningCourse = {
-    id: number;
-    slug: string;
-    name: string;
-    description?: string | null;
-    cover?: { thumbnail?: string | null; url?: string | null } | null;
+type LearningCourse = Omit<Models.LearningCourse, 'bundles' | 'modules'> & {
     bundles?: LearningBundle[];
     modules?: LearningModule[];
     progress?: {

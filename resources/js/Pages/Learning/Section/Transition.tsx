@@ -7,33 +7,16 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Link, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
+import { Models } from '@/types/models';
 
-type LearningLection = {
-    id: number;
-    name: string;
-    image?: { thumbnail?: string | null; url?: string | null } | null;
-};
+type LearningLection = Models.LearningLection;
 
-type LearningSection = {
-    id: number;
-    name: string;
-    description?: string | null;
+type LearningSection = Omit<Models.LearningSection, 'lections'> & {
     lections?: LearningLection[];
 };
 
-type LearningModule = {
-    id: number;
-    slug: string;
-    name: string;
-    cover?: { thumbnail?: string | null; url?: string | null } | null;
-};
-
-type LearningCourse = {
-    id: number;
-    slug: string;
-    name: string;
-    cover?: { thumbnail?: string | null; url?: string | null } | null;
-};
+type LearningModule = Models.LearningModule;
+type LearningCourse = Models.LearningCourse;
 
 export default function LearningSectionTransition({
     course,
