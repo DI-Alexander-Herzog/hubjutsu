@@ -1086,6 +1086,7 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
   const mimeType = typeof media?.mimetype === 'string' ? media.mimetype : '';
   const isImage = mimeType.startsWith('image/');
   const isVideo = mimeType.startsWith('video/');
+  const isPdf = mimeType === 'application/pdf';
   const initialSegmentFrom = media?.meta?.video?.segment?.from ?? '';
   const initialSegmentTo = media?.meta?.video?.segment?.to ?? '';
   const initialSegments = Array.isArray(media?.meta?.video?.segments)
@@ -1112,6 +1113,7 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
     video_subtitles_json: initialSubtitlesJson,
   });
   const { post: postHls, processing: processingHls } = useForm({});
+  const { post: postPdfThumbRestart, processing: processingPdfThumbRestart } = useForm({});
 
   const buildMetaPayload = (
     formData: MediaEditFormData,
@@ -1204,8 +1206,21 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
   const mediaUrl = getMediaUrl(media);
   const mediaUrlWithCache = withCacheBuster(mediaUrl, media?.updated_at ?? media?.id);
   const variants = media?.meta?.image?.variants && typeof media.meta.image.variants === 'object'
-    ? (media.meta.image.variants as Record<string, { path?: string; width?: number; height?: number; max?: number }>)
+    ? (media.meta.image.variants as Record<string, { path?: string; width?: number; height?: number; max?: number; mimetype?: string; source?: string }>)
     : {};
+  const pdfThumbStatus = typeof media?.meta?.pdf?.thumbnail?.status === 'string' ? media.meta.pdf.thumbnail.status : '';
+  const pdfThumbError = typeof media?.meta?.pdf?.thumbnail?.error === 'string' ? media.meta.pdf.thumbnail.error : '';
+  const pdfThumbQueuedAt = typeof media?.meta?.pdf?.thumbnail?.queued_at === 'string' ? media.meta.pdf.thumbnail.queued_at : '';
+  const pdfThumbProcessingAt = typeof media?.meta?.pdf?.thumbnail?.processing_at === 'string' ? media.meta.pdf.thumbnail.processing_at : '';
+  const pdfThumbDoneAt = typeof media?.meta?.pdf?.thumbnail?.done_at === 'string' ? media.meta.pdf.thumbnail.done_at : '';
+  const pdfThumbFailedAt = typeof media?.meta?.pdf?.thumbnail?.failed_at === 'string' ? media.meta.pdf.thumbnail.failed_at : '';
+  const preferredPdfPreviewVariant = variants?.med
+    ? 'med'
+    : (variants?.big ? 'big' : (variants?.thumb ? 'thumb' : null));
+  const pdfThumbPreviewRaw = media?.id && preferredPdfPreviewVariant
+    ? route('media.variant', [media.id, preferredPdfPreviewVariant])
+    : (typeof media?.thumbnail === 'string' ? media.thumbnail : null);
+  const pdfThumbPreview = withCacheBuster(pdfThumbPreviewRaw, media?.updated_at ?? media?.id);
   const subtitlesForPreview = parseSubtitlesJson(data.video_subtitles_json) ?? [];
   const parsedSubtitlesForMeta = parseSubtitlesJson(data.video_subtitles_json);
   const parsedSegmentsForMeta = parseVideoSegmentsJson(data.video_segments_json);
@@ -1253,6 +1268,41 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
                   Datei öffnen
                 </a>
               )}
+              {isPdf && (
+                <div className="space-y-2">
+                  <div className="text-xs text-text-500 dark:text-gray-400">
+                    PDF-Thumbnail Job:{' '}
+                    <span className="font-semibold text-text-700 dark:text-gray-200">
+                      {pdfThumbStatus || 'noch nicht gestartet'}
+                    </span>
+                  </div>
+                  <div>
+                    <SecondaryButton
+                      type="button"
+                      disabled={processingPdfThumbRestart}
+                      onClick={() => postPdfThumbRestart(route('media.restart-pdf-thumbnail', [media.id]))}
+                    >
+                      Job neu starten
+                    </SecondaryButton>
+                  </div>
+                  {pdfThumbQueuedAt && <div className="text-[11px] text-text-500">Queued: {pdfThumbQueuedAt}</div>}
+                  {pdfThumbProcessingAt && <div className="text-[11px] text-text-500">Processing: {pdfThumbProcessingAt}</div>}
+                  {pdfThumbDoneAt && <div className="text-[11px] text-text-500">Done: {pdfThumbDoneAt}</div>}
+                  {pdfThumbFailedAt && <div className="text-[11px] text-red-600">Failed: {pdfThumbFailedAt}</div>}
+                  {pdfThumbError && <div className="text-[11px] text-red-600 break-all">{pdfThumbError}</div>}
+                  {pdfThumbPreview ? (
+                    <img
+                      src={pdfThumbPreview}
+                      alt="PDF Thumbnail"
+                      className="h-52 w-full rounded border border-secondary/20 bg-secondary/10 object-contain"
+                    />
+                  ) : (
+                    <div className="rounded border border-secondary/20 bg-secondary/5 px-3 py-2 text-xs text-text-500">
+                      Vorschau noch nicht verfügbar. Queue-Worker prüfen (`php artisan queue:work`).
+                    </div>
+                  )}
+                </div>
+              )}
               {!mediaUrlWithCache && <div className="text-xs text-text-500 dark:text-gray-400">Keine Preview verfügbar.</div>}
             </div>
 
@@ -1280,7 +1330,7 @@ export default function MediaEdit({ media, isAttached }: MediaEditProps) {
             </FormSection>
           )}
 
-          {isImage && Object.keys(variants).length > 0 && (
+          {(isImage || isPdf) && Object.keys(variants).length > 0 && (
             <FormSection title="Varianten" subtitle="Generierte Bildgrößen">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 {Object.entries(variants).map(([key, variant]) => {

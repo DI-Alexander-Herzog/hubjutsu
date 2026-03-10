@@ -3,6 +3,7 @@
 
 namespace AHerzog\Hubjutsu\Models;
 
+use App\Jobs\GeneratePdfThumbnail;
 use AHerzog\Hubjutsu\Models\Traits\UserTrait;
 use App\Models\Base;
 use File;
@@ -68,6 +69,7 @@ class Media extends Base {
 
         static::saved(function (Media $media) {
             $media->relocateFileIfNecessary();
+            $media->dispatchPdfThumbnailGenerationIfNeeded();
         });
         static::deleting(function (Media $media) {
             $media->deleteStoredFile();
@@ -121,20 +123,66 @@ class Media extends Base {
     }
 
     public function getThumbnailAttribute() {
-        if (in_array($this->mimetype, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'])) {
-            $thumbPath = data_get($this->meta, 'image.variants.thumb.path');
-            if (is_string($thumbPath) && $thumbPath !== '' && $this->storage) {
-                $normalizedThumbPath = ltrim($thumbPath, '/');
-                if (Storage::disk($this->storage)->exists($normalizedThumbPath)) {
-                    if ($this->private && \Illuminate\Support\Facades\Route::has('media.variant')) {
-                        return route('media.variant', [$this->getKey(), 'thumb']);
-                    }
-                    return $this->appendCacheBuster(Storage::disk($this->storage)->url($normalizedThumbPath));
-                }
-            }
-            return $this->getUrl();
+        return $this->thumb();
+    }
+
+    public function url(): ?string
+    {
+        if (!$this->storage || !$this->filename) {
+            return null;
         }
-        return null;
+
+        return $this->getUrl();
+    }
+
+    public function thumb(): ?string
+    {
+        return $this->variantPreviewUrl('thumb')
+            ?: $this->med();
+    }
+
+    public function med(): ?string
+    {
+        return $this->variantPreviewUrl('med')
+            ?: $this->big();
+    }
+
+    public function big(): ?string
+    {
+        return $this->variantPreviewUrl('big')
+            ?: $this->originalPreviewUrl();
+    }
+
+    protected function originalPreviewUrl(): ?string
+    {
+        if (!is_string($this->mimetype) || !str_starts_with(strtolower($this->mimetype), 'image/')) {
+            return null;
+        }
+
+        return $this->url();
+    }
+
+    protected function variantPreviewUrl(string $variant): ?string
+    {
+        if (!$this->storage) {
+            return null;
+        }
+
+        $variantPath = data_get($this->meta, 'image.variants.' . $variant . '.path');
+        if (!is_string($variantPath) || $variantPath === '') {
+            return null;
+        }
+
+        $normalizedPath = ltrim($variantPath, '/');
+        if (!Storage::disk($this->storage)->exists($normalizedPath)) {
+            return null;
+        }
+
+        if ($this->private && \Illuminate\Support\Facades\Route::has('media.variant')) {
+            return route('media.variant', [$this->getKey(), $variant]);
+        }
+
+        return $this->appendCacheBuster(Storage::disk($this->storage)->url($normalizedPath));
     }
 
     public function getUrl() {
@@ -358,6 +406,200 @@ class Media extends Base {
             $this->mimetype = finfo_buffer(new finfo(FILEINFO_MIME_TYPE), $content);
         }
         Storage::disk($this->storage)->put($this->filename, $content);
+    }
+
+    protected function dispatchPdfThumbnailGenerationIfNeeded(): void
+    {
+        if (!$this->wasRecentlyCreated && !$this->wasChanged(['filename', 'storage', 'mimetype', 'meta'])) {
+            return;
+        }
+
+        $this->queuePdfThumbnailGeneration(false);
+    }
+
+    public function needsPdfThumbnailGeneration(): bool
+    {
+        if (!is_string($this->mimetype) || strtolower($this->mimetype) !== 'application/pdf') {
+            return false;
+        }
+        if (!class_exists(Imagick::class)) {
+            return false;
+        }
+        if (!$this->storage || !$this->filename) {
+            return false;
+        }
+
+        $sourcePath = ltrim((string) $this->filename, '/');
+        if (!Storage::disk($this->storage)->exists($sourcePath)) {
+            return false;
+        }
+
+        $thumbPath = data_get($this->meta, 'image.variants.thumb.path');
+        if (is_string($thumbPath) && $thumbPath !== '' && Storage::disk($this->storage)->exists(ltrim($thumbPath, '/'))) {
+            return false;
+        }
+
+        $status = (string) data_get($this->meta, 'pdf.thumbnail.status', '');
+        if (in_array($status, ['queued', 'processing'], true)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function queuePdfThumbnailGeneration(bool $force = false): bool
+    {
+        if (!is_string($this->mimetype) || strtolower($this->mimetype) !== 'application/pdf') {
+            return false;
+        }
+        if (!class_exists(Imagick::class)) {
+            return false;
+        }
+        if (!$this->storage || !$this->filename) {
+            return false;
+        }
+
+        $sourcePath = ltrim((string) $this->filename, '/');
+        if (!Storage::disk($this->storage)->exists($sourcePath)) {
+            return false;
+        }
+
+        if (!$force && !$this->needsPdfThumbnailGeneration()) {
+            return false;
+        }
+
+        $meta = is_array($this->meta) ? $this->meta : [];
+        data_set($meta, 'pdf.thumbnail.status', 'queued');
+        data_set($meta, 'pdf.thumbnail.queued_at', now()->toIso8601String());
+        data_set($meta, 'pdf.thumbnail.error', null);
+        $this->meta = $meta;
+        $this->saveQuietly();
+
+        $mediaId = (int) $this->getKey();
+        try {
+            GeneratePdfThumbnail::dispatch($mediaId);            
+        } catch (\Throwable $e) {
+            $failedMeta = is_array($this->meta) ? $this->meta : [];
+            data_set($failedMeta, 'pdf.thumbnail.status', 'failed');
+            data_set($failedMeta, 'pdf.thumbnail.failed_at', now()->toIso8601String());
+            data_set($failedMeta, 'pdf.thumbnail.error', (string) $e->getMessage());
+            $this->meta = $failedMeta;
+            $this->saveQuietly();
+            report($e);
+            return false;
+        }
+
+        return true;
+    }
+
+    public function generatePdfThumbnailVariant(int $maxSize = 300): void
+    {
+        if (!is_string($this->mimetype) || strtolower($this->mimetype) !== 'application/pdf') {
+            return;
+        }
+        if (!class_exists(Imagick::class)) {
+            return;
+        }
+        if (!$this->storage || !$this->filename) {
+            return;
+        }
+
+        $sourcePath = ltrim((string) $this->filename, '/');
+        if (!Storage::disk($this->storage)->exists($sourcePath)) {
+            return;
+        }
+
+        $absoluteSourcePath = Storage::disk($this->storage)->path($sourcePath);
+
+        $pdf = new Imagick();
+        // Render at a size that allows generating big/med/thumb variants with good quality.
+        $pdf->setResolution(200, 200);
+        $pdf->readImage($absoluteSourcePath . '[0]');
+        $pdf->setImageBackgroundColor('white');
+        $flattened = $pdf->mergeImageLayers(Imagick::LAYERMETHOD_FLATTEN);
+        $flattened->setImageFormat('webp');
+        $flattened->setImageCompressionQuality(85);
+
+        $srcW = (int) $flattened->getImageWidth();
+        $srcH = (int) $flattened->getImageHeight();
+        if ($srcW <= 0 || $srcH <= 0) {
+            $flattened->clear();
+            $flattened->destroy();
+            $pdf->clear();
+            $pdf->destroy();
+            return;
+        }
+
+        $baseName = pathinfo($sourcePath, PATHINFO_FILENAME);
+        $directory = trim((string) dirname($sourcePath), '/');
+        $variantDir = ($directory ? $directory . '/' : '') . 'variants';
+        Storage::disk($this->storage)->makeDirectory($variantDir);
+
+        $existingVariants = (array) data_get($this->meta, 'image.variants', []);
+        foreach ($existingVariants as $existingVariant) {
+            $existingPath = is_array($existingVariant) ? ($existingVariant['path'] ?? null) : null;
+            if (!is_string($existingPath) || !$existingPath) {
+                continue;
+            }
+            $existingPath = ltrim($existingPath, '/');
+            if (Storage::disk($this->storage)->exists($existingPath)) {
+                Storage::disk($this->storage)->delete($existingPath);
+            }
+        }
+
+        $sizes = [
+            'big' => 1600,
+            'med' => 900,
+            'thumb' => $maxSize,
+        ];
+        $variants = [];
+        foreach ($sizes as $name => $targetMax) {
+            $variant = clone $flattened;
+            $vW = (int) $variant->getImageWidth();
+            $vH = (int) $variant->getImageHeight();
+            if ($vW <= 0 || $vH <= 0) {
+                $variant->clear();
+                $variant->destroy();
+                continue;
+            }
+
+            if ($vW >= $vH) {
+                $targetW = $targetMax;
+                $targetH = (int) max(1, round(($vH / $vW) * $targetMax));
+            } else {
+                $targetH = $targetMax;
+                $targetW = (int) max(1, round(($vW / $vH) * $targetMax));
+            }
+            $variant->resizeImage($targetW, $targetH, Imagick::FILTER_LANCZOS, 1, true);
+
+            $variantPath = $variantDir . '/' . $baseName . '-pdf-' . $name . '.webp';
+            $variant->writeImage(Storage::disk($this->storage)->path($variantPath));
+            $variants[$name] = [
+                'path' => '/' . ltrim($variantPath, '/'),
+                'width' => (int) $variant->getImageWidth(),
+                'height' => (int) $variant->getImageHeight(),
+                'max' => $targetMax,
+                'mimetype' => 'image/webp',
+                'source' => 'pdf',
+            ];
+
+            $variant->clear();
+            $variant->destroy();
+        }
+
+        $meta = is_array($this->meta) ? $this->meta : [];
+        $imageMeta = is_array($meta['image'] ?? null) ? $meta['image'] : [];
+        $imageMeta['variants'] = $variants;
+        $meta['image'] = $imageMeta;
+        data_set($meta, 'pdf.thumbnail.status', 'done');
+        data_set($meta, 'pdf.thumbnail.done_at', now()->toIso8601String());
+        $this->meta = $meta;
+        $this->saveQuietly();
+
+        $flattened->clear();
+        $flattened->destroy();
+        $pdf->clear();
+        $pdf->destroy();
     }
 
     public function generateImageVariants(): void

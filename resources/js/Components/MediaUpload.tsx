@@ -20,7 +20,7 @@ interface Props {
   label?: string;
   attributes?: Record<string, any>;
   onChange?: (event: SyntheticEvent) => void;
-  accept?: string;
+  accept?: string | Record<string, string[]>;
   multiple?: boolean;
   maxFiles?: number;
   disabled?: boolean;
@@ -217,6 +217,23 @@ function getFilesFromClipboard(clipboardData: DataTransfer | null | undefined): 
   return files;
 }
 
+function buildDropzoneAccept(accept?: string | Record<string, string[]>) {
+  if (!accept) return undefined;
+  if (typeof accept === 'object') return accept;
+
+  const parts = accept
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return undefined;
+
+  return parts.reduce<Record<string, string[]>>((acc, key) => {
+    acc[key] = [];
+    return acc;
+  }, {});
+}
+
 function basename(path?: string | null): string {
   if (!path) return '';
   const normalized = String(path);
@@ -400,7 +417,7 @@ function SingleMediaUpload({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: accept ? { [accept]: [] } : undefined,
+    accept: buildDropzoneAccept(accept),
     multiple: false,
     disabled,
     noClick: disabled,
@@ -451,7 +468,7 @@ function SingleMediaUpload({
             </div>
           )}
 
-          {(previewType || currentValue) && (
+          {!disabled && (previewType || currentValue) && (
             <div className="flex items-center gap-3">
               {isAttached && (
                 <button
@@ -775,7 +792,7 @@ function MultipleMediaUpload({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleDrop,
-    accept: accept ? { [accept]: [] } : undefined,
+    accept: buildDropzoneAccept(accept),
     multiple: true,
     disabled,
     noClick: disabled,
@@ -877,44 +894,46 @@ function MultipleMediaUpload({
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {item.status === 'uploaded' && isAssignedMedia(item.media) && (
+                {!disabled && (
+                  <div className="flex items-center gap-2">
+                    {item.status === 'uploaded' && isAssignedMedia(item.media) && (
+                      <button
+                        type="button"
+                        className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
+                        onClick={() => handleEditMedia(item)}
+                        disabled={disabled}
+                      >
+                        {t('Bearbeiten')}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
-                      onClick={() => handleEditMedia(item)}
-                      disabled={disabled}
+                      onClick={() => moveItem(item.id, 'up')}
+                      disabled={disabled || item.status === 'uploading' || items[0]?.id === item.id}
+                      title={t('Nach oben')}
                     >
-                      {t('Bearbeiten')}
+                      ↑
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
-                    onClick={() => moveItem(item.id, 'up')}
-                    disabled={disabled || item.status === 'uploading' || items[0]?.id === item.id}
-                    title={t('Nach oben')}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
-                    onClick={() => moveItem(item.id, 'down')}
-                    disabled={disabled || item.status === 'uploading' || items[items.length - 1]?.id === item.id}
-                    title={t('Nach unten')}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    className="text-xs text-tertiary hover:text-tertiary/80 disabled:opacity-50"
-                    onClick={() => removeItem(item.id)}
-                    disabled={disabled || item.status === 'uploading'}
-                  >
-                    {t('Entfernen')}
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      className="text-xs text-secondary hover:text-secondary/80 disabled:opacity-50"
+                      onClick={() => moveItem(item.id, 'down')}
+                      disabled={disabled || item.status === 'uploading' || items[items.length - 1]?.id === item.id}
+                      title={t('Nach unten')}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-tertiary hover:text-tertiary/80 disabled:opacity-50"
+                      onClick={() => removeItem(item.id)}
+                      disabled={disabled || item.status === 'uploading'}
+                    >
+                      {t('Entfernen')}
+                    </button>
+                  </div>
+                )}
               </div>
 
             </li>

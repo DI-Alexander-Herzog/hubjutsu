@@ -51,7 +51,7 @@ export interface ModelEditorConfig extends BaseEditorConfig {
 
 export interface MediaEditorConfig extends BaseEditorConfig {
 	type: "media";
-	accept?: string;
+	accept?: string | Record<string, string[]>;
 	label?: string;
 	className?: string;
 	attributes?: Record<string, any>;
@@ -358,7 +358,15 @@ const mediaEditor: EditorRenderer = ({ column, row, onValueChange, onKeyDown }) 
 	const dropzoneAccept = useMemo(() => {
 		if (!editorProps.accept) return undefined;
 		if (typeof editorProps.accept === "string") {
-			return { [editorProps.accept]: [] };
+			const parts = editorProps.accept
+				.split(",")
+				.map((entry: string) => entry.trim())
+				.filter(Boolean);
+			if (parts.length === 0) return undefined;
+			return parts.reduce((acc: Record<string, string[]>, key: string) => {
+				acc[key] = [];
+				return acc;
+			}, {});
 		}
 		return editorProps.accept;
 	}, [editorProps.accept]);
@@ -505,7 +513,7 @@ export const ModelEditor: EditorRenderer = ({
 
     const panelRef = useRef<HTMLDivElement | null>(null);
     const triggerRef = useRef<HTMLButtonElement | null>(null);
-    const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+    const [pos, setPos] = useState({ top: 0, left: 0, width: 0, maxHeight: 300, placement: "bottom" as "bottom" | "top" });
 
     // Query / search
     const [query, setQuery] = useState("");
@@ -590,6 +598,7 @@ export const ModelEditor: EditorRenderer = ({
 
             const r = triggerRef.current.getBoundingClientRect();
             const viewportPadding = 8;
+            const popupOffset = 4;
             const minWidth = 360;
             const maxWidth = Math.max(minWidth, Math.min(720, window.innerWidth - viewportPadding * 2));
             const width = Math.min(Math.max(r.width, minWidth), maxWidth);
@@ -598,10 +607,21 @@ export const ModelEditor: EditorRenderer = ({
             const maxLeft = window.scrollX + window.innerWidth - viewportPadding - width;
             const left = Math.min(Math.max(r.left + window.scrollX, minLeft), Math.max(minLeft, maxLeft));
 
+            const spaceAbove = Math.max(0, r.top - viewportPadding - popupOffset);
+            const spaceBelow = Math.max(0, window.innerHeight - r.bottom - viewportPadding - popupOffset);
+            const placement: "bottom" | "top" =
+                spaceBelow >= 240 || spaceBelow >= spaceAbove ? "bottom" : "top";
+            const maxHeight = Math.max(140, Math.min(300, placement === "bottom" ? spaceBelow : spaceAbove));
+            const top = placement === "bottom"
+                ? r.bottom + window.scrollY + popupOffset
+                : r.top + window.scrollY - popupOffset;
+
             setPos({
-                top: r.top + window.scrollY - 2,
+                top,
                 left,
                 width,
+                maxHeight,
+                placement,
             });
         };
 
@@ -654,7 +674,8 @@ export const ModelEditor: EditorRenderer = ({
                     top: pos.top,
                     left: pos.left,
                     width: pos.width,
-                    transform: "translateY(-100%)",
+                    maxHeight: `${pos.maxHeight}px`,
+                    transform: pos.placement === "top" ? "translateY(-100%)" : "none",
                 }}
 				ref={panelRef}
             >

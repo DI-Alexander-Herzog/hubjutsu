@@ -172,6 +172,22 @@ class MediaController extends Controller
         return back()->with('success', 'M3U8 wurde neu erzeugt.');
     }
 
+    public function restartPdfThumbnail(Media $media): RedirectResponse
+    {
+        abort_unless($this->canEditMedia($media), 403);
+
+        if (!is_string($media->mimetype) || strtolower($media->mimetype) !== 'application/pdf') {
+            return back()->with('error', 'PDF Thumbnail Job ist nur für PDF-Dateien verfügbar.');
+        }
+
+        $queued = $media->queuePdfThumbnailGeneration(true);
+        if (!$queued) {
+            return back()->with('error', 'PDF Thumbnail Job konnte nicht gestartet werden.');
+        }
+
+        return back()->with('success', 'PDF Thumbnail Job wurde neu gestartet.');
+    }
+
     public function downloadAudioMp3(Media $media)
     {
         abort_unless($this->canViewMedia($media), 403);
@@ -255,7 +271,7 @@ class MediaController extends Controller
         abort_unless(Storage::disk($media->storage)->exists($path), 404);
 
         return response()->file(Storage::disk($media->storage)->path($path), [
-            'Content-Type' => $media->mimetype ?: 'application/octet-stream',
+            'Content-Type' => (mime_content_type(Storage::disk($media->storage)->path($path)) ?: 'application/octet-stream'),
             'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
         ]);
     }
@@ -304,6 +320,7 @@ class MediaController extends Controller
             $media->save();
             $media->setContent($file->getContent());
             $media->save();
+            $media->refresh();
 
             $uploads[$key] = $media;
         }
@@ -392,6 +409,7 @@ class MediaController extends Controller
             'private' => true,
         ]);
         $media->save();
+        $media->refresh();
 
         return response()->json(['done' => true, 'media' => $media]);
     }

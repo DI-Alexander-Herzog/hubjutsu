@@ -144,7 +144,7 @@ class Hub extends Base
 
         if (!$role instanceof Role) {
             $role = Role::create([
-                'name' => "Hub {$this->id} Default Admin",
+                'name' => "{$this->name} Admins",
             ]);
 
             $this->role_id = $role->id;

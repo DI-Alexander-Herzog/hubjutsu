@@ -206,6 +206,7 @@ trait MediaTrait
             if (!$mediaObj) {
                 return null;
             }
+            unset($data['meta']);
             $mediaObj->fill($data);
             return $mediaObj;
         }
