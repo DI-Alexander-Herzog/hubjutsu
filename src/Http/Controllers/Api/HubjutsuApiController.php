@@ -174,7 +174,13 @@ class HubjutsuApiController
             }
 
             foreach($request->get('multiSortMeta', []) as $sort) {
-                $queryBuilder->orderBy($sort[0], $sort[1] > 0 ? 'asc' : 'desc');
+                $sortField = (string) ($sort[0] ?? '');
+                if ($sortField === '') {
+                    continue;
+                }
+
+                $resolvedField = $modelObj->resolveApiSortField($queryBuilder, $sortField);
+                $queryBuilder->orderBy($resolvedField, ($sort[1] ?? 1) > 0 ? 'asc' : 'desc');
             };
             
             

@@ -119,6 +119,15 @@ const getSelectOptions = (column: Column, config: FilterConfig, records: any[]):
 		return config.options;
 	}
 
+	const editorCfg = typeof column.editor === "object" && column.editor ? (column.editor as Record<string, any>) : null;
+	const editorConfigOptions = editorCfg?.options;
+	if (Array.isArray(editorConfigOptions) && editorConfigOptions.length > 0) {
+		return editorConfigOptions.map((opt: any) => ({
+			label: String(opt?.label ?? opt?.value ?? ""),
+			value: opt?.value ?? opt,
+		}));
+	}
+
 	const editorOptions = column.editor_properties?.options;
 	if (Array.isArray(editorOptions) && editorOptions.length > 0) {
 		return editorOptions.map((opt: any) => ({

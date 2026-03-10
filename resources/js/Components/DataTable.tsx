@@ -481,7 +481,7 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 
 	return (
 		<div className={classNames("w-full h-full min-h-0 flex flex-col")} style={{ ...(height ? { height } : {}) }}>
-			<div className="relative flex-grow min-h-0 w-full">
+			<div className="relative flex-grow min-h-0 w-full flex flex-col">
 				<ErrorToast error={error} onClose={() => setError(null)} />
 
 				<DataTableFilter
@@ -495,8 +495,8 @@ const DataTable = forwardRef<DataTableRef, DataTableProps>(({
 					onToggle={() => setShowFilterPanel(false)}
 				/>
 
-				<div className="bg-background dark:bg-gray-900 overflow-hidden w-full h-full flex-1 rounded-lg shadow-sm">
-					<div className="relative isolate overflow-auto w-full h-full">
+				<div className="bg-background dark:bg-gray-900 overflow-hidden w-full flex-1 min-h-0 rounded-lg shadow-sm">
+					<div className="relative isolate overflow-auto w-full h-full min-h-0">
 						<table ref={tableRef} className="w-full min-w-full table-fixed border-collapse">
 							<DataTableHeaderView
 								columns={columns}

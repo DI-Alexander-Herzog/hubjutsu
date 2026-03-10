@@ -58,8 +58,10 @@ const DataTableHeaderView: React.FC<DataTableHeaderViewProps> = ({
 					<StickyRightDivider z={headerZIndex + 5} />
 				</th>
 				{columns.map((col, idx) => {
-					const sortIndex = multiSortMeta.findIndex(([field]) => field === col.field);
-					const currentSortMeta = multiSortMeta.find(([field]) => field === col.field) || [col.field, 1];
+					const sortKey = typeof col.sortable === "string" ? col.sortable : col.field;
+					const isSortable = !!col.sortable;
+					const sortIndex = multiSortMeta.findIndex(([field]) => field === sortKey);
+					const currentSortMeta = multiSortMeta.find(([field]) => field === sortKey) || [sortKey, 1];
 					return (
 						<th
 							key={col.field}
@@ -72,23 +74,23 @@ const DataTableHeaderView: React.FC<DataTableHeaderViewProps> = ({
 							className={classNames(
 								"relative px-3 py-2 text-left text-sm font-bold text-text-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0",
 								col.frozen && "border-r-0 sticky bg-background-600 dark:bg-gray-800",
-								col.sortable && "cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-800/10"
+								isSortable && "cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-800/10"
 							)}
 							onClick={
-								!col.sortable
+								!isSortable
 									? undefined
 									: (e) => {
 										if (isResizingRef.current) return;
 										if ((e.target as Element)?.closest(".filter-dropdown")) return;
-										onSort(col.field, e);
+										onSort(sortKey, e);
 									}
 							}
 						>
-							<div className="flex items-center min-w-0">
-								<span className="truncate">{col.label}</span>
-								<div className="ml-2 flex items-center gap-1 flex-shrink-0">
-									{col.sortable && sortIndex !== -1 && (
-										<div className="ml-2 flex items-center gap-1 flex-shrink-0">
+								<div className="flex items-center min-w-0">
+									<span className="truncate">{col.label}</span>
+									<div className="ml-2 flex items-center gap-1 flex-shrink-0">
+										{isSortable && sortIndex !== -1 && (
+											<div className="ml-2 flex items-center gap-1 flex-shrink-0">
 											<span className="text-[0.5rem] font-medium text-white bg-primary px-1 py-0.25 rounded-full">
 												{getSortOrderText(Math.abs(sortIndex + 1))}
 											</span>

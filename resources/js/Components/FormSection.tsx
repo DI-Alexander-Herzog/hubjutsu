@@ -43,7 +43,7 @@ export default function FormSection({
 			</div>
 
 			<div className="mt-5 md:mt-0 md:col-span-2 w-full">
-				<div className="w-full p-2 bg-background dark:bg-gray-800 sm:rounded-lg flex flex-col gap-2">
+				<div className="w-full p-2 sm:rounded-lg flex flex-col gap-2">
 					{children}
 				</div>
 			</div>

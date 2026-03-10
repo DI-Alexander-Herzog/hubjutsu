@@ -668,7 +668,7 @@ export const ModelEditor: EditorRenderer = ({
             <div
                 className="z-50 bg-background dark:bg-gray-800 border border-gray-300 
                            dark:border-gray-700 rounded-md shadow-xl
-                           max-h-[300px] overflow-auto text-sm text-text-900 dark:text-gray-100"
+                           max-h-[300px] overflow-hidden flex flex-col text-sm text-text-900 dark:text-gray-100"
                 style={{
                     position: "absolute",
                     top: pos.top,
@@ -679,7 +679,7 @@ export const ModelEditor: EditorRenderer = ({
                 }}
 				ref={panelRef}
             >
-                <div className="sticky top-0 z-10 p-1 bg-background dark:bg-gray-800 border-b dark:border-gray-700">
+                <div className="p-1 bg-background dark:bg-gray-800 border-b dark:border-gray-700">
 					<input
 						autoFocus
 						className={editorClassName}
@@ -693,74 +693,76 @@ export const ModelEditor: EditorRenderer = ({
 					/>
 				</div>
 
-                <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-background-600 dark:bg-gray-700">
-                        <tr>
-                            {cols.map((c) => (
-                                <th
-                                    key={c.field}
-                                    className="px-2 py-1 text-left border-b dark:border-gray-700"
-                                    style={{ width: c.width }}
-                                >
-                                    {c.label}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody ref={listRef}>
-                        {!loading &&
-                            data.map((r, idx) => (
-                                <tr
-                                    key={idx}
-                                    className={`
+                <div className="min-h-0 overflow-auto">
+                    <table className="w-full text-sm">
+                        <thead className="sticky top-0 z-10 bg-background-600 dark:bg-gray-700">
+                            <tr>
+                                {cols.map((c) => (
+                                    <th
+                                        key={c.field}
+                                        className="px-2 py-1 text-left border-b dark:border-gray-700"
+                                        style={{ width: c.width }}
+                                    >
+                                        {c.label}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody ref={listRef}>
+                            {!loading &&
+                                data.map((r, idx) => (
+                                    <tr
+                                        key={idx}
+                                        className={`
 										border-b dark:border-gray-700 cursor-pointer
 										hover:bg-primary-50 dark:hover:bg-primary-900
 										${idx === highlightIndex ? "bg-primary-100 dark:bg-primary-800" : ""}
 									`}
-                                    onClick={() => {
-                                        onValueChange(r[valueField]);
-                                        setOpen(false);
+                                        onClick={() => {
+                                            onValueChange(r[valueField]);
+                                            setOpen(false);
 										triggerRef.current?.focus();
-                                    }}
-                                >
-                                    {cols.map((c) => (
-                                        <td
-                                            key={c.field}
-                                            className="px-2 py-1 border-b dark:border-gray-700"
-                                        >
-                                            {c.formatter
-                                                ? c.formatter(r, c.field)
-                                                : DataTableFormatter.default(
-                                                      r,
-                                                      c.field
-                                                  )}
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))}
+                                        }}
+                                    >
+                                        {cols.map((c) => (
+                                            <td
+                                                key={c.field}
+                                                className="px-2 py-1 border-b dark:border-gray-700"
+                                            >
+                                                {c.formatter
+                                                    ? c.formatter(r, c.field)
+                                                    : DataTableFormatter.default(
+                                                          r,
+                                                          c.field
+                                                      )}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
 
-                        {(!loading && !data.length) && (
-                            <tr>
-                                <td
-                                    className="p-3 text-center opacity-60"
-                                    colSpan={cols.length}
-                                >
-                                    Keine Einträge gefunden.
-                                </td>
-                            </tr>
-                        )}
-                        {loading && (
-                            <tr>
-                                <td
-                                    className="p-3 text-center opacity-60"
-                                    colSpan={cols.length}
-                                >
-                                    Lade…
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                            {(!loading && !data.length) && (
+                                <tr>
+                                    <td
+                                        className="p-3 text-center opacity-60"
+                                        colSpan={cols.length}
+                                    >
+                                        Keine Einträge gefunden.
+                                    </td>
+                                </tr>
+                            )}
+                            {loading && (
+                                <tr>
+                                    <td
+                                        className="p-3 text-center opacity-60"
+                                        colSpan={cols.length}
+                                    >
+                                        Lade…
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>,
             document.body
         );

@@ -26,7 +26,7 @@ export interface Column {
 		| undefined;
 	/** @deprecated Nicht mehr verwenden. */
 	editor_properties?: Record<string, any>;
-	sortable?: boolean;
+	sortable?: boolean | string;
 	filter?: boolean | DataTableFilterConfig;
 	frozen?: boolean;
 	width?: string;

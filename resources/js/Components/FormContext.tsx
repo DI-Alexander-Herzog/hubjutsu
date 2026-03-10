@@ -101,7 +101,14 @@ export function FormContextSubmitButton({ children, className, postSave, editLin
   
   if (readonly) {
     if (editLink) {
-      return <NeutralButton onClick={() => router.visit(editLink)} className={className}>{t('Edit')}</NeutralButton>;
+      return (
+        <NeutralButton
+          onClick={() => router.visit(editLink)}
+          className={["w-fit", className].filter(Boolean).join(" ")}
+        >
+          {t('Edit')}
+        </NeutralButton>
+      );
     }
     return;
   }
@@ -123,4 +130,3 @@ export function FormContextSubmitButton({ children, className, postSave, editLin
 	</PrimaryButton>
   );
 }
-

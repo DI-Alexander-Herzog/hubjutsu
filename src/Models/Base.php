@@ -7,6 +7,7 @@ use Cache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use phpDocumentor\Reflection\DocBlock\Tags\Var_;
 
 class Base extends Model {    
@@ -82,6 +83,122 @@ class Base extends Model {
             });
         }
         return $query;
+    }
+
+    /**
+     * Optional API sort mapping.
+     *
+     * Example:
+     * [
+     *   'producttype_id' => 'producttype.label',
+     *   'name' => 'name',
+     * ]
+     *
+     * Keys are requested sort fields, values are either direct DB columns
+     * or belongsTo relation paths ending in a sortable column.
+     *
+     * @return array<string, string>
+     */
+    protected function apiSortColumns(): array
+    {
+        return [];
+    }
+
+    public function resolveApiSortField(Builder $query, string $field): string
+    {
+        $map = $this->apiSortColumns();
+        $mapped = $map[$field] ?? $field;
+
+        if (!is_string($mapped) || trim($mapped) === '') {
+            return $field;
+        }
+
+        if (!str_contains($mapped, '.')) {
+            return $mapped;
+        }
+
+        $alias = $this->addApiSortRelationSelect($query, $mapped);
+        return $alias ?? $field;
+    }
+
+    private function addApiSortRelationSelect(Builder $query, string $relationPath): ?string
+    {
+        $parts = array_values(array_filter(explode('.', $relationPath), fn ($part) => $part !== ''));
+        if (count($parts) < 2) {
+            return null;
+        }
+
+        $sortColumn = array_pop($parts);
+        if (!$sortColumn) {
+            return null;
+        }
+
+        $chain = [];
+        $currentModel = $this;
+
+        foreach ($parts as $index => $relationName) {
+            if (!method_exists($currentModel, $relationName)) {
+                return null;
+            }
+
+            $relation = $currentModel->{$relationName}();
+            if (!($relation instanceof BelongsTo)) {
+                return null;
+            }
+
+            $chain[] = [
+                'index' => $index + 1,
+                'foreign_key' => $relation->getForeignKeyName(),
+                'owner_key' => $relation->getOwnerKeyName(),
+                'related_model' => $relation->getRelated(),
+            ];
+
+            $currentModel = $relation->getRelated();
+        }
+
+        if ($chain === []) {
+            return null;
+        }
+
+        $depth = count($chain);
+        $deep = $chain[$depth - 1];
+        /** @var Model $deepModel */
+        $deepModel = $deep['related_model'];
+        $deepAlias = 'hs' . $depth;
+
+        $sub = $deepModel->newQueryWithoutScopes()
+            ->from($deepModel->getTable() . ' as ' . $deepAlias)
+            ->select($deepAlias . '.' . $sortColumn);
+
+        for ($i = $depth - 1; $i >= 1; $i--) {
+            $parent = $chain[$i - 1];
+            $child = $chain[$i];
+
+            /** @var Model $parentModel */
+            $parentModel = $parent['related_model'];
+            $parentAlias = 'hs' . $i;
+            $childAlias = 'hs' . ($i + 1);
+
+            $sub->join(
+                $parentModel->getTable() . ' as ' . $parentAlias,
+                $parentAlias . '.' . $child['foreign_key'],
+                '=',
+                $childAlias . '.' . $child['owner_key']
+            );
+        }
+
+        $rootTable = $this->getTable();
+        $first = $chain[0];
+        $firstAlias = 'hs1';
+        $sub->whereColumn(
+            $firstAlias . '.' . $first['owner_key'],
+            $rootTable . '.' . $first['foreign_key']
+        )->limit(1);
+
+        $alias = '__sort_' . preg_replace('/[^a-z0-9_]+/i', '_', strtolower($relationPath));
+        $query->addSelect([$alias => $sub]);
+
+        return $alias;
     }
 
     /**
