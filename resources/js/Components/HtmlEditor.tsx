@@ -130,7 +130,7 @@ export default function HtmlEditor({
             return;
         }
 
-        editor.commands.setContent(next, false);
+        editor.commands.setContent(next, { emitUpdate: false });
         setCurrentHtml(next);
     }, [editor, isControlled, value]);
 

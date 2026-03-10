@@ -40,28 +40,37 @@ class HubjutsuServiceProvider extends ServiceProvider
         Permission::addGroup('admin', 'Die Installation bearbeiten');
         Permission::addPermission('admin', 'admin', 'administration');
 
-        Permission::addModel(\App\Models\Hub::class, __('Hub'));
-        Permission::addModel(\App\Models\User::class, __('User'));
-        Permission::addModel(\App\Models\Role::class, __('Role'));
-        Permission::addModel(\App\Models\Credential::class, __('Credential'));
-        Permission::addModel(\App\Models\LearningBundle::class, __('Learning Bundle'));
-        Permission::addModel(\App\Models\LearningBundleRole::class, __('Learning Bundle Role'), [
-            'group' => \App\Models\LearningBundle::class,
-            'hidden' => true,
-        ]);
-        Permission::addModel(\App\Models\LearningCourse::class, __('Learning Course'));
-        Permission::addModel(\App\Models\LearningModule::class, __('Learning Module'), [
-            'group' => \App\Models\LearningCourse::class,
-            'hidden' => true,
-        ]);
-        Permission::addModel(\App\Models\LearningSection::class, __('Learning Section'), [
-            'group' => \App\Models\LearningCourse::class,
-            'hidden' => true,
-        ]);
-        Permission::addModel(\App\Models\LearningLection::class, __('Learning Lection'), [
-            'group' => \App\Models\LearningCourse::class,
-            'hidden' => true,
-        ]);
+        if (class_exists("\App\Models\Hub")) {
+            Permission::addModel(\App\Models\Hub::class, __('Hub'));
+            Permission::addModel(\App\Models\User::class, __('User'));
+            Permission::addModel(\App\Models\Role::class, __('Role'));
+        }
+        if (class_exists("\App\Models\Credential")) {
+            Permission::addModel(\App\Models\Credential::class, __('Credential'));
+        }
+        if (class_exists("\App\Models\LearningBundleRole")) {
+            Permission::addModel(\App\Models\LearningBundleRole::class, __('Learning Bundle Role'), [
+                'group' => \App\Models\LearningBundle::class,
+                'hidden' => true,
+            ]);
+        }
+        if (class_exists("\App\Models\LearningBundle")) {            
+            Permission::addModel(\App\Models\LearningBundle::class, __('Learning Bundle'));
+            Permission::addModel(\App\Models\LearningCourse::class, __('Learning Course'));
+            Permission::addModel(\App\Models\LearningModule::class, __('Learning Module'), [
+                'group' => \App\Models\LearningCourse::class,
+                'hidden' => true,
+            ]);
+            Permission::addModel(\App\Models\LearningSection::class, __('Learning Section'), [
+                'group' => \App\Models\LearningCourse::class,
+                'hidden' => true,
+            ]);
+            Permission::addModel(\App\Models\LearningLection::class, __('Learning Lection'), [
+                'group' => \App\Models\LearningCourse::class,
+                'hidden' => true,
+            ]);    
+        }
+        
         
         Gate::guessPolicyNamesUsing(function (string $modelClass) {
             $policyClass = 'App\\Policies\\'.class_basename($modelClass).'Policy';

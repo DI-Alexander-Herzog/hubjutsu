@@ -143,7 +143,7 @@ export default function Input({ className = '', label='', inputId = '', inputNam
                 withHiddenInput={false}
                 mediaItems={mediaItems}
                 {...props}
-                onChange={(html) => _useForm.setData((data: { [key: string]: any }) => ({
+                onChange={(html: string) => _useForm.setData((data: { [key: string]: any }) => ({
                     ...data,
                     [inputName]: html
                 }))}
