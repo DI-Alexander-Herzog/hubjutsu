@@ -37,6 +37,9 @@ export interface DateEditorConfig extends BaseEditorConfig {
 export interface DatetimeEditorConfig extends BaseEditorConfig {
     type: "datetime";
 }
+export interface TextEditorConfig extends BaseEditorConfig {
+    type: "text";
+}
 
 export interface ModelEditorConfig extends BaseEditorConfig {
     type: "model";
@@ -62,6 +65,7 @@ export type EditorConfig =
     | BooleanEditorConfig
 	| DateEditorConfig
     | DatetimeEditorConfig
+    | TextEditorConfig
     | ModelEditorConfig
     | MediaEditorConfig;
 
