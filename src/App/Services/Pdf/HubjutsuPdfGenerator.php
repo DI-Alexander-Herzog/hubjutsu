@@ -5,7 +5,6 @@ namespace AHerzog\Hubjutsu\App\Services\Pdf;
 use App\Models\Media;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\View;
 
@@ -45,47 +44,21 @@ abstract class HubjutsuPdfGenerator
         return $this->dompdf->output();
     }
 
-    public function toMedia(
-        Model $target,
-        string $category,
-        array $options = [],
-        array $extra = []
-    ): Media {
-        if (!method_exists($target, 'setMedia') || !method_exists($target, 'media')) {
-            throw new \InvalidArgumentException('Target model must use MediaTrait (setMedia/media).');
-        }
-
+    public function toMedia(array $options = [], array $extra = []): Media
+    {
         $pdf = $this->render($extra);
         $private = (bool) ($options['private'] ?? false);
-        $sort = (int) ($options['sort'] ?? 1);
-        $filename = $options['filename'] ?? $this->defaultFilename($category);
+        $filename = $options['filename'] ?? $this->defaultFilename();
         $mimetype = $options['mimetype'] ?? 'application/pdf';
 
-        $updateExisting = (bool) ($options['update_existing'] ?? true);
-        $media = $updateExisting ? $target->media($category)->first() : null;
-        if (!$media instanceof Media) {
-            $media = new Media();
-        }
-
-        $media->name = (string) ($options['name'] ?? Str::headline(str_replace('_', ' ', $category)));
+        $media = new Media();
+        $media->name = (string) ($options['name'] ?? 'Generated PDF');
         $media->description = (string) ($options['description'] ?? 'Generated PDF');
         $media->mimetype = $mimetype;
         $media->private = $private;
         $media->setContent($pdf, $filename);
 
-        $setter = $options['setter'] ?? null;
-        if (is_string($setter) && method_exists($target, $setter)) {
-            $target->{$setter}($media);
-        } else {
-            $target->setMedia($media, $category, $sort, $private);
-        }
-
-        $stored = $target->media($category)->first();
-        if (!$stored instanceof Media) {
-            throw new \RuntimeException("Failed to persist media for category [{$category}].");
-        }
-
-        return $stored;
+        return $media;
     }
 
     protected function preparePayload(array $extra): array
@@ -139,10 +112,9 @@ HTML;
         return [];
     }
 
-    protected function defaultFilename(string $category): string
+    protected function defaultFilename(): string
     {
-        $slug = Str::slug($category) ?: 'pdf';
-        return "generated-pdfs/{$slug}/" . now()->format('Y/m') . '/' . Str::orderedUuid() . '.pdf';
+        return "generated-pdfs/pdf/" . now()->format('Y/m') . '/' . Str::orderedUuid() . '.pdf';
     }
 
     protected function viewData(): array

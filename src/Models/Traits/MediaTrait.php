@@ -103,9 +103,8 @@ trait MediaTrait
 
         if($existingRecord) {
             if (!$media->getKey()) {
-                $existingRecord->fill($media->toArray());
-            }
-            if ($existingRecord->getKey() != $media->getKey() ) {
+                $existingRecord->delete();
+            } elseif ($existingRecord->getKey() != $media->getKey()) {
                 $existingRecord->delete();
             }
         }
