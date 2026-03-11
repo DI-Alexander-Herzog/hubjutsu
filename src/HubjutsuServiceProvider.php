@@ -11,6 +11,8 @@ use AHerzog\Hubjutsu\Console\HubjutsuGenerateTypesCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuGitCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuMakeCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuMakeComponentCommand;
+use AHerzog\Hubjutsu\Console\HubjutsuPdfFontCommand;
+use AHerzog\Hubjutsu\Console\HubjutsuPdfGenerateCommand;
 use AHerzog\Hubjutsu\Console\HubjutsuSetupCommand;
 use Auth;
 use Gate;
@@ -31,6 +33,7 @@ class HubjutsuServiceProvider extends ServiceProvider
          * Optional methods to load your package assets
          */
         $this->loadJsonTranslationsFrom(__DIR__.'/../resources/lang');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'hubjutsu');
         // $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'hubjutsu-setup');
         // $this->loadViewsFrom(__DIR__.'/../resources/views', 'hubjutsu-setup');
         //$this->loadMigrationsFrom(__DIR__.'/../database/migrations');
@@ -101,6 +104,8 @@ class HubjutsuServiceProvider extends ServiceProvider
                 HubjutsuMakeCommand::class,
                 HubjutsuGenerateTypesCommand::class,
                 HubjutsuMakeComponentCommand::class,
+                HubjutsuPdfFontCommand::class,
+                HubjutsuPdfGenerateCommand::class,
                 HubjutsuAppModelCommand::class,
                 CleanupRecordingsCommand::class,
             ]);

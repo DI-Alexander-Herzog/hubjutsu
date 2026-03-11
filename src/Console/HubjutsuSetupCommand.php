@@ -6,6 +6,7 @@ use FilesystemIterator;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\Console\Input\InputInterface;
@@ -231,6 +232,9 @@ class HubjutsuSetupCommand extends Command
         $setup = !$this->option('update');
 
         $this->syncAgentsStubTemplate();
+        if (! $this->ensureHubjutsuDependenciesInstalled()) {
+            return 1;
+        }
 
 
 
@@ -255,6 +259,11 @@ class HubjutsuSetupCommand extends Command
         }
 
         $filesystem = new Filesystem();
+        $this->preparePdfStorage($filesystem);
+        if ($setup) {
+            Artisan::call('hubjutsu:pdf:font', ['--force' => true]);
+            $this->line('  - PDF fonts synced');
+        }
         $this->mergeJsonTranslations(__DIR__.'/../../resources/lang', base_path('lang'));
         foreach($filesystem->glob(__DIR__ . '/../../database/migrations/*.php') as $file) {
             if ($filesystem->glob(database_path('migrations/*_'.basename($file)))) {
@@ -456,6 +465,52 @@ class HubjutsuSetupCommand extends Command
             }) === 0;
     }
 
+    protected function ensureHubjutsuDependenciesInstalled(): bool
+    {
+        if ($this->hasRequiredPdfPackages()) {
+            return true;
+        }
+
+        $this->components->info(
+            'Missing Hubjutsu PDF dependencies detected. Running composer update for aherzog/hubjutsu...'
+        );
+
+        $command = ['composer', 'update', 'aherzog/hubjutsu', '--with-dependencies'];
+        $success = (new Process($command, base_path(), ['COMPOSER_MEMORY_LIMIT' => '-1']))
+            ->setTimeout(null)
+            ->run(function ($type, $output) {
+                $this->output->write($output);
+            }) === 0;
+
+        if (! $success) {
+            $this->components->error(
+                'Composer update failed. Please run "composer update aherzog/hubjutsu --with-dependencies" manually.'
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    protected function hasRequiredPdfPackages(): bool
+    {
+        foreach ($this->requiredPdfClasses() as $class) {
+            if (! class_exists($class)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    protected function requiredPdfClasses(): array
+    {
+        return [
+            \Dompdf\Dompdf::class,
+            \setasign\Fpdi\Fpdi::class,
+        ];
+    }
+
     protected function setNpmPackageName() {
         $content = json_decode(file_get_contents(base_path('package.json')));
         $content->name = Str::slug(strtolower(config('app.name')));
@@ -506,6 +561,21 @@ class HubjutsuSetupCommand extends Command
             '@types/luxon',
             '@types/qs',
         ];
+    }
+
+    protected function preparePdfStorage(Filesystem $filesystem): void
+    {
+        $sampleOutput = config('hubjutsu.pdf.sample_output');
+        $paths = array_unique(array_filter([
+            config('hubjutsu.pdf.font_dir'),
+            config('hubjutsu.pdf.font_cache'),
+            config('hubjutsu.pdf.temp_dir'),
+            $sampleOutput ? dirname($sampleOutput) : null,
+        ]));
+
+        foreach ($paths as $path) {
+            $filesystem->ensureDirectoryExists($path);
+        }
     }
 
     protected function installMissingNpmPackages(array $requiredPackages, bool $asDev = false): void

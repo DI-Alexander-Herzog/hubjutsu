@@ -17,7 +17,10 @@
     ],
     "require": {
         "php": "^8.0",
-        "illuminate/support": "^11.0 || ^12.0"
+        "illuminate/support": "^11.0 || ^12.0",
+        "dompdf/dompdf": "^2.0",
+        "setasign/fpdf": "^1.8",
+        "setasign/fpdi": "^2.5"
     },
     "require-dev": {
         "orchestra/testbench": "^9.0",
